@@ -2,7 +2,7 @@
 
 [build]
   # The directory where your serverless functions are located.
-  functions = "netlify/functions/"
+  functions = "api/netlify/functions/"
   # The directory that contains your static assets to be published.
   publish = "public/"
 

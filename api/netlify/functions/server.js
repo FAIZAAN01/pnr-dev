@@ -11,7 +11,7 @@ const morgan = require('morgan');
 
 const app = express();
 
-const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
+const PROJECT_ROOT = path.resolve(__dirname, '..', '..', '..'); 
 const DATA_DIR = path.join(PROJECT_ROOT, 'data');
 const AIRLINES_FILE = path.join(DATA_DIR, 'airlines.json');
 const AIRCRAFT_TYPES_FILE = path.join(DATA_DIR, 'aircraftTypes.json');
@@ -207,7 +207,7 @@ function parseGalileoEnhanced(pnrText, options) {
 // The toml file will rewrite `/api/*` to `/.netlify/functions/server/*`.
 // So a client call to `/api/convert` becomes a call to `/.netlify/functions/server/convert`
 // which this router will handle correctly.
-app.use('/api', router);
+app.use('/.netlify/functions/server', router);
 
 // --- Exporting the Handler ---
 module.exports.handler = serverless(app);
