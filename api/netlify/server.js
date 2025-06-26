@@ -11,17 +11,14 @@ const morgan = require('morgan');
 
 const app = express();
 
-// --- Data Persistence Setup (Netlify Compatible) ---
-// On Netlify, __dirname is the function's directory. We need to go up two levels
-// to find the root of the project where `data` and `logos` live.
-const PROJECT_ROOT = path.join(__dirname, '..', '..');
+// --- Pathing (Netlify Compatible) ---
+const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
 const DATA_DIR = path.join(PROJECT_ROOT, 'data');
 const AIRLINES_FILE = path.join(DATA_DIR, 'airlines.json');
 const AIRCRAFT_TYPES_FILE = path.join(DATA_DIR, 'aircraftTypes.json');
 const AIRPORT_DATABASE_FILE = path.join(DATA_DIR, 'airportDatabase.json');
-const LOGO_DIR = path.join(PROJECT_ROOT, 'logos');
 
-// Default Databases (will be overridden by files if they exist)
+// --- Database Loading ---
 let airlineDatabase = {};
 let aircraftTypes = {};
 let airportDatabase = {};
@@ -37,33 +34,15 @@ function loadDbFromFile(filePath, defaultDb) {
   }
   return defaultDb;
 }
-
-function loadAllDatabases() {
-  airlineDatabase = loadDbFromFile(AIRLINES_FILE, airlineDatabase);
-  aircraftTypes = loadDbFromFile(AIRCRAFT_TYPES_FILE, aircraftTypes);
-  airportDatabase = loadDbFromFile(AIRPORT_DATABASE_FILE, airportDatabase);
-}
 loadAllDatabases();
 
-// Middleware
-// NOTE: Static file serving is handled by Netlify's `publish` directory setting.
-// The express.static is removed as it's not needed and can cause path issues.
-// Netlify will serve files from `public/` first. If a file is not found,
-// the redirect rule `/* -> /.netlify/functions/server` will send the request here.
+// --- Middleware ---
 app.use(morgan('dev'));
 app.use(cors());
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
-app.use(helmet({
-    contentSecurityPolicy: {
-        directives: {
-            ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-            "script-src": ["'self'", "https://cdn.jsdelivr.net"],
-            "img-src": ["'self'", "data:", "blob:", "/logos/"],
-            "style-src": ["'self'", "'unsafe-inline'"],
-        }
-    }
-}));
+app.use(helmet({ contentSecurityPolicy: false })); // Disabled for easier debugging
+
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
     max: 200,
@@ -72,25 +51,12 @@ const limiter = rateLimit({
     message: { success: false, error: "Too many requests, please try again later.", result: { flights: [] } }
 });
 
-// We need to use a path prefix for our API routes on Netlify
+// --- Express Router for API ---
 const router = express.Router();
 
-router.get('/logos/:fileName', (req, res) => {
-    const { fileName } = req.params;
-    const filePath = path.join(LOGO_DIR, fileName);
-    if (fs.existsSync(filePath)) {
-        res.sendFile(filePath);
-    } else {
-        res.status(404).send('Logo not found');
-    }
-});
-
-
-// API endpoint
 router.post('/convert', limiter, (req, res) => {
     try {
         const { pnrText, options, fareDetails, developerModeTrigger, updatedDatabases } = req.body;
-        // ... (rest of the /convert logic is IDENTICAL, no changes needed here)
         let pnrTextForProcessing = pnrText || '';
         let serverOptions = options || {};
         let developerSave = false;
@@ -113,23 +79,19 @@ router.post('/convert', limiter, (req, res) => {
             responsePayload.databases = { airlineDatabase, aircraftTypes, airportDatabase };
         }
 
-        res.json(responsePayload);
+        return res.status(200).json(responsePayload);
     } catch (err) {
         console.error("Error during PNR conversion:", err.stack);
-        res.status(400).json({ success: false, error: err.message, result: { flights: [] } });
+        return res.status(400).json({ success: false, error: err.message, result: { flights: [] } });
     }
 });
 
 router.post('/upload-logo', limiter, async (req, res) => {
     console.error("Logo upload is not supported on Netlify's read-only filesystem.");
-    res.status(400).json({ success: false, error: "This feature is disabled on the live deployment." });
+    return res.status(400).json({ success: false, error: "This feature is disabled on the live deployment." });
 });
 
-
-// Helper functions (getTravelClassName, parseGalileoEnhanced, etc.) remain here
-// and are identical to the previous version. I'm omitting them for brevity,
-// but you should copy them into this file.
-
+// --- Helper Functions ---
 function formatMomentTime(momentObj, use24 = false) {
     if (!momentObj || !momentObj.isValid()) return '';
     return momentObj.format(use24 ? 'HH:mm' : 'hh:mm A');
@@ -167,31 +129,24 @@ function parseGalileoEnhanced(pnrText, options) {
     const flights = [];
     const passengers = [];
     const lines = pnrText.split('\n').map(line => line.trimEnd());
-
     let currentFlight = null;
     let flightIndex = 0;
     let previousArrivalMoment = null;
-
     const flightSegmentRegex = /^\s*(\d+)\s+([A-Z0-9]{2})\s*(\d{1,4}[A-Z]?)\s+([A-Z])\s+([0-3]\d[A-Z]{3})\s+\S*\s*([A-Z]{3})([A-Z]{3})\s+\S*\s+(\d{4})\s+(\d{4})(?:\s+([0-3]\d[A-Z]{3}|\+\d))?/;
     const operatedByRegex = /OPERATED BY\s+(.+)/i;
     const passengerNameRegex = /^\s*\d+\.\s*([A-Z\s/.'-]+)/;
-
     for (const line of lines) {
         if (!line.trim()) continue;
-
         const flightMatch = line.match(flightSegmentRegex);
         const operatedByMatch = line.match(operatedByRegex);
         const passengerMatch = line.match(passengerNameRegex);
-
         if (passengerMatch) {
             if (flights.length === 0) {
                 const fullNamePart = passengerMatch[1].trim();
                 const nameParts = fullNamePart.split('/');
-                
                 if (nameParts.length >= 2) {
                     const lastName = nameParts[0].trim();
                     const firstName = nameParts[1].split(' ')[0].trim();
-                    
                     if (lastName && firstName) {
                         const formattedName = `${lastName.toUpperCase()}/${firstName.toUpperCase()}`;
                         if (!passengers.includes(formattedName)) {
@@ -205,20 +160,16 @@ function parseGalileoEnhanced(pnrText, options) {
             if (currentFlight) flights.push(currentFlight);
             flightIndex++;
             let precedingTransitTimeForThisSegment = null;
-
             const [, segmentNumStr, airlineCode, flightNumRaw, travelClass, depDateStr, depAirport, arrAirport, depTimeStr, arrTimeStr, arrDateStrOrNextDayIndicator] = flightMatch;
             const flightNum = flightNumRaw;
             const flightDetailsPart = line.substring(flightMatch[0].length).trim();
             const detailsParts = flightDetailsPart.split(/\s+/);
             const aircraftCodeKey = detailsParts.find(p => p.toUpperCase() in aircraftTypes);
             const mealCode = detailsParts.find(p => p.length === 1 && /[BLDSMFHCVKOPRWYNG]/.test(p.toUpperCase()));
-            
             const depAirportInfo = airportDatabase[depAirport] || { city: `Unknown`, name: `Airport (${depAirport})`, timezone: 'UTC' };
             const arrAirportInfo = airportDatabase[arrAirport] || { city: `Unknown`, name: `Airport (${arrAirport})`, timezone: 'UTC' };
-            
             if (!moment.tz.zone(depAirportInfo.timezone)) depAirportInfo.timezone = 'UTC';
             if (!moment.tz.zone(arrAirportInfo.timezone)) arrAirportInfo.timezone = 'UTC';
-
             const departureMoment = moment.tz(`${depDateStr} ${depTimeStr}`, "DDMMM HHmm", true, depAirportInfo.timezone);
             let arrivalMoment;
             if (arrDateStrOrNextDayIndicator) {
@@ -234,7 +185,6 @@ function parseGalileoEnhanced(pnrText, options) {
                     arrivalMoment.add(1, 'day');
                 }
             }
-            
             if (previousArrivalMoment && previousArrivalMoment.isValid() && departureMoment && departureMoment.isValid()) {
                 const transitDuration = moment.duration(departureMoment.diff(previousArrivalMoment));
                  if (transitDuration.asMinutes() > 0 && transitDuration.asHours() <= 48) {
@@ -243,21 +193,14 @@ function parseGalileoEnhanced(pnrText, options) {
                     precedingTransitTimeForThisSegment = `${hours}h ${minutes < 10 ? '0' : ''}${minutes}m`;
                 }
             }
-
             currentFlight = {
                 segment: parseInt(segmentNumStr, 10) || flightIndex,
                 airline: { code: airlineCode, name: airlineDatabase[airlineCode] || `Unknown Airline (${airlineCode})` },
                 flightNumber: `${airlineCode}${flightNum}`,
                 travelClass: { code: travelClass || '', name: getTravelClassName(travelClass) },
                 date: departureMoment.isValid() ? departureMoment.format('DD MMM YYYY') : '',
-                departure: {
-                    airport: depAirport, city: depAirportInfo.city,
-                    time: formatMomentTime(departureMoment, options.use24HourFormat),
-                },
-                arrival: {
-                    airport: arrAirport, city: arrAirportInfo.city,
-                    time: formatMomentTime(arrivalMoment, options.use24HourFormat),
-                },
+                departure: { airport: depAirport, city: depAirportInfo.city, time: formatMomentTime(departureMoment, options.use24HourFormat) },
+                arrival: { airport: arrAirport, city: arrAirportInfo.city, time: formatMomentTime(arrivalMoment, options.use24HourFormat) },
                 duration: calculateAndFormatDuration(departureMoment, arrivalMoment),
                 aircraft: aircraftTypes[aircraftCodeKey] || aircraftCodeKey || '',
                 meal: mealCode, notes: [], operatedBy: null,
@@ -271,13 +214,11 @@ function parseGalileoEnhanced(pnrText, options) {
         }
     }
     if (currentFlight) flights.push(currentFlight);
-    
     return { flights, passengers };
 }
 
+// --- Mounting the Router ---
+app.use('/.netlify/functions/server', router);
 
-// Tell Express to use our router. The path must match what the client-side JS is calling.
-app.use('/', router); 
-
-// Wrap the app with serverless-http and export it as the handler.
+// --- Exporting the Handler ---
 module.exports.handler = serverless(app);
