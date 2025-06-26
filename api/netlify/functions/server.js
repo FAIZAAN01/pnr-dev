@@ -32,6 +32,12 @@ function loadDbFromFile(filePath, defaultDb) {
   }
   return defaultDb;
 }
+function loadAllDatabases() {
+  airlineDatabase = loadDbFromFile(AIRLINES_FILE, {});
+  aircraftTypes = loadDbFromFile(AIRCRAFT_TYPES_FILE, {});
+  airportDatabase = loadDbFromFile(AIRPORT_DATABASE_FILE, {});
+}
+
 loadAllDatabases();
 
 app.use(morgan('dev'));
