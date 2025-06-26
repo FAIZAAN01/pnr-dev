@@ -218,7 +218,7 @@ function parseGalileoEnhanced(pnrText, options) {
 }
 
 // --- Mounting the Router ---
-app.use('/.netlify/functions/server', router);
+app.use('/', router); 
 
 // --- Exporting the Handler ---
 module.exports.handler = serverless(app);

@@ -120,7 +120,7 @@ async function convertPNR(isSaveOperation = false) {
     payload.developerModeTrigger = developerModeTrigger;
 
     try {
-        const response = await fetch('/convert', {
+        const response = await fetch('/.netlify/functions/server/convert', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -491,7 +491,7 @@ document.getElementById('uploadLogoBtn')?.addEventListener('click', async () => 
     
     try {
         const resizedImageDataUrl = await resizeImage(file, 120, 50, file.type);
-        const response = await fetch('/upload-logo', {
+        const response = await fetch('/.netlify/functions/server/upload-logo', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
