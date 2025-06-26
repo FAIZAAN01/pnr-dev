@@ -1,13 +1,14 @@
 # netlify.toml
 
 [build]
+  # The directory where your serverless functions are located.
   functions = "netlify/functions/"
+  # The directory that contains your static assets to be published.
   publish = "public/"
 
-# This rule says: any URL that is not a file in the `public` directory
-# should be handled by the `server` function.
+# This is a specific rewrite rule for the API.
+# It proxies any request starting with /api/ to your server function.
 [[redirects]]
-  from = "/*"
+  from = "/api/*"
   to = "/.netlify/functions/server/:splat"
   status = 200
-  force = false

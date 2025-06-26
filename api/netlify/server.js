@@ -1,5 +1,5 @@
 const express = require('express');
-const serverless = 'serverless-http';
+const serverless = require('serverless-http');
 const bodyParser = require('body-parser');
 const moment = require('moment-timezone');
 const helmet = require('helmet');
@@ -11,14 +11,12 @@ const morgan = require('morgan');
 
 const app = express();
 
-// --- Pathing (Netlify Compatible) ---
 const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
 const DATA_DIR = path.join(PROJECT_ROOT, 'data');
 const AIRLINES_FILE = path.join(DATA_DIR, 'airlines.json');
 const AIRCRAFT_TYPES_FILE = path.join(DATA_DIR, 'aircraftTypes.json');
 const AIRPORT_DATABASE_FILE = path.join(DATA_DIR, 'airportDatabase.json');
 
-// --- Database Loading ---
 let airlineDatabase = {};
 let aircraftTypes = {};
 let airportDatabase = {};
@@ -36,7 +34,6 @@ function loadDbFromFile(filePath, defaultDb) {
 }
 loadAllDatabases();
 
-// --- Middleware ---
 app.use(morgan('dev'));
 app.use(cors());
 app.use(bodyParser.json({ limit: '10mb' }));
@@ -51,8 +48,6 @@ const limiter = rateLimit({
     message: { success: false, error: "Too many requests, please try again later.", result: { flights: [] } }
 });
 
-// --- Express Router for API ---
-// We create a router to hold our API endpoints.
 const router = express.Router();
 
 router.post('/convert', limiter, (req, res) => {
@@ -92,12 +87,11 @@ router.post('/upload-logo', limiter, async (req, res) => {
     return res.status(400).json({ success: false, error: "This feature is disabled on the live deployment." });
 });
 
-// --- Helper Functions (Full code included) ---
+// --- Helper Functions ---
 function formatMomentTime(momentObj, use24 = false) {
     if (!momentObj || !momentObj.isValid()) return '';
     return momentObj.format(use24 ? 'HH:mm' : 'hh:mm A');
 }
-
 function calculateAndFormatDuration(depMoment, arrMoment) {
     if (!depMoment || !depMoment.isValid() || !arrMoment || !arrMoment.isValid()) return 'Invalid time';
     const durationMinutes = arrMoment.diff(depMoment, 'minutes');
@@ -106,7 +100,6 @@ function calculateAndFormatDuration(depMoment, arrMoment) {
     const minutes = durationMinutes % 60;
     return `${hours}h ${minutes < 10 ? '0' : ''}${minutes}m`;
 }
-
 function getTravelClassName(classCode) {
     if (!classCode) return 'Unknown';
     const code = classCode.toUpperCase();
@@ -120,7 +113,6 @@ function getTravelClassName(classCode) {
     if (economyCodes.includes(code)) return 'Economy';
     return `Class ${code}`;
 }
-
 function parseGalileoEnhanced(pnrText, options) {
     const flights = [];
     const passengers = [];
@@ -209,10 +201,13 @@ function parseGalileoEnhanced(pnrText, options) {
     return { flights, passengers };
 }
 
-// === THE FIX IS HERE ===
-// Mount the router at the root. The serverless-http wrapper and the
-// netlify.toml rewrite will handle the pathing correctly.
-app.use(router);
+// --- Mounting the Router ---
+// THIS IS THE CRITICAL CHANGE. We mount the router at a base path
+// that will be consistent with our client-side calls.
+// The toml file will rewrite `/api/*` to `/.netlify/functions/server/*`.
+// So a client call to `/api/convert` becomes a call to `/.netlify/functions/server/convert`
+// which this router will handle correctly.
+app.use('/api', router);
 
-// Export the handler for Netlify
+// --- Exporting the Handler ---
 module.exports.handler = serverless(app);
