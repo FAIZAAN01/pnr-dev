@@ -6,10 +6,6 @@
   # The directory that contains your static assets to be published.
   publish = "public/"
 
-[functions]
-  # This tells Netlify to include the `data` directory with EVERY function.
-  included_files = ["data/**"]
-
 # This is a specific rewrite rule for the API.
 # It proxies any request starting with /api/ to your server function.
 [[redirects]]
