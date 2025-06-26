@@ -11,10 +11,8 @@ const morgan = require('morgan');
 
 const app = express();
 
-// --- Pathing (Netlify Compatible with included_files) ---
-// The `included_files` directive in netlify.toml copies the `data` directory
-// into the function's deployment package, making it locally accessible.
-const DATA_DIR = path.join(__dirname, 'data');
+const PROJECT_ROOT = path.resolve(__dirname, '..', '..', '..'); 
+const DATA_DIR = path.join(PROJECT_ROOT, 'data');
 const AIRLINES_FILE = path.join(DATA_DIR, 'airlines.json');
 const AIRCRAFT_TYPES_FILE = path.join(DATA_DIR, 'aircraftTypes.json');
 const AIRPORT_DATABASE_FILE = path.join(DATA_DIR, 'airportDatabase.json');
@@ -27,26 +25,13 @@ function loadDbFromFile(filePath, defaultDb) {
   try {
     if (fs.existsSync(filePath)) {
       const fileData = fs.readFileSync(filePath, 'utf-8');
-      console.log(`Successfully loaded ${path.basename(filePath)}`);
       return JSON.parse(fileData);
-    } else {
-      // This log is crucial for debugging on Netlify
-      console.error(`File does not exist at path: ${filePath}`);
     }
   } catch (error) {
     console.error(`Error loading ${path.basename(filePath)}:`, error.message);
-    // Re-throw the error to ensure the crash is visible in logs
-    throw error;
   }
   return defaultDb;
 }
-
-function loadAllDatabases() {
-  airlineDatabase = loadDbFromFile(AIRLINES_FILE, {});
-  aircraftTypes = loadDbFromFile(AIRCRAFT_TYPES_FILE, {});
-  airportDatabase = loadDbFromFile(AIRPORT_DATABASE_FILE, {});
-}
-
 loadAllDatabases();
 
 app.use(morgan('dev'));
@@ -102,7 +87,7 @@ router.post('/upload-logo', limiter, async (req, res) => {
     return res.status(400).json({ success: false, error: "This feature is disabled on the live deployment." });
 });
 
-// --- Helper Functions (Full code included) ---
+// --- Helper Functions ---
 function formatMomentTime(momentObj, use24 = false) {
     if (!momentObj || !momentObj.isValid()) return '';
     return momentObj.format(use24 ? 'HH:mm' : 'hh:mm A');
@@ -217,8 +202,12 @@ function parseGalileoEnhanced(pnrText, options) {
 }
 
 // --- Mounting the Router ---
-app.use('/.netlify/functions/server/', router);
-
+// THIS IS THE CRITICAL CHANGE. We mount the router at a base path
+// that will be consistent with our client-side calls.
+// The toml file will rewrite `/api/*` to `/.netlify/functions/server/*`.
+// So a client call to `/api/convert` becomes a call to `/.netlify/functions/server/convert`
+// which this router will handle correctly.
+app.use('/.netlify/functions/server', router);
 
 // --- Exporting the Handler ---
 module.exports.handler = serverless(app);
