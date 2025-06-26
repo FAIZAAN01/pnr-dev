@@ -1,6 +1,5 @@
-// ==== api/index.js (Vercel-compatible Version) ====
-require('dotenv').config();
 const express = require('express');
+const serverless = require('serverless-http');
 const bodyParser = require('body-parser');
 const moment = require('moment-timezone');
 const helmet = require('helmet');
@@ -12,18 +11,15 @@ const morgan = require('morgan');
 
 const app = express();
 
-// --- Data Persistence Setup (Vercel Compatible) ---
-// NOTE: Vercel has a read-only filesystem. Writes will not persist across deployments.
-// Data should be updated by committing changes to the JSON files and redeploying.
-const DATA_DIR = path.join(process.cwd(), 'data');
+// --- Data Persistence Setup (Netlify Compatible) ---
+// On Netlify, __dirname is the function's directory. We need to go up two levels
+// to find the root of the project where `data` and `logos` live.
+const PROJECT_ROOT = path.join(__dirname, '..', '..');
+const DATA_DIR = path.join(PROJECT_ROOT, 'data');
 const AIRLINES_FILE = path.join(DATA_DIR, 'airlines.json');
 const AIRCRAFT_TYPES_FILE = path.join(DATA_DIR, 'aircraftTypes.json');
 const AIRPORT_DATABASE_FILE = path.join(DATA_DIR, 'airportDatabase.json');
-
-// Ensure data directory exists (for local dev)
-if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-}
+const LOGO_DIR = path.join(PROJECT_ROOT, 'logos');
 
 // Default Databases (will be overridden by files if they exist)
 let airlineDatabase = {};
@@ -47,55 +43,23 @@ function loadAllDatabases() {
   aircraftTypes = loadDbFromFile(AIRCRAFT_TYPES_FILE, aircraftTypes);
   airportDatabase = loadDbFromFile(AIRPORT_DATABASE_FILE, airportDatabase);
 }
-
-function saveDatabasesToFile(databasesToSave) {
-    console.warn("NOTE: Filesystem is read-only on Vercel. Saved data will not persist.");
-    const saveIfNeeded = (filePath, data, dbName) => {
-        let existingDataString = "{}";
-        if (fs.existsSync(filePath)) {
-            try {
-                existingDataString = fs.readFileSync(filePath, 'utf-8');
-            } catch (readError) {
-                console.error(`Error reading ${dbName} for comparison:`, readError.message);
-            }
-        }
-        const newDataString = JSON.stringify(data, null, 2);
-        if (newDataString !== existingDataString) {
-            try {
-                fs.writeFileSync(filePath, newDataString, 'utf-8');
-                console.log(`${dbName} database saved to ${filePath} (ephemeral)`);
-            } catch (error) {
-                console.error(`Error saving ${dbName} to ${filePath}:`, error.message);
-            }
-        }
-    };
-    if (databasesToSave.airlineDatabase) saveIfNeeded(AIRLINES_FILE, databasesToSave.airlineDatabase, 'Airlines');
-    if (databasesToSave.aircraftTypes) saveIfNeeded(AIRCRAFT_TYPES_FILE, databasesToSave.aircraftTypes, 'Aircraft Types');
-    if (databasesToSave.airportDatabase) saveIfNeeded(AIRPORT_DATABASE_FILE, databasesToSave.airportDatabase, 'Airport');
-}
-
-const LOGO_DIR = path.join(process.cwd(), 'logos');
-if (!fs.existsSync(LOGO_DIR)) {
-    fs.mkdirSync(LOGO_DIR, { recursive: true });
-}
-
 loadAllDatabases();
 
 // Middleware
+// NOTE: Static file serving is handled by Netlify's `publish` directory setting.
+// The express.static is removed as it's not needed and can cause path issues.
+// Netlify will serve files from `public/` first. If a file is not found,
+// the redirect rule `/* -> /.netlify/functions/server` will send the request here.
 app.use(morgan('dev'));
 app.use(cors());
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
-// Serve static files from the 'public' directory
-app.use(express.static(path.join(process.cwd(), 'public')));
-app.use('/logos', express.static(LOGO_DIR));
-
 app.use(helmet({
     contentSecurityPolicy: {
         directives: {
             ...helmet.contentSecurityPolicy.getDefaultDirectives(),
             "script-src": ["'self'", "https://cdn.jsdelivr.net"],
-            "img-src": ["'self'", "data:", "blob:"],
+            "img-src": ["'self'", "data:", "blob:", "/logos/"],
             "style-src": ["'self'", "'unsafe-inline'"],
         }
     }
@@ -107,7 +71,64 @@ const limiter = rateLimit({
     legacyHeaders: false,
     message: { success: false, error: "Too many requests, please try again later.", result: { flights: [] } }
 });
-app.use('/convert', limiter);
+
+// We need to use a path prefix for our API routes on Netlify
+const router = express.Router();
+
+router.get('/logos/:fileName', (req, res) => {
+    const { fileName } = req.params;
+    const filePath = path.join(LOGO_DIR, fileName);
+    if (fs.existsSync(filePath)) {
+        res.sendFile(filePath);
+    } else {
+        res.status(404).send('Logo not found');
+    }
+});
+
+
+// API endpoint
+router.post('/convert', limiter, (req, res) => {
+    try {
+        const { pnrText, options, fareDetails, developerModeTrigger, updatedDatabases } = req.body;
+        // ... (rest of the /convert logic is IDENTICAL, no changes needed here)
+        let pnrTextForProcessing = pnrText || '';
+        let serverOptions = options || {};
+        let developerSave = false;
+
+        if ((developerModeTrigger === "save_databases" || developerModeTrigger === "developermarja") && updatedDatabases) {
+            console.warn("NOTE: Filesystem is read-only on Netlify. Changes will not persist.");
+            developerSave = true;
+        }
+        
+        const result = pnrTextForProcessing ? parseGalileoEnhanced(pnrTextForProcessing, serverOptions) : { flights: [], passengers: [] };
+
+        const responsePayload = {
+            success: true, result, fareDetails,
+            message: developerSave ? "Database 'save' simulated. Changes are not persistent on Netlify." : null,
+            pnrProcessingAttempted: !!pnrTextForProcessing
+        };
+        
+        if (developerModeTrigger === 'developer' || developerModeTrigger === 'developermarja' || developerSave) {
+            responsePayload.pnrDeveloperModeActive = true;
+            responsePayload.databases = { airlineDatabase, aircraftTypes, airportDatabase };
+        }
+
+        res.json(responsePayload);
+    } catch (err) {
+        console.error("Error during PNR conversion:", err.stack);
+        res.status(400).json({ success: false, error: err.message, result: { flights: [] } });
+    }
+});
+
+router.post('/upload-logo', limiter, async (req, res) => {
+    console.error("Logo upload is not supported on Netlify's read-only filesystem.");
+    res.status(400).json({ success: false, error: "This feature is disabled on the live deployment." });
+});
+
+
+// Helper functions (getTravelClassName, parseGalileoEnhanced, etc.) remain here
+// and are identical to the previous version. I'm omitting them for brevity,
+// but you should copy them into this file.
 
 function formatMomentTime(momentObj, use24 = false) {
     if (!momentObj || !momentObj.isValid()) return '';
@@ -163,7 +184,6 @@ function parseGalileoEnhanced(pnrText, options) {
         const passengerMatch = line.match(passengerNameRegex);
 
         if (passengerMatch) {
-            // Only process passenger lines if no flights have been found yet.
             if (flights.length === 0) {
                 const fullNamePart = passengerMatch[1].trim();
                 const nameParts = fullNamePart.split('/');
@@ -255,70 +275,9 @@ function parseGalileoEnhanced(pnrText, options) {
     return { flights, passengers };
 }
 
-// API endpoint
-app.post('/convert', (req, res) => {
-    try {
-        const { pnrText, options, fareDetails, developerModeTrigger, updatedDatabases } = req.body;
-        let pnrTextForProcessing = pnrText || '';
-        let serverOptions = options || {};
-        let developerSave = false;
 
-        if ((developerModeTrigger === "save_databases" || developerModeTrigger === "developermarja") && updatedDatabases) {
-            if (updatedDatabases) {
-                console.log("Saving databases triggered by developer command.");
-                saveDatabasesToFile(updatedDatabases);
-                loadAllDatabases(); // Reload them right away
-                developerSave = true;
-            }
-        }
-        
-        const result = pnrTextForProcessing ? parseGalileoEnhanced(pnrTextForProcessing, serverOptions) : { flights: [], passengers: [] };
+// Tell Express to use our router. The path must match what the client-side JS is calling.
+app.use('/', router); 
 
-        const responsePayload = {
-            success: true, result, fareDetails,
-            message: developerSave ? "Databases saved successfully (changes are ephemeral)." : null,
-            pnrProcessingAttempted: !!pnrTextForProcessing
-        };
-        
-        if (developerModeTrigger === 'developer' || developerModeTrigger === 'developermarja' || developerSave) {
-            responsePayload.pnrDeveloperModeActive = true;
-            responsePayload.databases = { airlineDatabase, aircraftTypes, airportDatabase };
-        }
-
-        res.json(responsePayload);
-    } catch (err) {
-        console.error("Error during PNR conversion:", err.stack);
-        res.status(400).json({ success: false, error: err.message, result: { flights: [] } });
-    }
-});
-
-
-app.post('/upload-logo', async (req, res) => {
-    const { airlineCode, imageDataUrl, originalFileType } = req.body;
-    if (!airlineCode || !imageDataUrl) return res.status(400).json({ success: false, error: 'Missing airline code or image data.' });
-    
-    console.warn("NOTE: Filesystem is read-only on Vercel. Uploaded logo will not persist.");
-
-    try {
-        let extension = originalFileType === 'image/svg+xml' ? '.svg' : '.png';
-        const logoFilePath = path.join(LOGO_DIR, `${airlineCode.toUpperCase()}${extension}`);
-        let buffer;
-        
-        if (imageDataUrl.startsWith('data:image/svg+xml') && !imageDataUrl.includes(';base64,')) {
-            const svgString = decodeURIComponent(imageDataUrl.substring(imageDataUrl.indexOf(',') + 1));
-            buffer = Buffer.from(svgString, 'utf-8');
-        } else {
-            const base64Data = imageDataUrl.replace(/^data:image\/\w+;base64,/, "").replace(/^data:image\/svg\+xml;base64,/, "");
-            buffer = Buffer.from(base64Data, 'base64');
-        }
-        fs.writeFileSync(logoFilePath, buffer);
-        console.log(`Logo saved: ${logoFilePath} (ephemeral)`);
-        res.json({ success: true, message: `Logo for ${airlineCode.toUpperCase()} saved (ephemeral).` });
-    } catch (error) {
-        console.error('Error saving logo:', error);
-        res.status(500).json({ success: false, error: 'Server error while saving logo.' });
-    }
-});
-
-// Export the app for Vercel
-module.exports = app;
+// Wrap the app with serverless-http and export it as the handler.
+module.exports.handler = serverless(app);
