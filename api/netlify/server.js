@@ -1,5 +1,5 @@
 const express = require('express');
-const serverless = require('serverless-http');
+const serverless = 'serverless-http';
 const bodyParser = require('body-parser');
 const moment = require('moment-timezone');
 const helmet = require('helmet');
@@ -41,7 +41,7 @@ app.use(morgan('dev'));
 app.use(cors());
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
-app.use(helmet({ contentSecurityPolicy: false })); // Disabled for easier debugging
+app.use(helmet({ contentSecurityPolicy: false }));
 
 const limiter = rateLimit({
     windowMs: 15 * 60 * 1000,
@@ -52,6 +52,7 @@ const limiter = rateLimit({
 });
 
 // --- Express Router for API ---
+// We create a router to hold our API endpoints.
 const router = express.Router();
 
 router.post('/convert', limiter, (req, res) => {
@@ -91,20 +92,16 @@ router.post('/upload-logo', limiter, async (req, res) => {
     return res.status(400).json({ success: false, error: "This feature is disabled on the live deployment." });
 });
 
-// --- Helper Functions ---
+// --- Helper Functions (Full code included) ---
 function formatMomentTime(momentObj, use24 = false) {
     if (!momentObj || !momentObj.isValid()) return '';
     return momentObj.format(use24 ? 'HH:mm' : 'hh:mm A');
 }
 
 function calculateAndFormatDuration(depMoment, arrMoment) {
-    if (!depMoment || !depMoment.isValid() || !arrMoment || !arrMoment.isValid()) {
-        return 'Invalid time';
-    }
+    if (!depMoment || !depMoment.isValid() || !arrMoment || !arrMoment.isValid()) return 'Invalid time';
     const durationMinutes = arrMoment.diff(depMoment, 'minutes');
-    if (durationMinutes < 0) {
-        return 'Invalid duration';
-    }
+    if (durationMinutes < 0) return 'Invalid duration';
     const hours = Math.floor(durationMinutes / 60);
     const minutes = durationMinutes % 60;
     return `${hours}h ${minutes < 10 ? '0' : ''}${minutes}m`;
@@ -117,7 +114,6 @@ function getTravelClassName(classCode) {
     const businessCodes = ['J', 'C', 'D', 'I', 'Z', 'R'];
     const premiumEconomyCodes = ['W', 'E', 'T'];
     const economyCodes = ['Y', 'B', 'H', 'K', 'L', 'M', 'N', 'O', 'Q', 'S', 'U', 'V', 'X', 'G'];
-
     if (firstCodes.includes(code)) return 'First';
     if (businessCodes.includes(code)) return 'Business';
     if (premiumEconomyCodes.includes(code)) return 'Premium Economy';
@@ -149,9 +145,7 @@ function parseGalileoEnhanced(pnrText, options) {
                     const firstName = nameParts[1].split(' ')[0].trim();
                     if (lastName && firstName) {
                         const formattedName = `${lastName.toUpperCase()}/${firstName.toUpperCase()}`;
-                        if (!passengers.includes(formattedName)) {
-                            passengers.push(formattedName);
-                        }
+                        if (!passengers.includes(formattedName)) passengers.push(formattedName);
                     }
                 }
             }
@@ -181,13 +175,11 @@ function parseGalileoEnhanced(pnrText, options) {
                 }
             } else {
                 arrivalMoment = moment.tz(`${depDateStr} ${arrTimeStr}`, "DDMMM HHmm", true, arrAirportInfo.timezone);
-                if (departureMoment.isValid() && arrivalMoment.isValid() && arrivalMoment.isBefore(departureMoment)) {
-                    arrivalMoment.add(1, 'day');
-                }
+                if (departureMoment.isValid() && arrivalMoment.isValid() && arrivalMoment.isBefore(departureMoment)) arrivalMoment.add(1, 'day');
             }
             if (previousArrivalMoment && previousArrivalMoment.isValid() && departureMoment && departureMoment.isValid()) {
                 const transitDuration = moment.duration(departureMoment.diff(previousArrivalMoment));
-                 if (transitDuration.asMinutes() > 0 && transitDuration.asHours() <= 48) {
+                if (transitDuration.asMinutes() > 0 && transitDuration.asHours() <= 48) {
                     const hours = Math.floor(transitDuration.asHours());
                     const minutes = transitDuration.minutes();
                     precedingTransitTimeForThisSegment = `${hours}h ${minutes < 10 ? '0' : ''}${minutes}m`;
@@ -217,8 +209,10 @@ function parseGalileoEnhanced(pnrText, options) {
     return { flights, passengers };
 }
 
-// --- Mounting the Router ---
-app.use('/', router); 
+// === THE FIX IS HERE ===
+// Mount the router at the root. The serverless-http wrapper and the
+// netlify.toml rewrite will handle the pathing correctly.
+app.use(router);
 
-// --- Exporting the Handler ---
+// Export the handler for Netlify
 module.exports.handler = serverless(app);

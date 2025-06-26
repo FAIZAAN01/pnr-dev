@@ -1,14 +1,13 @@
-# Netlify configuration file
+# netlify.toml
 
 [build]
-  # The directory where your serverless functions are located.
   functions = "netlify/functions/"
-  # The directory that contains your static assets (HTML, JS, CSS).
   publish = "public/"
 
-# Redirect all traffic to our serverless Express function.
-# This is the "magic" that makes the Express app work.
+# This rule says: any URL that is not a file in the `public` directory
+# should be handled by the `server` function.
 [[redirects]]
   from = "/*"
-  to = "/.netlify/functions/server"
+  to = "/.netlify/functions/server/:splat"
   status = 200
+  force = false
