@@ -259,7 +259,7 @@ function displayResults(response, displayPnrOptions) {
                 logo.alt = `${flight.airline?.name} logo`;
                 logo.onerror = function() {
                     this.onerror = null;
-                    this.src = `/logos/${airlineLogoCode}.png`; // Fallback to PNG
+                    this.src = `/logos/${airlineLogoCode.toUpperCase}.png`; // Fallback to PNG
                     this.onerror = function() {
                         this.onerror = null;
                         this.src = defaultLogoPath;
