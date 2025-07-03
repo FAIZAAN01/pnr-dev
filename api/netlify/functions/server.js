@@ -17,6 +17,8 @@ const AIRLINES_FILE = path.join(DATA_DIR, 'airlines.json');
 const AIRCRAFT_TYPES_FILE = path.join(DATA_DIR, 'aircraftTypes.json');
 const AIRPORT_DATABASE_FILE = path.join(DATA_DIR, 'airportDatabase.json');
 
+app.use(express.json());
+
 let airlineDatabase = {};
 let aircraftTypes = {};
 let airportDatabase = {};
@@ -213,6 +215,7 @@ function parseGalileoEnhanced(pnrText, options) {
 // The toml file will rewrite `/api/*` to `/.netlify/functions/server/*`.
 // So a client call to `/api/convert` becomes a call to `/.netlify/functions/server/convert`
 // which this router will handle correctly.
+
 app.use('/.netlify/functions/server', router);
 
 // --- Exporting the Handler ---
