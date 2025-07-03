@@ -254,7 +254,7 @@ function displayResults(response, displayPnrOptions) {
                 const logo = document.createElement('img');
                 const airlineLogoCode = (flight.airline?.code || 'xx').toLowerCase();
                 const defaultLogoPath = '/logos/default-airline.svg';
-                logo.src = `/logos/${airlineLogoCode}.svg`; // Try SVG first
+                logo.src = `/logos/${airlineLogoCode}.png`; // Try SVG first
                 logo.className = 'airline-logo';
                 logo.alt = `${flight.airline?.name} logo`;
                 logo.onerror = function() {
