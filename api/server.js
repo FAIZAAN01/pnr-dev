@@ -7,10 +7,13 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const morgan = require('morgan');
-// Assuming you've integrated Vercel KV from the previous step
-const { kv } = require('@vercel/kv');
 
 const app = express();
+
+const DATA_DIR = path.join(process.cwd(), 'data');
+const AIRLINES_FILE = path.join(DATA_DIR, 'airlines.json');
+const AIRCRAFT_TYPES_FILE = path.join(DATA_DIR, 'aircraftTypes.json');
+const AIRPORT_DATABASE_FILE = path.join(DATA_DIR, 'airportDatabase.json');
 
 app.use(express.json());
 
@@ -18,29 +21,23 @@ let airlineDatabase = {};
 let aircraftTypes = {};
 let airportDatabase = {};
 
-// --- Using Vercel KV for Data Loading ---
-async function loadAllDatabases() {
+function loadDbFromFile(filePath, defaultDb) {
   try {
-    [
-      airlineDatabase,
-      aircraftTypes,
-      airportDatabase,
-    ] = await Promise.all([
-      kv.get('airlines'),
-      kv.get('aircraftTypes'),
-      kv.get('airportDatabase'),
-    ]);
-    console.log("Databases loaded from Vercel KV.");
-    // Fallback if KV is empty (e.g., first run before seeding)
-    if (!airlineDatabase) airlineDatabase = {};
-    if (!aircraftTypes) aircraftTypes = {};
-    if (!airportDatabase) airportDatabase = {};
+    if (fs.existsSync(filePath)) {
+      const fileData = fs.readFileSync(filePath, 'utf-8');
+      return JSON.parse(fileData);
+    }
   } catch (error) {
-     console.error("Failed to load databases from Vercel KV:", error);
+    console.error(`Error loading ${path.basename(filePath)}:`, error.message);
   }
+  return defaultDb;
+}
+function loadAllDatabases() {
+  airlineDatabase = loadDbFromFile(AIRLINES_FILE, {});
+  aircraftTypes = loadDbFromFile(AIRCRAFT_TYPES_FILE, {});
+  airportDatabase = loadDbFromFile(AIRPORT_DATABASE_FILE, {});
 }
 
-// Load databases when the function starts
 loadAllDatabases();
 
 app.use(morgan('dev'));
@@ -57,44 +54,27 @@ const limiter = rateLimit({
     message: { success: false, error: "Too many requests, please try again later.", result: { flights: [] } }
 });
 
-// Endpoint for saving developer mode changes to the database
-app.post('/api/save-databases', async (req, res) => {
-    const { airlineDatabase, aircraftTypes, airportDatabase } = req.body;
-    if (!airlineDatabase || !aircraftTypes || !airportDatabase) {
-        return res.status(400).json({ success: false, error: 'Missing database data.' });
-    }
+app.post('/api/convert', limiter, (req, res) => {
     try {
-        await Promise.all([
-            kv.set('airlines', airlineDatabase),
-            kv.set('aircraftTypes', aircraftTypes),
-            kv.set('airportDatabase', airportDatabase)
-        ]);
-        await loadAllDatabases();
-        return res.status(200).json({ success: true, message: 'Databases updated successfully!' });
-    } catch (error) {
-        console.error('Error saving to Vercel KV:', error);
-        return res.status(500).json({ success: false, error: 'Failed to save data.' });
-    }
-});
-
-// Main conversion endpoint
-app.post('/api/convert', async (req, res) => {
-    if (Object.keys(airlineDatabase).length === 0) {
-        await loadAllDatabases();
-    }
-    try {
-        const { pnrText, options, fareDetails, developerModeTrigger } = req.body;
+        const { pnrText, options, fareDetails, developerModeTrigger, updatedDatabases } = req.body;
         let pnrTextForProcessing = pnrText || '';
         let serverOptions = options || {};
+        let developerSave = false;
+
+        if ((developerModeTrigger === "save_databases" || developerModeTrigger === "developermarja") && updatedDatabases) {
+            console.warn("NOTE: Filesystem is read-only on Vercel. Changes will not persist.");
+            developerSave = true;
+        }
         
         const result = pnrTextForProcessing ? parseGalileoEnhanced(pnrTextForProcessing, serverOptions) : { flights: [], passengers: [] };
 
         const responsePayload = {
-            success: true, result, fareDetails, message: null,
+            success: true, result, fareDetails,
+            message: developerSave ? "Database 'save' simulated. Changes are not persistent on Vercel." : null,
             pnrProcessingAttempted: !!pnrTextForProcessing
         };
         
-        if (developerModeTrigger === 'developer' || developerModeTrigger === 'developermarja') {
+        if (developerModeTrigger === 'developer' || developerModeTrigger === 'developermarja' || developerSave) {
             responsePayload.pnrDeveloperModeActive = true;
             responsePayload.databases = { airlineDatabase, aircraftTypes, airportDatabase };
         }
@@ -111,11 +91,11 @@ app.post('/api/upload-logo', limiter, async (req, res) => {
     return res.status(400).json({ success: false, error: "This feature is disabled on the live deployment." });
 });
 
+// --- Helper Functions ---
 function formatMomentTime(momentObj, use24 = false) {
     if (!momentObj || !momentObj.isValid()) return '';
-    return momentObj.format(use24 ? 'HH:mm' : 'hh:mm');
+    return momentObj.format(use24 ? 'HH:mm' : 'hh:mm A');
 }
-
 function calculateAndFormatDuration(depMoment, arrMoment) {
     if (!depMoment || !depMoment.isValid() || !arrMoment || !arrMoment.isValid()) return 'Invalid time';
     const durationMinutes = arrMoment.diff(depMoment, 'minutes');
@@ -124,7 +104,6 @@ function calculateAndFormatDuration(depMoment, arrMoment) {
     const minutes = durationMinutes % 60;
     return `${hours}h ${minutes < 10 ? '0' : ''}${minutes}m`;
 }
-
 function getTravelClassName(classCode) {
     if (!classCode) return 'Unknown';
     const code = classCode.toUpperCase();
@@ -138,7 +117,6 @@ function getTravelClassName(classCode) {
     if (economyCodes.includes(code)) return 'Economy';
     return `Class ${code}`;
 }
-
 function parseGalileoEnhanced(pnrText, options) {
     const flights = [];
     const passengers = [];
@@ -149,13 +127,11 @@ function parseGalileoEnhanced(pnrText, options) {
     const flightSegmentRegex = /^\s*(\d+)\s+([A-Z0-9]{2})\s*(\d{1,4}[A-Z]?)\s+([A-Z])\s+([0-3]\d[A-Z]{3})\s+\S*\s*([A-Z]{3})([A-Z]{3})\s+\S*\s+(\d{4})\s+(\d{4})(?:\s+([0-3]\d[A-Z]{3}|\+\d))?/;
     const operatedByRegex = /OPERATED BY\s+(.+)/i;
     const passengerNameRegex = /^\s*\d+\.\s*([A-Z\s/.'-]+)/;
-
     for (const line of lines) {
         if (!line.trim()) continue;
         const flightMatch = line.match(flightSegmentRegex);
         const operatedByMatch = line.match(operatedByRegex);
         const passengerMatch = line.match(passengerNameRegex);
-        
         if (passengerMatch) {
             if (flights.length === 0) {
                 // --- THIS IS THE UPDATED NAME PARSING LOGIC ---
@@ -226,17 +202,18 @@ function parseGalileoEnhanced(pnrText, options) {
                 airline: { code: airlineCode, name: airlineDatabase[airlineCode] || `Unknown Airline (${airlineCode})` },
                 flightNumber: `${airlineCode}${flightNum}`,
                 travelClass: { code: travelClass || '', name: getTravelClassName(travelClass) },
-                date: departureMoment.isValid() ? departureMoment.format('dddd, DD MMM YYYY') : '',
+                date: departureMoment.isValid() ? departureMoment.format('ddd, DD MMM YYYY') : '',
+                // --- THIS IS THE KEY CHANGE ---
                 departure: { 
                     airport: depAirport, 
                     city: depAirportInfo.city, 
-                    name: depAirportInfo.name,
+                    name: depAirportInfo.name, // Added full name
                     time: formatMomentTime(departureMoment, options.use24HourFormat) 
                 },
                 arrival: { 
                     airport: arrAirport, 
                     city: arrAirportInfo.city, 
-                    name: arrAirportInfo.name,
+                    name: arrAirportInfo.name, // Added full name
                     time: formatMomentTime(arrivalMoment, options.use24HourFormat) 
                 },
                 duration: calculateAndFormatDuration(departureMoment, arrivalMoment),
