@@ -134,16 +134,32 @@ function parseGalileoEnhanced(pnrText, options) {
         const passengerMatch = line.match(passengerNameRegex);
         if (passengerMatch) {
             if (flights.length === 0) {
+                // --- THIS IS THE UPDATED NAME PARSING LOGIC ---
                 const fullNamePart = passengerMatch[1].trim();
                 const nameParts = fullNamePart.split('/');
+
                 if (nameParts.length >= 2) {
                     const lastName = nameParts[0].trim();
-                    const firstName = nameParts[1].split(' ')[0].trim();
+                    let givenNamesRaw = nameParts[1].trim();
+
+                    const titles = ['MR', 'MRS', 'MS', 'MSTR', 'MISS', 'CHD', 'INF'];
+                    const words = givenNamesRaw.split(/\s+/);
+                    const lastWord = words[words.length - 1].toUpperCase();
+
+                    if (titles.includes(lastWord)) {
+                        words.pop(); // Remove the title
+                    }
+
+                    const firstName = words.join(' '); // Re-join remaining parts (first and middle names)
+
                     if (lastName && firstName) {
                         const formattedName = `${lastName.toUpperCase()}/${firstName.toUpperCase()}`;
-                        if (!passengers.includes(formattedName)) passengers.push(formattedName);
+                        if (!passengers.includes(formattedName)) {
+                            passengers.push(formattedName);
+                        }
                     }
                 }
+                // --- END OF UPDATED NAME PARSING LOGIC ---
             }
         }
         else if (flightMatch) {
