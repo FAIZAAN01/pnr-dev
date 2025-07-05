@@ -512,6 +512,21 @@ document.getElementById('uploadLogoBtn')?.addEventListener('click', async () => 
     }
 });
 
+// --- PASTE BUTTON LOGIC ---
+document.getElementById('pasteBtn')?.addEventListener('click', async () => {
+  try {
+    const text = await navigator.clipboard.readText();
+    const pnrInput = document.getElementById('pnrInput');
+    if (text) {
+      pnrInput.value = text;
+      convertPNR(false); // Automatically convert after pasting
+    }
+  } catch (err) {
+    console.error('Failed to read clipboard contents: ', err);
+    alert('Could not paste from clipboard. Please ensure you have given the site permission.');
+  }
+});
+
 
 // General Event Listeners
 const debouncedConvert = debounce(convertPNR, 300);
