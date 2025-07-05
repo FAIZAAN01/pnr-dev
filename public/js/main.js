@@ -200,7 +200,7 @@ function displayResults(response, displayPnrOptions) {
 
         const logoImg = document.createElement('img');
         logoImg.className = 'itinerary-main-logo';
-        logoImg.src = '/simbavoyges.png'; // Path to the new main logo
+        logoImg.src = '/simbavoyages.png'; // Path to the new main logo
         logoImg.alt = 'Simba Voyages';
 
         logoContainer.appendChild(logoImg);
