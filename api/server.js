@@ -10,7 +10,6 @@ const morgan = require('morgan');
 
 const app = express();
 
-// KEY CHANGE: Use process.cwd() to create a reliable path in Vercel's environment.
 const DATA_DIR = path.join(process.cwd(), 'data');
 const AIRLINES_FILE = path.join(DATA_DIR, 'airlines.json');
 const AIRCRAFT_TYPES_FILE = path.join(DATA_DIR, 'aircraftTypes.json');
@@ -55,7 +54,6 @@ const limiter = rateLimit({
     message: { success: false, error: "Too many requests, please try again later.", result: { flights: [] } }
 });
 
-// All API routes are handled here.
 app.post('/api/convert', limiter, (req, res) => {
     try {
         const { pnrText, options, fareDetails, developerModeTrigger, updatedDatabases } = req.body;
@@ -188,9 +186,20 @@ function parseGalileoEnhanced(pnrText, options) {
                 airline: { code: airlineCode, name: airlineDatabase[airlineCode] || `Unknown Airline (${airlineCode})` },
                 flightNumber: `${airlineCode}${flightNum}`,
                 travelClass: { code: travelClass || '', name: getTravelClassName(travelClass) },
-                date: departureMoment.isValid() ? departureMoment.format('DD MMM YYYY') : '',
-                departure: { airport: depAirport, city: depAirportInfo.city, time: formatMomentTime(departureMoment, options.use24HourFormat) },
-                arrival: { airport: arrAirport, city: arrAirportInfo.city, time: formatMomentTime(arrivalMoment, options.use24HourFormat) },
+                date: departureMoment.isValid() ? departureMoment.format('dddd, DD MMM YYYY') : '',
+                // --- THIS IS THE KEY CHANGE ---
+                departure: { 
+                    airport: depAirport, 
+                    city: depAirportInfo.city, 
+                    name: depAirportInfo.name, // Added full name
+                    time: formatMomentTime(departureMoment, options.use24HourFormat) 
+                },
+                arrival: { 
+                    airport: arrAirport, 
+                    city: arrAirportInfo.city, 
+                    name: arrAirportInfo.name, // Added full name
+                    time: formatMomentTime(arrivalMoment, options.use24HourFormat) 
+                },
                 duration: calculateAndFormatDuration(departureMoment, arrivalMoment),
                 aircraft: aircraftTypes[aircraftCodeKey] || aircraftCodeKey || '',
                 meal: mealCode, notes: [], operatedBy: null,
@@ -207,6 +216,4 @@ function parseGalileoEnhanced(pnrText, options) {
     return { flights, passengers };
 }
 
-
-// KEY CHANGE: Export the Express app directly for Vercel.
 module.exports = app;

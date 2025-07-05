@@ -178,7 +178,6 @@ function displayResults(response, displayPnrOptions) {
         return;
     }
 
-    // Toggle button visibility based on whether flights were found
     if (response.result?.flights?.length > 0) {
         screenshotBtn.style.display = 'inline-block';
         copyTextBtn.style.display = 'inline-block';
@@ -194,30 +193,23 @@ function displayResults(response, displayPnrOptions) {
     const outputContainer = document.createElement('div');
     outputContainer.className = 'output-container';
 
-    // 1. Always show passengers if they exist
     if (passengers.length > 0) {
         const headerDiv = document.createElement('div');
         headerDiv.className = 'itinerary-header';
-
         const title = document.createElement('h4');
         title.textContent = 'Itinerary For:';
         headerDiv.appendChild(title);
-        
         const names = document.createElement('p');
-        // This is safe because the server formats the names securely
         names.innerHTML = passengers.join('<br>');
         headerDiv.appendChild(names);
-        
         const count = document.createElement('p');
         count.style.marginTop = '8px';
         count.style.fontStyle = 'italic';
         count.textContent = `Total Passengers: ${passengers.length}`;
         headerDiv.appendChild(count);
-
         outputContainer.appendChild(headerDiv);
     }
     
-    // 2. Show flights if they exist
     if (flights.length > 0) {
         const itineraryBlock = document.createElement('div');
         itineraryBlock.className = 'itinerary-block';
@@ -225,11 +217,10 @@ function displayResults(response, displayPnrOptions) {
         for (let i = 0; i < flights.length; i++) {
             const flight = flights[i];
             
-            // CORRECTED: Create transit item programmatically
             if (displayPnrOptions.showTransit && i > 0 && flight.transitTime) {
                 const transitDiv = document.createElement('div');
                 transitDiv.className = 'transit-item';
-                transitDiv.textContent = `----- Transit: ${flight.transitTime} at ${flights[i - 1].arrival?.city || ''} (${flights[i - 1].arrival?.airport || ''}) ------`;
+                transitDiv.textContent = `🔄 Transit: ${flight.transitTime} at ${flights[i - 1].arrival?.city || ''} (${flights[i - 1].arrival?.airport || ''})`;
                 itineraryBlock.appendChild(transitDiv);
             }
 
@@ -254,16 +245,12 @@ function displayResults(response, displayPnrOptions) {
                 const logo = document.createElement('img');
                 const airlineLogoCode = (flight.airline?.code || 'xx').toLowerCase();
                 const defaultLogoPath = '/logos/default-airline.svg';
-                logo.src = `/logos/${airlineLogoCode}.png`; // Try SVG first
+                logo.src = `/logos/${airlineLogoCode}.svg`;
                 logo.className = 'airline-logo';
                 logo.alt = `${flight.airline?.name} logo`;
                 logo.onerror = function() {
-                    this.onerror = null;
-                    this.src = `/logos/${airlineLogoCode}.png`; // Fallback to PNG
-                    this.onerror = function() {
-                        this.onerror = null;
-                        this.src = defaultLogoPath;
-                    };
+                    this.onerror = null; this.src = `/logos/${airlineLogoCode}.png`;
+                    this.onerror = function() { this.onerror = null; this.src = defaultLogoPath; };
                 };
                 flightContentDiv.appendChild(logo);
             }
@@ -278,8 +265,9 @@ function displayResults(response, displayPnrOptions) {
             detailsContainer.appendChild(headerDiv);
 
             [
-                createDetailRow('Departing', `${flight.departure?.airport} (${flight.departure?.city}) at ${flight.departure?.time}`),
-                createDetailRow('Arriving', `${flight.arrival?.airport} (${flight.arrival?.city}) at ${flight.arrival?.time}`),
+                // --- THIS IS THE KEY CHANGE ---
+                createDetailRow('Departing', `${flight.departure?.airport} - ${flight.departure?.name} at ${flight.departure?.time}`),
+                createDetailRow('Arriving', `${flight.arrival?.airport} - ${flight.arrival?.name} at ${flight.arrival?.time}`),
                 displayPnrOptions.showMeal ? createDetailRow('Meal', getMealDescription(flight.meal)) : null,
                 flight.operatedBy ? createDetailRow('Operated by', flight.operatedBy) : null,
                 displayPnrOptions.showNotes && flight.notes?.length ? createDetailRow('Notes', flight.notes.join('; ')) : null,
@@ -301,11 +289,10 @@ function displayResults(response, displayPnrOptions) {
             if (taxValue > 0) fareLines.push(`Taxes: ${currencySymbol}${taxValue.toFixed(2)}`);
             if (feeValue > 0) fareLines.push(`Fees: ${currencySymbol}${feeValue.toFixed(2)}`);
             const perAdultTotal = fareValue + taxValue + feeValue;
-            if (fareLines.length > 0) fareLines.push(`Total: ${currencySymbol}${perAdultTotal.toFixed(2)}`);
+            if (fareLines.length > 0) fareLines.push(`Per Adult Total: ${currencySymbol}${perAdultTotal.toFixed(2)}`);
             if (adultCount > 1) fareLines.push(`Total for ${adultCount} Adults: ${currencySymbol}${(perAdultTotal * adultCount).toFixed(2)}`);
             
             if (fareLines.length > 0) {
-                // CORRECTED: Create fare summary programmatically
                 const fareDiv = document.createElement('div');
                 fareDiv.className = 'fare-summary';
                 fareDiv.textContent = fareLines.join('\n');
@@ -314,7 +301,6 @@ function displayResults(response, displayPnrOptions) {
         }
         outputContainer.appendChild(itineraryBlock);
     } 
-    // 3. If no flights, but we tried, show an info message
     else if (pnrProcessingAttempted) {
         const infoDiv = document.createElement('div');
         infoDiv.className = 'info';
@@ -323,17 +309,15 @@ function displayResults(response, displayPnrOptions) {
         outputContainer.appendChild(infoDiv);
     }
     
-    // 4. Finally, append the container if it has content
     if (outputContainer.hasChildNodes()) {
         output.appendChild(outputContainer);
     } else if (!pnrProcessingAttempted) {
-        // If nothing was processed at all, show the default message
          output.innerHTML = '<div class="info">Enter PNR data and click "Convert PNR".</div>';
     }
 }
 
 
-// Setup and Event Listeners (including logo management)
+// Setup and Event Listeners
 function createDevBanner(message) {
     const banner = document.createElement('div');
     banner.className = 'dev-banner';
@@ -400,9 +384,9 @@ function serializeDevPanelData() {
             const codeInput = row.querySelector('input[data-key="code"]');
             if (codeInput && codeInput.value.trim()) {
                 const code = codeInput.value.trim().toUpperCase();
-                if (keys.length === 1) { // simple key-value
+                if (keys.length === 1) {
                     data[code] = row.querySelector(`input[data-key="${keys[0]}"]`).value.trim();
-                } else { // object value
+                } else {
                     data[code] = {};
                     keys.forEach(k => {
                         data[code][k] = row.querySelector(`input[data-key="${k}"]`)?.value.trim() || '';
@@ -512,33 +496,25 @@ document.getElementById('uploadLogoBtn')?.addEventListener('click', async () => 
     }
 });
 
+
 // --- PASTE BUTTON LOGIC ---
 document.getElementById('pasteBtn')?.addEventListener('click', async () => {
   try {
     const text = await navigator.clipboard.readText();
     const pnrInput = document.getElementById('pnrInput');
-
-    // This check prevents clearing the input if the clipboard is empty.
     if (!text || text.trim() === '') {
-      pnrInput.focus(); // Focus the box so the user can start typing.
+      pnrInput.focus();
       return; 
     }
-
-    // Replace the input's content with the clipboard text.
     pnrInput.value = text;
-    
-    // Manually dispatch an 'input' event. This is a clean way to trigger
-    // the existing debounced conversion, just as if the user had typed.
     pnrInput.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
-
-    // Focus the input area for a seamless user experience.
     pnrInput.focus();
-    
   } catch (err) {
     console.error('Failed to read clipboard contents: ', err);
     alert('Could not paste from clipboard. Please ensure you have given the site permission.');
   }
 });
+
 
 // General Event Listeners
 const debouncedConvert = debounce(convertPNR, 300);
@@ -568,10 +544,7 @@ document.getElementById('screenshotBtn')?.addEventListener('click', async () => 
 document.getElementById('copyTextBtn')?.addEventListener('click', () => {
     const outputContainer = document.querySelector('.output-container');
     if (!outputContainer) return;
-
-    // Use the .innerText property which approximates the rendered text content
     const textToCopy = outputContainer.innerText; 
-    
     navigator.clipboard.writeText(textToCopy).then(() => {
         alert('Itinerary copied to clipboard as text!');
     }).catch(err => {
@@ -582,6 +555,4 @@ document.getElementById('copyTextBtn')?.addEventListener('click', () => {
 
 document.addEventListener('DOMContentLoaded', () => {
     loadOptions();
-    // We remove the initial convertPNR call to avoid running it on page load with no input.
-    // The placeholder text is sufficient.
 });
