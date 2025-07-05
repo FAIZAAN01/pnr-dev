@@ -113,7 +113,7 @@ app.post('/api/upload-logo', limiter, async (req, res) => {
 
 function formatMomentTime(momentObj, use24 = false) {
     if (!momentObj || !momentObj.isValid()) return '';
-    return momentObj.format(use24 ? 'HH:mm' : 'hh:mm A');
+    return momentObj.format(use24 ? 'HH:mm' : 'hh:mm');
 }
 
 function calculateAndFormatDuration(depMoment, arrMoment) {
