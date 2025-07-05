@@ -517,16 +517,28 @@ document.getElementById('pasteBtn')?.addEventListener('click', async () => {
   try {
     const text = await navigator.clipboard.readText();
     const pnrInput = document.getElementById('pnrInput');
-    if (text) {
-      pnrInput.value = text;
-      convertPNR(false); // Automatically convert after pasting
+
+    // This check prevents clearing the input if the clipboard is empty.
+    if (!text || text.trim() === '') {
+      pnrInput.focus(); // Focus the box so the user can start typing.
+      return; 
     }
+
+    // Replace the input's content with the clipboard text.
+    pnrInput.value = text;
+    
+    // Manually dispatch an 'input' event. This is a clean way to trigger
+    // the existing debounced conversion, just as if the user had typed.
+    pnrInput.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
+
+    // Focus the input area for a seamless user experience.
+    pnrInput.focus();
+    
   } catch (err) {
     console.error('Failed to read clipboard contents: ', err);
     alert('Could not paste from clipboard. Please ensure you have given the site permission.');
   }
 });
-
 
 // General Event Listeners
 const debouncedConvert = debounce(convertPNR, 300);
@@ -570,5 +582,6 @@ document.getElementById('copyTextBtn')?.addEventListener('click', () => {
 
 document.addEventListener('DOMContentLoaded', () => {
     loadOptions();
-    convertPNR(false);
+    // We remove the initial convertPNR call to avoid running it on page load with no input.
+    // The placeholder text is sufficient.
 });
