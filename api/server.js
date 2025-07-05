@@ -10,6 +10,7 @@ const morgan = require('morgan');
 
 const app = express();
 
+// Use process.cwd() for reliable pathing in Vercel's environment.
 const DATA_DIR = path.join(process.cwd(), 'data');
 const AIRLINES_FILE = path.join(DATA_DIR, 'airlines.json');
 const AIRCRAFT_TYPES_FILE = path.join(DATA_DIR, 'aircraftTypes.json');
@@ -54,13 +55,14 @@ const limiter = rateLimit({
     message: { success: false, error: "Too many requests, please try again later.", result: { flights: [] } }
 });
 
-app.post('/api/convert', limiter, (req, res) => {
+app.post('/api/convert', (req, res) => {
     try {
         const { pnrText, options, fareDetails, developerModeTrigger, updatedDatabases } = req.body;
         let pnrTextForProcessing = pnrText || '';
         let serverOptions = options || {};
         let developerSave = false;
 
+        // This warning about the read-only filesystem is correct for Vercel
         if ((developerModeTrigger === "save_databases" || developerModeTrigger === "developermarja") && updatedDatabases) {
             console.warn("NOTE: Filesystem is read-only on Vercel. Changes will not persist.");
             developerSave = true;
@@ -117,6 +119,7 @@ function getTravelClassName(classCode) {
     if (economyCodes.includes(code)) return 'Economy';
     return `Class ${code}`;
 }
+
 function parseGalileoEnhanced(pnrText, options) {
     const flights = [];
     const passengers = [];
@@ -127,11 +130,13 @@ function parseGalileoEnhanced(pnrText, options) {
     const flightSegmentRegex = /^\s*(\d+)\s+([A-Z0-9]{2})\s*(\d{1,4}[A-Z]?)\s+([A-Z])\s+([0-3]\d[A-Z]{3})\s+\S*\s*([A-Z]{3})([A-Z]{3})\s+\S*\s+(\d{4})\s+(\d{4})(?:\s+([0-3]\d[A-Z]{3}|\+\d))?/;
     const operatedByRegex = /OPERATED BY\s+(.+)/i;
     const passengerNameRegex = /^\s*\d+\.\s*([A-Z\s/.'-]+)/;
+    
     for (const line of lines) {
         if (!line.trim()) continue;
         const flightMatch = line.match(flightSegmentRegex);
         const operatedByMatch = line.match(operatedByRegex);
         const passengerMatch = line.match(passengerNameRegex);
+        
         if (passengerMatch) {
             if (flights.length === 0) {
                 // --- THIS IS THE UPDATED NAME PARSING LOGIC ---
@@ -202,18 +207,17 @@ function parseGalileoEnhanced(pnrText, options) {
                 airline: { code: airlineCode, name: airlineDatabase[airlineCode] || `Unknown Airline (${airlineCode})` },
                 flightNumber: `${airlineCode}${flightNum}`,
                 travelClass: { code: travelClass || '', name: getTravelClassName(travelClass) },
-                date: departureMoment.isValid() ? departureMoment.format('ddd, DD MMM YYYY') : '',
-                // --- THIS IS THE KEY CHANGE ---
+                date: departureMoment.isValid() ? departureMoment.format('dddd, DD MMM YYYY') : '',
                 departure: { 
                     airport: depAirport, 
                     city: depAirportInfo.city, 
-                    name: depAirportInfo.name, // Added full name
+                    name: depAirportInfo.name,
                     time: formatMomentTime(departureMoment, options.use24HourFormat) 
                 },
                 arrival: { 
                     airport: arrAirport, 
                     city: arrAirportInfo.city, 
-                    name: arrAirportInfo.name, // Added full name
+                    name: arrAirportInfo.name,
                     time: formatMomentTime(arrivalMoment, options.use24HourFormat) 
                 },
                 duration: calculateAndFormatDuration(departureMoment, arrivalMoment),
@@ -232,4 +236,5 @@ function parseGalileoEnhanced(pnrText, options) {
     return { flights, passengers };
 }
 
+// Export the app for Vercel
 module.exports = app;
