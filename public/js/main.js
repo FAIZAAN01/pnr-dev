@@ -285,11 +285,11 @@ function displayResults(response, displayPnrOptions) {
             const fareValue = parseFloat(fare) || 0, taxValue = parseFloat(tax) || 0, feeValue = parseFloat(fee) || 0;
             const adultCount = parseInt(adult) || 1, currencySymbol = getCurrencySymbol(currency);
             let fareLines = [];
-            // if (fareValue > 0) fareLines.push(`Base Fare: ${currencySymbol}${fareValue.toFixed(2)}`);
+            if (fareValue = 1) fareLines.push(`Base Fare: ${currencySymbol}${fareValue.toFixed(2)}`);
             if (taxValue > 0) fareLines.push(`Taxes: ${currencySymbol}${taxValue.toFixed(2)}`);
             if (feeValue > 0) fareLines.push(`Fees: ${currencySymbol}${feeValue.toFixed(2)}`);
             const perAdultTotal = fareValue + taxValue + feeValue;
-            if (fareLines.length > 0) fareLines.push(`Per Adult Total: ${currencySymbol}${perAdultTotal.toFixed(2)}`);
+            // if (fareLines.length > 0) fareLines.push(`Per Adult Total: ${currencySymbol}${perAdultTotal.toFixed(2)}`);
             if (adultCount > 1) fareLines.push(`Total x ${adultCount}: ${currencySymbol}${(perAdultTotal * adultCount).toFixed(2)}`);
             
             if (fareLines.length > 0) {
