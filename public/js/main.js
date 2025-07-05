@@ -301,7 +301,7 @@ function displayResults(response, displayPnrOptions) {
             if (taxValue > 0) fareLines.push(`Taxes: ${currencySymbol}${taxValue.toFixed(2)}`);
             if (feeValue > 0) fareLines.push(`Fees: ${currencySymbol}${feeValue.toFixed(2)}`);
             const perAdultTotal = fareValue + taxValue + feeValue;
-            if (fareLines.length > 0) fareLines.push(`Per Adult Total: ${currencySymbol}${perAdultTotal.toFixed(2)}`);
+            if (fareLines.length > 0) fareLines.push(`Total: ${currencySymbol}${perAdultTotal.toFixed(2)}`);
             if (adultCount > 1) fareLines.push(`Total for ${adultCount} Adults: ${currencySymbol}${(perAdultTotal * adultCount).toFixed(2)}`);
             
             if (fareLines.length > 0) {
