@@ -193,6 +193,20 @@ function displayResults(response, displayPnrOptions) {
     const outputContainer = document.createElement('div');
     outputContainer.className = 'output-container';
 
+    // --- NEW: Add Main Itinerary Logo at the top if flights exist ---
+    if (flights.length > 0) {
+        const logoContainer = document.createElement('div');
+        logoContainer.className = 'itinerary-main-logo-container';
+
+        const logoImg = document.createElement('img');
+        logoImg.className = 'itinerary-main-logo';
+        logoImg.src = '/simbavoyges.png'; // Path to the new main logo
+        logoImg.alt = 'Simba Voyages';
+
+        logoContainer.appendChild(logoImg);
+        outputContainer.appendChild(logoContainer);
+    }
+
     if (passengers.length > 0) {
         const headerDiv = document.createElement('div');
         headerDiv.className = 'itinerary-header';
