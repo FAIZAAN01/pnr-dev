@@ -6,16 +6,61 @@
   <title>International PNR Converter</title>
 
   <style>
+    /* --- General Styles --- */
     body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: auto; margin: 0 auto; padding: 20px; background-color: #f5f5f5; }
     h1 { color: #2c3e50; text-align: center; margin-bottom: 30px; }
-    .container { display: flex; gap: 30px; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-    .input-area, .output-area { flex: 1; min-width: 300px; }
+    button { padding: 12px 25px; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 15px; transition: background 0.3s; }
+    button:hover { opacity: 0.9; }
+
+    /* --- New Layout Styles --- */
+    .container { 
+      display: flex; 
+      gap: 30px; 
+      align-items: flex-start; /* Align columns to the top */
+    }
+    .main-content {
+      flex: 1; /* Takes up remaining space */
+      display: flex;
+      flex-direction: column;
+      gap: 30px;
+    }
+    .sidebar {
+      flex-basis: 320px; /* Fixed width for the sidebar */
+      flex-shrink: 0; /* Prevents sidebar from shrinking */
+      background: white; 
+      padding: 25px; 
+      border-radius: 8px; 
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+
+    /* --- Component Styles --- */
+    .input-area, .output-area { 
+      background: white; 
+      padding: 25px; 
+      border-radius: 8px; 
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
     textarea#pnrInput { width: 100%; height: 200px; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-family: monospace; resize: vertical; box-sizing: border-box; }
-    button { padding: 12px 25px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 15px; transition: background 0.3s; }
-    button:hover { background: #2980b9; }
-    .options { margin: 20px 0; padding: 15px; background: #f8f9fa; border-radius: 4px; }
+    
+    /* Button Specifics */
+    #convertBtn { background: #3498db; }
+    #pasteBtn { background: #27ae60; margin-left: 10px; }
+    #screenshotBtn { background: #f39c12; margin-right: 10px; }
+    #copyTextBtn { background: #34495e; }
+    
+    .options h3 { margin-top: 0; }
     .options label { display: block; margin: 8px 0; cursor: pointer; }
-    .output-container { border: 1px solid #e0e0e0; border-radius: 8px; background: white; width: 569px; box-sizing: border-box; }
+    
+    /* --- Output Area Resizing --- */
+    #output {
+      width: fit-content; /* THIS IS THE KEY: Makes the div resize to its content */
+      min-width: 300px; /* Prevents it from getting too small */
+      max-width: 100%; /* Prevents it from overflowing its container */
+      overflow-x: auto; /* Adds a scrollbar if content is extremely wide */
+    }
+
+    /* --- Other Visual Styles (Largely Unchanged) --- */
+    .output-container { border: 1px solid #e0e0e0; border-radius: 8px; background: white; box-sizing: border-box; }
     .itinerary-header { padding: 10px; border-bottom: 1px solid #eee; }
     .itinerary-header h4 { margin: 0 0 5px 0; color: #555; }
     .itinerary-header p { margin: 0; font-family: monospace; font-size: 1.1em; color: #333; }
@@ -33,8 +78,6 @@
     .error { color: #e74c3c; padding: 15px; background-color: #fdecea; border: 1px solid #ef9a9a; border-radius: 4px; margin-bottom: 15px; }
     .info { color: #3498db; padding: 15px; background-color: #e3f2fd; border: 1px solid #bbdefb; border-radius: 4px; margin-bottom: 15px; }
     .dev-banner { padding: 12px; background-color: #fff9c4; color: #f57f17; border-left: 5px solid #fbc02d; margin-bottom: 15px; font-weight: bold; }
-    #screenshotBtn { background: #f39c12; margin-right: 10px; }
-    #screenshotBtn:hover { background: #e67e22; }
     .fare-summary { margin-top: -1px; margin-left: 5px; padding-top: 10px; border-top: 1px solid #e0e0e0; font-weight: 500; font-size: 14px; white-space: pre-line; }
     .loading-spinner { display: none; width: 40px; height: 40px; margin: 20px auto; border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; }
     @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -51,28 +94,54 @@
     #developerModePanel button.add-btn { margin-bottom: 10px; background-color: #29b6f6; }
     #developerModePanel button.save-all-btn { background-color: #4CAF50; color: white; padding: 10px 20px; font-size: 1.1em; margin-top: 20px; margin-bottom: 10px;border: none;border-radius: 5px;cursor: pointer;}
     #developerModePanel button.save-all-btn:hover { background-color: #45a049;}
-    @media (max-width: 768px) {.container { flex-direction: column; }}
+    
+    @media (max-width: 900px) {
+      .container { 
+        flex-direction: column; 
+      }
+      .sidebar {
+        width: 100%;
+        box-sizing: border-box;
+      }
+    }
   </style>
 </head>
 <body>
   <h1>International PNR Converter</h1>
   
+  <!-- NEW HTML STRUCTURE -->
   <div class="container">
-    <div class="input-area">
-      <h3>Input PNR Data</h3>
-      <textarea id="pnrInput" placeholder="Enter PNR data here..."></textarea>
-      <button id="convertBtn">Convert PNR</button>
-      <div class="loading-spinner" id="loadingSpinner"></div>
-
-      <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 8px;">
-        <label for="currencySelect">Currency:</label>
-        <select id="currencySelect" style="padding: 4px;"> <option value="USD" selected>$</option> <option value="EUR">€</option> <option value="INR">₹</option> </select>
-        <label for="adultInput">Pax:</label> <input id="adultInput" type="number" min="1" value="1" style="width: 30px; padding: 4px;">
-        <label for="fareInput">Fare:</label> <input id="fareInput" type="number" step="any" placeholder="Optional" style="width: 65px; padding: 4px;">
-        <label for="feeInput">Fee:</label> <input id="feeInput" type="number" step="any" placeholder="Optional" style="width: 65px; padding: 4px;">
-        <label for="taxInput">Tax:</label> <input id="taxInput" type="number" step="any" placeholder="Optional" style="width: 65px; padding: 4px;">
+    <div class="main-content">
+      <div class="input-area">
+        <h3>Input PNR Data</h3>
+        <textarea id="pnrInput" placeholder="Enter PNR data here..."></textarea>
+        <!-- NEW PASTE BUTTON ADDED -->
+        <button id="convertBtn">Convert PNR</button>
+        <button id="pasteBtn">📋 Paste from Clipboard</button>
+        <div class="loading-spinner" id="loadingSpinner"></div>
       </div>
-      
+      <div class="output-area">
+        <h3>Converted Itinerary</h3>
+        <button id="screenshotBtn" style="display:none;">📷 Copy Screenshot</button>
+        <button id="copyTextBtn" style="display:none;">📋 Copy as Text</button>
+        <div id="output" contenteditable="true">
+          <div class="info">Enter PNR data and click "Convert PNR".</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="sidebar">
+      <div class="fare-options">
+          <h3>Fare & Pax Details</h3>
+          <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 8px;">
+            <label for="currencySelect">Currency:</label>
+            <select id="currencySelect" style="padding: 4px;"> <option value="USD" selected>$</option> <option value="EUR">€</option> <option value="INR">₹</option> </select>
+            <label for="adultInput">Pax:</label> <input id="adultInput" type="number" min="1" value="1" style="width: 30px; padding: 4px;">
+            <label for="fareInput">Fare:</label> <input id="fareInput" type="number" step="any" placeholder="Optional" style="width: 65px; padding: 4px;">
+            <label for="feeInput">Fee:</label> <input id="feeInput" type="number" step="any" placeholder="Optional" style="width: 65px; padding: 4px;">
+            <label for="taxInput">Tax:</label> <input id="taxInput" type="number" step="any" placeholder="Optional" style="width: 65px; padding: 4px;">
+          </div>
+      </div>
       <div class="options">
         <h3>Display Options</h3>
         <label><input type="checkbox" id="showAirline" checked> Show Airline</label>
@@ -82,15 +151,6 @@
         <label><input type="checkbox" id="showNotes"> Show Notes</label>
         <label><input type="checkbox" id="showTransit" checked> Show Transit Times</label>
         <label><input type="checkbox" id="use24HourFormat" checked> Use 24-Hour Time</label>
-      </div>
-    </div>
-    
-    <div class="output-area">
-      <h3>Converted Itinerary</h3>
-      <button id="screenshotBtn" style="display:none;">📷 Copy Screenshot</button>
-      <button id="copyTextBtn" style="display:none;">📋 Copy as Text</button>
-      <div id="output" contenteditable="true" style="width : fit-content">
-        <div class="info">Enter PNR data and click "Convert PNR".</div>
       </div>
     </div>
   </div>
