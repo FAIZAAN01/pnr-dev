@@ -10,7 +10,6 @@ const morgan = require('morgan');
 
 const app = express();
 
-// Use process.cwd() for reliable pathing in Vercel's environment.
 const DATA_DIR = path.join(process.cwd(), 'data');
 const AIRLINES_FILE = path.join(DATA_DIR, 'airlines.json');
 const AIRCRAFT_TYPES_FILE = path.join(DATA_DIR, 'aircraftTypes.json');
@@ -62,7 +61,6 @@ app.post('/api/convert', (req, res) => {
         let serverOptions = options || {};
         let developerSave = false;
 
-        // This warning about the read-only filesystem is correct for Vercel
         if ((developerModeTrigger === "save_databases" || developerModeTrigger === "developermarja") && updatedDatabases) {
             console.warn("NOTE: Filesystem is read-only on Vercel. Changes will not persist.");
             developerSave = true;
@@ -123,49 +121,67 @@ function getTravelClassName(classCode) {
 function parseGalileoEnhanced(pnrText, options) {
     const flights = [];
     const passengers = [];
-    const lines = pnrText.split('\n').map(line => line.trimEnd());
+    const lines = pnrText.split('\n').map(line => line.trim());
     let currentFlight = null;
     let flightIndex = 0;
     let previousArrivalMoment = null;
+
     const flightSegmentRegex = /^\s*(\d+)\s+([A-Z0-9]{2})\s*(\d{1,4}[A-Z]?)\s+([A-Z])\s+([0-3]\d[A-Z]{3})\s+\S*\s*([A-Z]{3})([A-Z]{3})\s+\S*\s+(\d{4})\s+(\d{4})(?:\s+([0-3]\d[A-Z]{3}|\+\d))?/;
     const operatedByRegex = /OPERATED BY\s+(.+)/i;
-    const passengerNameRegex = /^\s*\d+\.\s*([A-Z\s/.'-]+)/;
-    
+    // This regex now just IDENTIFIES a passenger line. It doesn't try to parse it.
+    const passengerLineIdentifierRegex = /^\s*\d+\.\s*[A-Z/]/;
+
     for (const line of lines) {
-        if (!line.trim()) continue;
+        if (!line) continue;
         const flightMatch = line.match(flightSegmentRegex);
         const operatedByMatch = line.match(operatedByRegex);
-        const passengerMatch = line.match(passengerNameRegex);
-        
-        if (passengerMatch) {
-            if (flights.length === 0) {
-                // --- THIS IS THE UPDATED NAME PARSING LOGIC ---
-                const fullNamePart = passengerMatch[1].trim();
-                const nameParts = fullNamePart.split('/');
+        const isPassengerLine = passengerLineIdentifierRegex.test(line);
 
-                if (nameParts.length >= 2) {
-                    const lastName = nameParts[0].trim();
-                    let givenNamesRaw = nameParts[1].trim();
+        if (isPassengerLine) {
+            // --- NEW, MORE ROBUST PASSENGER PARSING LOGIC ---
+            
+            // 1. Clean up the line by removing the initial number and dot.
+            const cleanedLine = line.replace(/^\s*\d+\.\s*/, '');
+            
+            // 2. Split the line by the pattern `(number).` which separates passengers.
+            // e.g., "DOE/JANE MRS 2. DOE/JOHN MR" becomes ["DOE/JANE MRS ", " DOE/JOHN MR"]
+            const nameBlocks = cleanedLine.split(/\s+\d+\.\s*/);
 
-                    const titles = ['MR', 'MRS', 'MS', 'MSTR', 'MISS', 'CHD', 'INF'];
-                    const words = givenNamesRaw.split(/\s+/);
-                    const lastWord = words[words.length - 1].toUpperCase();
+            // 3. Process each found name block.
+            for (const nameBlock of nameBlocks) {
+                if (!nameBlock.trim()) continue;
 
-                    if (titles.includes(lastWord)) {
-                        words.pop(); // Remove the title
+                const nameParts = nameBlock.trim().split('/');
+                if (nameParts.length < 2) continue; // Invalid format, skip.
+
+                const lastName = nameParts[0].trim();
+                const givenNamesAndTitleRaw = nameParts[1].trim();
+
+                const titles = ['MR', 'MRS', 'MS', 'MSTR', 'MISS', 'CHD', 'INF'];
+                const words = givenNamesAndTitleRaw.split(/\s+/);
+                const lastWord = words[words.length - 1].toUpperCase();
+
+                let title = '';
+                // Check if the last word is a title and extract it.
+                if (titles.includes(lastWord)) {
+                    title = words.pop(); // Remove the title from the words array
+                }
+
+                // Whatever is left is the first and middle name.
+                const givenNames = words.join(' '); 
+
+                if (lastName && givenNames) {
+                    // Reconstruct the full name, including the title.
+                    let formattedName = `${lastName.toUpperCase()}/${givenNames.toUpperCase()}`;
+                    if (title) {
+                        formattedName += ` ${title}`;
                     }
-
-                    const firstName = words.join(' '); // Re-join remaining parts (first and middle names)
-
-                    if (lastName && firstName) {
-                        const formattedName = `${lastName.toUpperCase()}/${firstName.toUpperCase()}`;
-                        if (!passengers.includes(formattedName)) {
-                            passengers.push(formattedName);
-                        }
+                    if (!passengers.includes(formattedName)) {
+                        passengers.push(formattedName);
                     }
                 }
-                // --- END OF UPDATED NAME PARSING LOGIC ---
             }
+            // --- END OF NEW PASSENGER PARSING LOGIC ---
         }
         else if (flightMatch) {
             if (currentFlight) flights.push(currentFlight);
@@ -236,5 +252,4 @@ function parseGalileoEnhanced(pnrText, options) {
     return { flights, passengers };
 }
 
-// Export the app for Vercel
 module.exports = app;
