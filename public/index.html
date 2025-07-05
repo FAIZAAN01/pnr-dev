@@ -119,13 +119,7 @@
       <div class="input-area">
         <h3>Input PNR Data</h3>
         <textarea id="pnrInput" placeholder="Enter PNR data here..."></textarea>
-        <!-- NEW PASTE BUTTON ADDED -->
-        <button id="convertBtn">Convert PNR</button>
-        <button id="pasteBtn">📋 Paste from Clipboard</button>
-        <div class="loading-spinner" id="loadingSpinner"></div>
-      </div>
-      <div class="fare-options">
-          <h3>Fare & Pax Details</h3>
+        <div class="fare-options">
           <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 8px;">
             <label for="currencySelect">Currency:</label>
             <select id="currencySelect" style="padding: 4px;"> <option value="USD" selected>$</option> <option value="EUR">€</option> <option value="INR">₹</option> </select>
@@ -134,6 +128,11 @@
             <label for="feeInput">Fee:</label> <input id="feeInput" type="number" step="any" placeholder="Optional" style="width: 65px; padding: 4px;">
             <label for="taxInput">Tax:</label> <input id="taxInput" type="number" step="any" placeholder="Optional" style="width: 65px; padding: 4px;">
           </div>
+        </div>
+        <!-- NEW PASTE BUTTON ADDED -->
+        <button id="convertBtn">Convert PNR</button>
+        <button id="pasteBtn">📋 Paste from Clipboard</button>
+        <div class="loading-spinner" id="loadingSpinner"></div>
       </div>
       <div class="output-area">
         <h3>Converted Itinerary</h3>
