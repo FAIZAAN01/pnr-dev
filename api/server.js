@@ -186,7 +186,7 @@ function parseGalileoEnhanced(pnrText, options) {
                 airline: { code: airlineCode, name: airlineDatabase[airlineCode] || `Unknown Airline (${airlineCode})` },
                 flightNumber: `${airlineCode}${flightNum}`,
                 travelClass: { code: travelClass || '', name: getTravelClassName(travelClass) },
-                date: departureMoment.isValid() ? departureMoment.format('dddd, DD MMM YYYY') : '',
+                date: departureMoment.isValid() ? departureMoment.format('ddd, DD MMM YYYY') : '',
                 // --- THIS IS THE KEY CHANGE ---
                 departure: { 
                     airport: depAirport, 
