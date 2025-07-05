@@ -1,5 +1,4 @@
 let developerModeActiveOnClient = false;
-import { Analytics } from "@vercel/analytics/next"
 const OPTIONS_STORAGE_KEY = 'pnrConverterOptions'; // Key for localStorage
 
 // Function to save current options to localStorage
