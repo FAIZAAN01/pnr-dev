@@ -106,9 +106,7 @@
     }
   </style>
 </head>
-<body>
-  <h1>International PNR Converter</h1>
-  
+<body>  
   <!-- NEW HTML STRUCTURE -->
   <div class="container">
     <div class="main-content">
@@ -119,6 +117,17 @@
         <button id="convertBtn">Convert PNR</button>
         <button id="pasteBtn">📋 Paste from Clipboard</button>
         <div class="loading-spinner" id="loadingSpinner"></div>
+      </div>
+      <div class="fare-options">
+          <h3>Fare & Pax Details</h3>
+          <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 8px;">
+            <label for="currencySelect">Currency:</label>
+            <select id="currencySelect" style="padding: 4px;"> <option value="USD" selected>$</option> <option value="EUR">€</option> <option value="INR">₹</option> </select>
+            <label for="adultInput">Pax:</label> <input id="adultInput" type="number" min="1" value="1" style="width: 30px; padding: 4px;">
+            <label for="fareInput">Fare:</label> <input id="fareInput" type="number" step="any" placeholder="Optional" style="width: 65px; padding: 4px;">
+            <label for="feeInput">Fee:</label> <input id="feeInput" type="number" step="any" placeholder="Optional" style="width: 65px; padding: 4px;">
+            <label for="taxInput">Tax:</label> <input id="taxInput" type="number" step="any" placeholder="Optional" style="width: 65px; padding: 4px;">
+          </div>
       </div>
       <div class="output-area">
         <h3>Converted Itinerary</h3>
@@ -131,17 +140,6 @@
     </div>
     
     <div class="sidebar">
-      <div class="fare-options">
-          <h3>Fare & Pax Details</h3>
-          <div style="display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 8px;">
-            <label for="currencySelect">Currency:</label>
-            <select id="currencySelect" style="padding: 4px;"> <option value="USD" selected>$</option> <option value="EUR">€</option> <option value="INR">₹</option> </select>
-            <label for="adultInput">Pax:</label> <input id="adultInput" type="number" min="1" value="1" style="width: 30px; padding: 4px;">
-            <label for="fareInput">Fare:</label> <input id="fareInput" type="number" step="any" placeholder="Optional" style="width: 65px; padding: 4px;">
-            <label for="feeInput">Fee:</label> <input id="feeInput" type="number" step="any" placeholder="Optional" style="width: 65px; padding: 4px;">
-            <label for="taxInput">Tax:</label> <input id="taxInput" type="number" step="any" placeholder="Optional" style="width: 65px; padding: 4px;">
-          </div>
-      </div>
       <div class="options">
         <h3>Display Options</h3>
         <label><input type="checkbox" id="showAirline" checked> Show Airline</label>
