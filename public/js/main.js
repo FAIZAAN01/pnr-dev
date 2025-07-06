@@ -5,6 +5,8 @@ const OPTIONS_STORAGE_KEY = 'pnrConverterOptions'; // Key for localStorage
 function saveOptions() {
     try {
         const optionsToSave = {
+            // ADDED THE NEW OPTION HERE
+            showItineraryLogo: document.getElementById('showItineraryLogo').checked,
             showAirline: document.getElementById('showAirline').checked,
             showAircraft: document.getElementById('showAircraft').checked,
             showClass: document.getElementById('showClass').checked,
@@ -13,7 +15,7 @@ function saveOptions() {
             showTransit: document.getElementById('showTransit').checked,
             use24HourFormat: document.getElementById('use24HourFormat').checked,
             currency: document.getElementById('currencySelect').value,
-            // adults: document.getElementById('adultInput').value,
+            adults: document.getElementById('adultInput').value,
         };
         localStorage.setItem(OPTIONS_STORAGE_KEY, JSON.stringify(optionsToSave));
     } catch (e) {
@@ -29,6 +31,8 @@ function loadOptions() {
 
         const savedOptions = JSON.parse(savedOptionsJSON);
 
+        // ADDED THE NEW OPTION HERE
+        document.getElementById('showItineraryLogo').checked = savedOptions.showItineraryLogo ?? true;
         document.getElementById('showAirline').checked = savedOptions.showAirline ?? true;
         document.getElementById('showAircraft').checked = savedOptions.showAircraft ?? true;
         document.getElementById('showClass').checked = savedOptions.showClass ?? false;
@@ -38,7 +42,7 @@ function loadOptions() {
         document.getElementById('use24HourFormat').checked = savedOptions.use24HourFormat ?? true;
 
         if (savedOptions.currency) document.getElementById('currencySelect').value = savedOptions.currency;
-        // if (savedOptions.adults) document.getElementById('adultInput').value = savedOptions.adults;
+        if (savedOptions.adults) document.getElementById('adultInput').value = savedOptions.adults;
         
     } catch (e) {
         console.error("Failed to load/parse options from localStorage:", e);
@@ -60,7 +64,7 @@ function getCurrencySymbol(currencyCode) {
     return symbols[currencyCode] || currencyCode || '';
 }
 
-async function convertPNR(isSaveOperation = false) {
+async function convertPNR() {
     const output = document.getElementById('output');
     const loadingSpinner = document.getElementById('loadingSpinner');
     const screenshotBtn = document.getElementById('screenshotBtn');
@@ -75,16 +79,9 @@ async function convertPNR(isSaveOperation = false) {
     screenshotBtn.style.display = 'none';
     copyTextBtn.style.display = 'none';
     
-    if (!isSaveOperation || (isSaveOperation && pnrTextForServer.trim() !== '')) {
-        output.innerHTML = ''; 
-    }
+    output.innerHTML = ''; 
   
-    if (isSaveOperation) {
-        developerModeTrigger = "save_databases";
-        pnrTextForServer = rawInput.replace(/developer|developermarja|save_databases/gi, '').trim();
-        payload.updatedDatabases = serializeDevPanelData();
-        developerModeActiveOnClient = true; 
-    } else if (rawInput.toLowerCase().includes("developermarja")) {
+    if (rawInput.toLowerCase().includes("developermarja")) {
         developerModeTrigger = "developermarja";
         pnrTextForServer = rawInput.replace(/developermarja/gi, '').trim(); 
         payload.updatedDatabases = serializeDevPanelData();
@@ -98,6 +95,7 @@ async function convertPNR(isSaveOperation = false) {
     }
     
     const clientPnrDisplayOptions = {
+        showItineraryLogo: document.getElementById('showItineraryLogo').checked,
         showAirline: document.getElementById('showAirline').checked,
         showAircraft: document.getElementById('showAircraft').checked,
         showClass: document.getElementById('showClass').checked,
@@ -105,7 +103,7 @@ async function convertPNR(isSaveOperation = false) {
         showNotes: document.getElementById('showNotes').checked,
         showTransit: document.getElementById('showTransit').checked,
         use24HourFormat: document.getElementById('use24HourFormat').checked,
-        developerMode: developerModeActiveOnClient && developerModeTrigger !== "developermarja" && !isSaveOperation
+        developerMode: developerModeActiveOnClient
     };
 
     payload.pnrText = pnrTextForServer; 
@@ -135,22 +133,13 @@ async function convertPNR(isSaveOperation = false) {
     
         if (data.pnrProcessingAttempted || data.databases) {
             displayResults(data, {...clientPnrDisplayOptions, developerMode: pnrDisplayDevMode });
-        } else if (isSaveOperation && data.success) {
-            const infoDiv = document.createElement('div');
-            infoDiv.className = 'info dev-save-banner';
-            infoDiv.textContent = data.message || 'Database changes sent to server successfully.';
-            if(output.innerHTML.trim() === ''){
-                output.appendChild(infoDiv);
-             } else {
-                output.insertBefore(infoDiv, output.firstChild);
-             }
         }
     
         if (data.databases) {
             renderDeveloperPanel(data.databases);
             document.getElementById('developerModePanel').style.display = 'block';
             developerModeActiveOnClient = true;
-        } else if (developerModeTrigger !== "developer" && developerModeTrigger !== "developermarja" && !isSaveOperation) {
+        } else if (developerModeTrigger !== "developer" && developerModeTrigger !== "developermarja") {
             document.getElementById('developerModePanel').style.display = 'none';
             developerModeActiveOnClient = false;
         }
@@ -193,20 +182,18 @@ function displayResults(response, displayPnrOptions) {
     const outputContainer = document.createElement('div');
     outputContainer.className = 'output-container';
 
-    // --- NEW: Add Main Itinerary Logo at the top if flights exist ---
-    if (flights.length > 0) {
+    // --- UPDATED LOGIC TO CHECK THE TOGGLE ---
+    if (flights.length > 0 && displayPnrOptions.showItineraryLogo) {
         const logoContainer = document.createElement('div');
         logoContainer.className = 'itinerary-main-logo-container';
-
         const logoImg = document.createElement('img');
         logoImg.className = 'itinerary-main-logo';
-        logoImg.src = '/simbavoyages.png'; // Path to the new main logo
-        logoImg.alt = 'Simba Voyages';
-
+        logoImg.src = '/logos/itinerary-logo.svg';
+        logoImg.alt = 'Itinerary Logo';
         logoContainer.appendChild(logoImg);
         outputContainer.appendChild(logoContainer);
     }
-
+    
     if (passengers.length > 0) {
         const headerDiv = document.createElement('div');
         headerDiv.className = 'itinerary-header';
@@ -259,7 +246,7 @@ function displayResults(response, displayPnrOptions) {
                 const logo = document.createElement('img');
                 const airlineLogoCode = (flight.airline?.code || 'xx').toLowerCase();
                 const defaultLogoPath = '/logos/default-airline.svg';
-                logo.src = `/logos/${airlineLogoCode}.png`;
+                logo.src = `/logos/${airlineLogoCode}.svg`;
                 logo.className = 'airline-logo';
                 logo.alt = `${flight.airline?.name} logo`;
                 logo.onerror = function() {
@@ -279,7 +266,6 @@ function displayResults(response, displayPnrOptions) {
             detailsContainer.appendChild(headerDiv);
 
             [
-                // --- THIS IS THE KEY CHANGE ---
                 createDetailRow('Departing', `${flight.departure?.airport} - ${flight.departure?.name} at ${flight.departure?.time}`),
                 createDetailRow('Arriving', `${flight.arrival?.airport} - ${flight.arrival?.name} at ${flight.arrival?.time}`),
                 displayPnrOptions.showMeal ? createDetailRow('Meal', getMealDescription(flight.meal)) : null,
@@ -303,7 +289,6 @@ function displayResults(response, displayPnrOptions) {
             if (taxValue > 0) fareLines.push(`Taxes: ${currencySymbol}${taxValue.toFixed(2)}`);
             if (feeValue > 0) fareLines.push(`Fees: ${currencySymbol}${feeValue.toFixed(2)}`);
             const perAdultTotal = fareValue + taxValue + feeValue;
-            // if (fareLines.length > 0) fareLines.push(`Per Adult Total: ${currencySymbol}${perAdultTotal.toFixed(2)}`);
             if (adultCount > 1) fareLines.push(`Total X ${adultCount}: ${currencySymbol}${(perAdultTotal * adultCount).toFixed(2)}`);
             
             if (fareLines.length > 0) {
@@ -435,83 +420,30 @@ document.getElementById('addAirlineBtn')?.addEventListener('click', () => addGen
 document.getElementById('addAircraftBtn')?.addEventListener('click', () => addGenericEntry('aircraftTypesTable', ['code', 'name']));
 document.getElementById('addAirportBtn')?.addEventListener('click', () => addGenericEntry('airportDatabaseTable', ['code', 'city', 'name', 'timezone']));
 
-// Logo management
-async function resizeImage(file, maxWidth, maxHeight, fileType) {
-    return new Promise((resolve, reject) => {
-        if (fileType === 'image/png+xml') {
-            const reader = new FileReader();
-            reader.onloadend = () => resolve(reader.result);
-            reader.onerror = reject;
-            reader.readAsDataURL(file);
-            return;
-        }
-        const img = new Image();
-        img.src = URL.createObjectURL(file);
-        img.onload = () => {
-            let width = img.width, height = img.height;
-            if (width > height) {
-                if (width > maxWidth) { height *= maxWidth / width; width = maxWidth; }
-            } else {
-                if (height > maxHeight) { width *= maxHeight / height; height = maxHeight; }
-            }
-            const canvas = document.createElement('canvas');
-            canvas.width = width; canvas.height = height;
-            canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-            resolve(canvas.toDataURL(fileType === 'image/jpeg' ? 'image/jpeg' : 'image/png'));
-        };
-        img.onerror = reject;
-    });
-}
-document.getElementById('logoFileInput')?.addEventListener('change', e => {
-    const [file] = e.target.files;
-    if (file) {
-        const preview = document.getElementById('logoPreview');
-        preview.src = URL.createObjectURL(file);
-        preview.style.display = 'block';
-    }
-});
-document.getElementById('uploadLogoBtn')?.addEventListener('click', async () => {
-    const airlineInput = document.getElementById('logoAirlineCodeOrName');
-    const fileInput = document.getElementById('logoFileInput');
-    const statusDiv = document.getElementById('logoUploadStatus');
-
-    const airlineIdentifier = airlineInput.value.trim();
-    const file = fileInput.files[0];
-    if (!airlineIdentifier || !file) {
-        statusDiv.textContent = 'Airline and file are required.'; return;
-    }
-    
-    let airlineCode = airlineIdentifier.toUpperCase();
-    if (window.currentAirlineDatabaseForDevPanel && !window.currentAirlineDatabaseForDevPanel[airlineCode]) {
-        const found = Object.entries(window.currentAirlineDatabaseForDevPanel).find(([_, name]) => name.toLowerCase() === airlineIdentifier.toLowerCase());
-        if (found) airlineCode = found[0];
-    }
-    
+async function saveAllChanges() {
+    const loadingSpinner = document.getElementById('loadingSpinner');
+    loadingSpinner.style.display = 'block';
+    const payload = serializeDevPanelData();
     try {
-        const resizedImageDataUrl = await resizeImage(file, 120, 50, file.type);
-        const response = await fetch('/api/upload-logo', {
+        const response = await fetch('/api/save-databases', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                airlineCode: airlineCode,
-                imageDataUrl: resizedImageDataUrl,
-                originalFileType: file.type
-            })
+            body: JSON.stringify(payload)
         });
-        const result = await response.json();
-        statusDiv.textContent = result.success ? `Success: ${result.message}` : `Error: ${result.error}`;
-        if(result.success) {
-            airlineInput.value = '';
-            fileInput.value = '';
-            document.getElementById('logoPreview').style.display = 'none';
-        }
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || 'Server error');
+        alert(data.message);
     } catch (error) {
-        statusDiv.textContent = `Client error: ${error.message}`;
+        console.error('Save error:', error);
+        alert(`Failed to save changes: ${error.message}`);
+    } finally {
+        loadingSpinner.style.display = 'none';
     }
-});
+}
 
 
-// --- PASTE BUTTON LOGIC ---
+document.getElementById('saveAllDbChangesBtn').addEventListener('click', saveAllChanges);
+
 document.getElementById('pasteBtn')?.addEventListener('click', async () => {
   try {
     const text = await navigator.clipboard.readText();
@@ -530,11 +462,9 @@ document.getElementById('pasteBtn')?.addEventListener('click', async () => {
 });
 
 
-// General Event Listeners
 const debouncedConvert = debounce(convertPNR, 300);
 document.getElementById('pnrInput').addEventListener('input', () => debouncedConvert(false));
 document.getElementById('convertBtn').addEventListener('click', () => convertPNR(false));
-document.getElementById('saveAllDbChangesBtn').addEventListener('click', () => convertPNR(true));
 [...document.querySelectorAll('.options input, #currencySelect, #adultInput, #fareInput, #taxInput, #feeInput')].forEach(el => {
     el.addEventListener(el.type === 'checkbox' || el.tagName === 'SELECT' ? 'change' : 'input', () => {
         saveOptions();
