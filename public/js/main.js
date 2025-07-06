@@ -37,6 +37,7 @@ function saveOptions() {
             showItineraryLogo: document.getElementById('showItineraryLogo').checked,
             showAirline: document.getElementById('showAirline').checked,
             showAircraft: document.getElementById('showAircraft').checked,
+            showOperatedBy: document.getElementById('showOperatedBy').checked,
             showClass: document.getElementById('showClass').checked,
             showMeal: document.getElementById('showMeal').checked,
             showNotes: document.getElementById('showNotes').checked,
@@ -61,6 +62,7 @@ function loadOptions() {
         document.getElementById('showItineraryLogo').checked = savedOptions.showItineraryLogo ?? true;
         document.getElementById('showAirline').checked = savedOptions.showAirline ?? true;
         document.getElementById('showAircraft').checked = savedOptions.showAircraft ?? true;
+        document.getElementById('showOperatedBy').checked = savedOptions.showOperatedBy ?? true;
         document.getElementById('showClass').checked = savedOptions.showClass ?? false;
         document.getElementById('showMeal').checked = savedOptions.showMeal ?? false;
         document.getElementById('showNotes').checked = savedOptions.showNotes ?? false;
@@ -123,6 +125,7 @@ async function convertPNR() {
         showItineraryLogo: document.getElementById('showItineraryLogo').checked,
         showAirline: document.getElementById('showAirline').checked,
         showAircraft: document.getElementById('showAircraft').checked,
+        showOperatedBy: document.getElementById('showOperatedBy').checked,
         showClass: document.getElementById('showClass').checked,
         showMeal: document.getElementById('showMeal').checked,
         showNotes: document.getElementById('showNotes').checked,
@@ -296,6 +299,7 @@ function displayResults(response, displayPnrOptions) {
             [
                 createDetailRow('Departing', `${flight.departure?.airport} - ${flight.departure?.name} at ${flight.departure?.time}`),
                 createDetailRow('Arriving', `${flight.arrival?.airport} - ${flight.arrival?.name} at ${flight.arrival?.time}`),
+                displayPnrOptions.showOperatedBy ? createDetailRow('Operated by', flight.operatedBy) : null,
                 flight.operatedBy ? createDetailRow('Operated by', flight.operatedBy) : null,
                 displayPnrOptions.showMeal ? createDetailRow('Meal', getMealDescription(flight.meal)) : null,
                 displayPnrOptions.showNotes && flight.notes?.length ? createDetailRow('Notes', flight.notes.join('; ')) : null,
