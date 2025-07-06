@@ -182,17 +182,28 @@ function displayResults(response, displayPnrOptions) {
     const outputContainer = document.createElement('div');
     outputContainer.className = 'output-container';
 
-    // --- UPDATED LOGIC TO CHECK THE TOGGLE ---
+    // --- UPDATED LOGIC TO INCLUDE TEXT ---
     if (flights.length > 0 && displayPnrOptions.showItineraryLogo) {
         const logoContainer = document.createElement('div');
         logoContainer.className = 'itinerary-main-logo-container';
+
+        // 1. Create the logo image
         const logoImg = document.createElement('img');
         logoImg.className = 'itinerary-main-logo';
-        logoImg.src = '/simbavoyages.png';
+        logoImg.src = '/simbavoyages.png'; // Your custom logo
         logoImg.alt = 'Itinerary Logo';
         logoContainer.appendChild(logoImg);
+
+        // 2. Create the text element
+        const logoText = document.createElement('div');
+        logoText.className = 'itinerary-logo-text';
+        // Use innerHTML to allow for line breaks with <br>
+        logoText.innerHTML = "Lorem ipsum dolor sit amet,<br>consectetur adipiscing elit.";
+        logoContainer.appendChild(logoText);
+        
         outputContainer.appendChild(logoContainer);
     }
+    // --- END OF UPDATED LOGIC ---
     
     if (passengers.length > 0) {
         const headerDiv = document.createElement('div');
