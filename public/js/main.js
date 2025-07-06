@@ -217,7 +217,7 @@ function displayResults(response, displayPnrOptions) {
         logoContainer.appendChild(logoImg);
         const logoText = document.createElement('div');
         logoText.className = 'itinerary-logo-text';
-        logoText.innerHTML = "Lorem ipsum dolor sit amet,<br>consectetur adipiscing elit.";
+        logoText.innerHTML = "KN2 Ave 26, Nyarugenge Dist, Muhima <br>Kigali Rwanda";
         logoContainer.appendChild(logoText);
         outputContainer.appendChild(logoContainer);
     }
