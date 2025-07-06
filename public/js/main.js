@@ -249,7 +249,7 @@ function displayResults(response, displayPnrOptions) {
             if (displayPnrOptions.showTransit && i > 0 && flight.transitTime) {
                 const transitDiv = document.createElement('div');
                 transitDiv.className = 'transit-item';
-                transitDiv.textContent = `------ Transit: ${flight.transitTime} at ${flights[i - 1].arrival?.city || ''} (${flights[i - 1].arrival?.airport || ''}) ------<br>`;
+                transitDiv.textContent = `------ Transit: ${flight.transitTime} at ${flights[i - 1].arrival?.city || ''} (${flights[i - 1].arrival?.airport || ''}) ------`;
                 itineraryBlock.appendChild(transitDiv);
             }
 
