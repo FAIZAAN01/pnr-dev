@@ -128,7 +128,6 @@ function parseGalileoEnhanced(pnrText, options) {
 
     const flightSegmentRegex = /^\s*(\d+)\s+([A-Z0-9]{2})\s*(\d{1,4}[A-Z]?)\s+([A-Z])\s+([0-3]\d[A-Z]{3})\s+\S*\s*([A-Z]{3})([A-Z]{3})\s+\S*\s+(\d{4})\s+(\d{4})(?:\s+([0-3]\d[A-Z]{3}|\+\d))?/;
     const operatedByRegex = /OPERATED BY\s+(.+)/i;
-    // This regex now just IDENTIFIES a passenger line. It doesn't try to parse it.
     const passengerLineIdentifierRegex = /^\s*\d+\.\s*[A-Z/]/;
 
     for (const line of lines) {
@@ -136,42 +135,25 @@ function parseGalileoEnhanced(pnrText, options) {
         const flightMatch = line.match(flightSegmentRegex);
         const operatedByMatch = line.match(operatedByRegex);
         const isPassengerLine = passengerLineIdentifierRegex.test(line);
-
+        
         if (isPassengerLine) {
-            // --- NEW, MORE ROBUST PASSENGER PARSING LOGIC ---
-            
-            // 1. Clean up the line by removing the initial number and dot.
             const cleanedLine = line.replace(/^\s*\d+\.\s*/, '');
-            
-            // 2. Split the line by the pattern `(number).` which separates passengers.
-            // e.g., "DOE/JANE MRS 2. DOE/JOHN MR" becomes ["DOE/JANE MRS ", " DOE/JOHN MR"]
             const nameBlocks = cleanedLine.split(/\s+\d+\.\s*/);
-
-            // 3. Process each found name block.
             for (const nameBlock of nameBlocks) {
                 if (!nameBlock.trim()) continue;
-
                 const nameParts = nameBlock.trim().split('/');
-                if (nameParts.length < 2) continue; // Invalid format, skip.
-
+                if (nameParts.length < 2) continue;
                 const lastName = nameParts[0].trim();
                 const givenNamesAndTitleRaw = nameParts[1].trim();
-
                 const titles = ['MR', 'MRS', 'MS', 'MSTR', 'MISS', 'CHD', 'INF'];
                 const words = givenNamesAndTitleRaw.split(/\s+/);
                 const lastWord = words[words.length - 1].toUpperCase();
-
                 let title = '';
-                // Check if the last word is a title and extract it.
                 if (titles.includes(lastWord)) {
-                    title = words.pop(); // Remove the title from the words array
+                    title = words.pop();
                 }
-
-                // Whatever is left is the first and middle name.
                 const givenNames = words.join(' '); 
-
                 if (lastName && givenNames) {
-                    // Reconstruct the full name, including the title.
                     let formattedName = `${lastName.toUpperCase()}/${givenNames.toUpperCase()}`;
                     if (title) {
                         formattedName += ` ${title}`;
@@ -181,7 +163,6 @@ function parseGalileoEnhanced(pnrText, options) {
                     }
                 }
             }
-            // --- END OF NEW PASSENGER PARSING LOGIC ---
         }
         else if (flightMatch) {
             if (currentFlight) flights.push(currentFlight);
@@ -221,7 +202,8 @@ function parseGalileoEnhanced(pnrText, options) {
             currentFlight = {
                 segment: parseInt(segmentNumStr, 10) || flightIndex,
                 airline: { code: airlineCode, name: airlineDatabase[airlineCode] || `Unknown Airline (${airlineCode})` },
-                flightNumber: `${airlineCode}${flightNum}`,
+                // --- THIS IS THE MODIFIED LINE ---
+                flightNumber: flightNum,
                 travelClass: { code: travelClass || '', name: getTravelClassName(travelClass) },
                 date: departureMoment.isValid() ? departureMoment.format('dddd, DD MMM YYYY') : '',
                 departure: { 
