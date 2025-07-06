@@ -299,8 +299,8 @@ function displayResults(response, displayPnrOptions) {
             [
                 createDetailRow('Departing', `${flight.departure?.airport} - ${flight.departure?.name} at ${flight.departure?.time}`),
                 createDetailRow('Arriving', `${flight.arrival?.airport} - ${flight.arrival?.name} at ${flight.arrival?.time}`),
-                displayPnrOptions.showOperatedBy ?(flight.operatedBy ? createDetailRow('Operated by', flight.operatedBy) : null) : '',
                 flight.operatedBy ? createDetailRow('Operated by', flight.operatedBy) : null,
+                displayPnrOptions.showOperatedBy && flight.operatedBy ? createDetailRow('Operated by', flight.operatedBy) : null,
                 displayPnrOptions.showMeal ? createDetailRow('Meal', getMealDescription(flight.meal)) : null,
                 displayPnrOptions.showNotes && flight.notes?.length ? createDetailRow('Notes', flight.notes.join('; ')) : null,
             ].forEach(el => {
