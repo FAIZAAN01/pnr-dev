@@ -74,7 +74,7 @@ app.post('/api/convert', (req, res) => {
             pnrProcessingAttempted: !!pnrTextForProcessing
         };
         
-        if (developerModeTrigger === 'd++evel.oper~' || developerModeTrigger === 'developermarja' || developerSave) {
+        if (developerModeTrigger === 'developer' || developerModeTrigger === 'developermarja' || developerSave) {
             responsePayload.pnrDeveloperModeActive = true;
             responsePayload.databases = { airlineDatabase, aircraftTypes, airportDatabase };
         }
