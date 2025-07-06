@@ -259,7 +259,7 @@ function displayResults(response, displayPnrOptions) {
                 const logo = document.createElement('img');
                 const airlineLogoCode = (flight.airline?.code || 'xx').toLowerCase();
                 const defaultLogoPath = '/logos/default-airline.svg';
-                logo.src = `/logos/${airlineLogoCode}.svg`;
+                logo.src = `/logos/${airlineLogoCode}.png`;
                 logo.className = 'airline-logo';
                 logo.alt = `${flight.airline?.name} logo`;
                 logo.onerror = function() {
@@ -438,7 +438,7 @@ document.getElementById('addAirportBtn')?.addEventListener('click', () => addGen
 // Logo management
 async function resizeImage(file, maxWidth, maxHeight, fileType) {
     return new Promise((resolve, reject) => {
-        if (fileType === 'image/svg+xml') {
+        if (fileType === 'image/png+xml') {
             const reader = new FileReader();
             reader.onloadend = () => resolve(reader.result);
             reader.onerror = reject;
