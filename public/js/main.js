@@ -188,7 +188,7 @@ function displayResults(response, displayPnrOptions) {
         logoContainer.className = 'itinerary-main-logo-container';
         const logoImg = document.createElement('img');
         logoImg.className = 'itinerary-main-logo';
-        logoImg.src = '/logos/itinerary-logo.svg';
+        logoImg.src = '/simbavoyages.png';
         logoImg.alt = 'Itinerary Logo';
         logoContainer.appendChild(logoImg);
         outputContainer.appendChild(logoContainer);
