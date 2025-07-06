@@ -13,6 +13,32 @@
     button { padding: 12px 25px; color: white; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; margin-top: 15px; transition: background 0.3s; }
     button:hover { opacity: 0.9; }
 
+    /* --- NEW POPUP NOTIFICATION STYLES --- */
+    .popup-notification-container {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 1050; /* Ensure it's on top of other content */
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .popup-notification {
+        background-color: #2c3e50; /* Dark, modern background */
+        color: white;
+        padding: 12px 20px;
+        border-radius: 6px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        opacity: 0;
+        transform: translateX(100%);
+        transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+    }
+
+    .popup-notification.show {
+        opacity: 1;
+        transform: translateX(0);
+    }
     /* --- New Layout Styles --- */
     .container { 
       display: flex; 
@@ -241,15 +267,18 @@
     </div>
   </div>
 
-<script src="/js/html2canvas.min.js"></script>
-<script src="/js/main.js"></script>
-<script>
-  window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
-</script>
-<script defer src="/_vercel/insights/script.js"></script>
-<script>
-  window.si = window.si || function () { (window.siq = window.siq || []).push(arguments); };
-</script>
-<script defer src="/_vercel/speed-insights/script.js"></script>
+  <!-- NEW POPUP CONTAINER -->
+  <div id="popupContainer" class="popup-notification-container"></div>
+
+  <script src="/js/html2canvas.min.js"></script>
+  <script src="/js/main.js"></script>
+  <script>
+    window.va = window.va || function () { (window.vaq = window.vaq || []).push(arguments); };
+  </script>
+  <script defer src="/_vercel/insights/script.js"></script>
+  <script>
+    window.si = window.si || function () { (window.siq = window.siq || []).push(arguments); };
+  </script>
+  <script defer src="/_vercel/speed-insights/script.js"></script>
 </body>
 </html>
