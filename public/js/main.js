@@ -15,7 +15,7 @@ function saveOptions() {
             showTransit: document.getElementById('showTransit').checked,
             use24HourFormat: document.getElementById('use24HourFormat').checked,
             currency: document.getElementById('currencySelect').value,
-            adults: document.getElementById('adultInput').value,
+            // adults: document.getElementById('adultInput').value,
         };
         localStorage.setItem(OPTIONS_STORAGE_KEY, JSON.stringify(optionsToSave));
     } catch (e) {
@@ -42,7 +42,7 @@ function loadOptions() {
         document.getElementById('use24HourFormat').checked = savedOptions.use24HourFormat ?? true;
 
         if (savedOptions.currency) document.getElementById('currencySelect').value = savedOptions.currency;
-        if (savedOptions.adults) document.getElementById('adultInput').value = savedOptions.adults;
+        // if (savedOptions.adults) document.getElementById('adultInput').value = savedOptions.adults;
         
     } catch (e) {
         console.error("Failed to load/parse options from localStorage:", e);
