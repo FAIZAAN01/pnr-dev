@@ -226,7 +226,7 @@ function displayResults(response, displayPnrOptions) {
         const headerDiv = document.createElement('div');
         headerDiv.className = 'itinerary-header';
         const title = document.createElement('h4');
-        title.textContent = 'Itinerary For:';
+        title.textContent = 'Itinerary for:';
         headerDiv.appendChild(title);
         const names = document.createElement('p');
         names.innerHTML = passengers.join('<br>');
