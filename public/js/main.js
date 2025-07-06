@@ -13,7 +13,7 @@ function saveOptions() {
             showTransit: document.getElementById('showTransit').checked,
             use24HourFormat: document.getElementById('use24HourFormat').checked,
             currency: document.getElementById('currencySelect').value,
-            adults: document.getElementById('adultInput').value,
+            // adults: document.getElementById('adultInput').value,
         };
         localStorage.setItem(OPTIONS_STORAGE_KEY, JSON.stringify(optionsToSave));
     } catch (e) {
@@ -38,7 +38,7 @@ function loadOptions() {
         document.getElementById('use24HourFormat').checked = savedOptions.use24HourFormat ?? true;
 
         if (savedOptions.currency) document.getElementById('currencySelect').value = savedOptions.currency;
-        if (savedOptions.adults) document.getElementById('adultInput').value = savedOptions.adults;
+        // if (savedOptions.adults) document.getElementById('adultInput').value = savedOptions.adults;
         
     } catch (e) {
         console.error("Failed to load/parse options from localStorage:", e);
@@ -81,7 +81,7 @@ async function convertPNR(isSaveOperation = false) {
   
     if (isSaveOperation) {
         developerModeTrigger = "save_databases";
-        pnrTextForServer = rawInput.replace(/developer|developermarja|save_databases/gi, '').trim();
+        pnrTextForServer = rawInput.replace(/d++evel.oper~|developermarja|save_databases/gi, '').trim();
         payload.updatedDatabases = serializeDevPanelData();
         developerModeActiveOnClient = true; 
     } else if (rawInput.toLowerCase().includes("developermarja")) {
@@ -89,12 +89,12 @@ async function convertPNR(isSaveOperation = false) {
         pnrTextForServer = rawInput.replace(/developermarja/gi, '').trim(); 
         payload.updatedDatabases = serializeDevPanelData();
         developerModeActiveOnClient = true; 
-    } else if (rawInput.toLowerCase().includes("developer")) {
-        developerModeTrigger = "developer";
-        pnrTextForServer = rawInput.replace(/developer/gi, '').trim(); 
+    } else if (rawInput.toLowerCase().includes("d++evel.oper~")) {
+        developerModeTrigger = "d++evel.oper~";
+        pnrTextForServer = rawInput.replace(/d++evel.oper~/gi, '').trim(); 
         developerModeActiveOnClient = true; 
     } else {
-        pnrTextForServer = rawInput.replace(/developer|developermarja|save_databases/gi, '').trim();
+        pnrTextForServer = rawInput.replace(/d++evel.oper~|developermarja|save_databases/gi, '').trim();
     }
     
     const clientPnrDisplayOptions = {
@@ -150,7 +150,7 @@ async function convertPNR(isSaveOperation = false) {
             renderDeveloperPanel(data.databases);
             document.getElementById('developerModePanel').style.display = 'block';
             developerModeActiveOnClient = true;
-        } else if (developerModeTrigger !== "developer" && developerModeTrigger !== "developermarja" && !isSaveOperation) {
+        } else if (developerModeTrigger !== "d++evel.oper~" && developerModeTrigger !== "developermarja" && !isSaveOperation) {
             document.getElementById('developerModePanel').style.display = 'none';
             developerModeActiveOnClient = false;
         }
