@@ -1,502 +1,237 @@
-let developerModeActiveOnClient = false;
-const OPTIONS_STORAGE_KEY = 'pnrConverterOptions'; // Key for localStorage
+const express = require('express');
+const bodyParser = require('body-parser');
+const moment = require('moment-timezone');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
+const morgan = require('morgan');
 
-// Function to save current options to localStorage
-function saveOptions() {
+const app = express();
+
+const DATA_DIR = path.join(process.cwd(), 'data');
+const AIRLINES_FILE = path.join(DATA_DIR, 'airlines.json');
+const AIRCRAFT_TYPES_FILE = path.join(DATA_DIR, 'aircraftTypes.json');
+const AIRPORT_DATABASE_FILE = path.join(DATA_DIR, 'airportDatabase.json');
+
+app.use(express.json());
+
+let airlineDatabase = {};
+let aircraftTypes = {};
+let airportDatabase = {};
+
+function loadDbFromFile(filePath, defaultDb) {
+  try {
+    if (fs.existsSync(filePath)) {
+      const fileData = fs.readFileSync(filePath, 'utf-8');
+      return JSON.parse(fileData);
+    }
+  } catch (error) {
+    console.error(`Error loading ${path.basename(filePath)}:`, error.message);
+  }
+  return defaultDb;
+}
+function loadAllDatabases() {
+  airlineDatabase = loadDbFromFile(AIRLINES_FILE, {});
+  aircraftTypes = loadDbFromFile(AIRCRAFT_TYPES_FILE, {});
+  airportDatabase = loadDbFromFile(AIRPORT_DATABASE_FILE, {});
+}
+
+loadAllDatabases();
+
+app.use(morgan('dev'));
+app.use(cors());
+app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
+app.use(helmet({ contentSecurityPolicy: false }));
+
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 200,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, error: "Too many requests, please try again later.", result: { flights: [] } }
+});
+
+app.post('/api/convert', (req, res) => {
     try {
-        const optionsToSave = {
-            // ADDED THE NEW OPTION HERE
-            showItineraryLogo: document.getElementById('showItineraryLogo').checked,
-            showAirline: document.getElementById('showAirline').checked,
-            showAircraft: document.getElementById('showAircraft').checked,
-            showClass: document.getElementById('showClass').checked,
-            showMeal: document.getElementById('showMeal').checked,
-            showNotes: document.getElementById('showNotes').checked,
-            showTransit: document.getElementById('showTransit').checked,
-            use24HourFormat: document.getElementById('use24HourFormat').checked,
-            currency: document.getElementById('currencySelect').value,
-            // adults: document.getElementById('adultInput').value,
+        const { pnrText, options, fareDetails, developerModeTrigger, updatedDatabases } = req.body;
+        let pnrTextForProcessing = pnrText || '';
+        let serverOptions = options || {};
+        let developerSave = false;
+
+        if ((developerModeTrigger === "save_databases" || developerModeTrigger === "developermarja") && updatedDatabases) {
+            console.warn("NOTE: Filesystem is read-only on Vercel. Changes will not persist.");
+            developerSave = true;
+        }
+        
+        const result = pnrTextForProcessing ? parseGalileoEnhanced(pnrTextForProcessing, serverOptions) : { flights: [], passengers: [] };
+
+        const responsePayload = {
+            success: true, result, fareDetails,
+            message: developerSave ? "Database 'save' simulated. Changes are not persistent on Vercel." : null,
+            pnrProcessingAttempted: !!pnrTextForProcessing
         };
-        localStorage.setItem(OPTIONS_STORAGE_KEY, JSON.stringify(optionsToSave));
-    } catch (e) {
-        console.error("Failed to save options to localStorage:", e);
-    }
-}
-
-// Function to load options from localStorage and apply them to the UI
-function loadOptions() {
-    try {
-        const savedOptionsJSON = localStorage.getItem(OPTIONS_STORAGE_KEY);
-        if (!savedOptionsJSON) return; // No saved options, use defaults
-
-        const savedOptions = JSON.parse(savedOptionsJSON);
-
-        // ADDED THE NEW OPTION HERE
-        document.getElementById('showItineraryLogo').checked = savedOptions.showItineraryLogo ?? true;
-        document.getElementById('showAirline').checked = savedOptions.showAirline ?? true;
-        document.getElementById('showAircraft').checked = savedOptions.showAircraft ?? true;
-        document.getElementById('showClass').checked = savedOptions.showClass ?? false;
-        document.getElementById('showMeal').checked = savedOptions.showMeal ?? false;
-        document.getElementById('showNotes').checked = savedOptions.showNotes ?? false;
-        document.getElementById('showTransit').checked = savedOptions.showTransit ?? true;
-        document.getElementById('use24HourFormat').checked = savedOptions.use24HourFormat ?? true;
-
-        if (savedOptions.currency) document.getElementById('currencySelect').value = savedOptions.currency;
-        // if (savedOptions.adults) document.getElementById('adultInput').value = savedOptions.adults;
         
-    } catch (e) {
-        console.error("Failed to load/parse options from localStorage:", e);
-        localStorage.removeItem(OPTIONS_STORAGE_KEY);
-    }
-}
-
-
-function debounce(func, wait) {
-    let timeout;
-    return function(...args) {
-    const context = this;
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func.apply(context, args), wait);
-    };
-}
-function getCurrencySymbol(currencyCode) {
-    const symbols = { USD: '$', EUR: '€', INR: '₹' };
-    return symbols[currencyCode] || currencyCode || '';
-}
-
-async function convertPNR() {
-    const output = document.getElementById('output');
-    const loadingSpinner = document.getElementById('loadingSpinner');
-    const screenshotBtn = document.getElementById('screenshotBtn');
-    const copyTextBtn = document.getElementById('copyTextBtn');
-    let rawInput = document.getElementById('pnrInput').value;
-    
-    let pnrTextForServer = rawInput;
-    let developerModeTrigger = "none";
-    let payload = {};
-
-    loadingSpinner.style.display = 'block';
-    screenshotBtn.style.display = 'none';
-    copyTextBtn.style.display = 'none';
-    
-    output.innerHTML = ''; 
-  
-    if (rawInput.toLowerCase().includes("developermarja")) {
-        developerModeTrigger = "developermarja";
-        pnrTextForServer = rawInput.replace(/developermarja/gi, '').trim(); 
-        payload.updatedDatabases = serializeDevPanelData();
-        developerModeActiveOnClient = true; 
-    } else if (rawInput.toLowerCase().includes("developer")) {
-        developerModeTrigger = "developer";
-        pnrTextForServer = rawInput.replace(/developer/gi, '').trim(); 
-        developerModeActiveOnClient = true; 
-    } else {
-        pnrTextForServer = rawInput.replace(/developer|developermarja|save_databases/gi, '').trim();
-    }
-    
-    const clientPnrDisplayOptions = {
-        showItineraryLogo: document.getElementById('showItineraryLogo').checked,
-        showAirline: document.getElementById('showAirline').checked,
-        showAircraft: document.getElementById('showAircraft').checked,
-        showClass: document.getElementById('showClass').checked,
-        showMeal: document.getElementById('showMeal').checked,
-        showNotes: document.getElementById('showNotes').checked,
-        showTransit: document.getElementById('showTransit').checked,
-        use24HourFormat: document.getElementById('use24HourFormat').checked,
-        developerMode: developerModeActiveOnClient
-    };
-
-    payload.pnrText = pnrTextForServer; 
-    payload.options = clientPnrDisplayOptions;
-    payload.fareDetails = {
-        fare: document.getElementById('fareInput').value,
-        tax: document.getElementById('taxInput').value,
-        fee: document.getElementById('feeInput').value,
-        adult: document.getElementById('adultInput').value,
-        currency: document.getElementById('currencySelect').value
-    };
-    payload.developerModeTrigger = developerModeTrigger;
-
-    try {
-        const response = await fetch('/api/convert', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-
-        let data = await response.json();
-        if (!response.ok) {
-            throw new Error(data.error || `Server error: ${response.status} ${response.statusText}`);
+        if (developerModeTrigger === 'developer' || developerModeTrigger === 'developermarja' || developerSave) {
+            responsePayload.pnrDeveloperModeActive = true;
+            responsePayload.databases = { airlineDatabase, aircraftTypes, airportDatabase };
         }
+
+        return res.status(200).json(responsePayload);
+    } catch (err) {
+        console.error("Error during PNR conversion:", err.stack);
+        return res.status(400).json({ success: false, error: err.message, result: { flights: [] } });
+    }
+});
+
+app.post('/api/upload-logo', limiter, async (req, res) => {
+    console.error("Logo upload is not supported on Vercel's read-only filesystem.");
+    return res.status(400).json({ success: false, error: "This feature is disabled on the live deployment." });
+});
+
+// --- Helper Functions ---
+function formatMomentTime(momentObj, use24 = false) {
+    if (!momentObj || !momentObj.isValid()) return '';
+    return momentObj.format(use24 ? 'HH:mm' : 'hh:mm A');
+}
+function calculateAndFormatDuration(depMoment, arrMoment) {
+    if (!depMoment || !depMoment.isValid() || !arrMoment || !arrMoment.isValid()) return 'Invalid time';
+    const durationMinutes = arrMoment.diff(depMoment, 'minutes');
+    if (durationMinutes < 0) return 'Invalid duration';
+    const hours = Math.floor(durationMinutes / 60);
+    const minutes = durationMinutes % 60;
+    return `${hours}h ${minutes < 10 ? '0' : ''}${minutes}m`;
+}
+function getTravelClassName(classCode) {
+    if (!classCode) return 'Unknown';
+    const code = classCode.toUpperCase();
+    const firstCodes = ['F', 'A', 'P'];
+    const businessCodes = ['J', 'C', 'D', 'I', 'Z', 'R'];
+    const premiumEconomyCodes = ['W', 'E', 'T'];
+    const economyCodes = ['Y', 'B', 'H', 'K', 'L', 'M', 'N', 'O', 'Q', 'S', 'U', 'V', 'X', 'G'];
+    if (firstCodes.includes(code)) return 'First';
+    if (businessCodes.includes(code)) return 'Business';
+    if (premiumEconomyCodes.includes(code)) return 'Premium Economy';
+    if (economyCodes.includes(code)) return 'Economy';
+    return `Class ${code}`;
+}
+
+function parseGalileoEnhanced(pnrText, options) {
+    const flights = [];
+    const passengers = [];
+    const lines = pnrText.split('\n').map(line => line.trim());
+    let currentFlight = null;
+    let flightIndex = 0;
+    let previousArrivalMoment = null;
+
+    const flightSegmentRegex = /^\s*(\d+)\s+([A-Z0-9]{2})\s*(\d{1,4}[A-Z]?)\s+([A-Z])\s+([0-3]\d[A-Z]{3})\s+\S*\s*([A-Z]{3})([A-Z]{3})\s+\S*\s+(\d{4})\s+(\d{4})(?:\s+([0-3]\d[A-Z]{3}|\+\d))?/;
+    const operatedByRegex = /OPERATED BY\s+(.+)/i;
+    const passengerLineIdentifierRegex = /^\s*\d+\.\s*[A-Z/]/;
+
+    for (const line of lines) {
+        if (!line) continue;
+        const flightMatch = line.match(flightSegmentRegex);
+        const operatedByMatch = line.match(operatedByRegex);
+        const isPassengerLine = passengerLineIdentifierRegex.test(line);
         
-        const pnrDisplayDevMode = data.pnrDeveloperModeActive || false;
-    
-        if (data.pnrProcessingAttempted || data.databases) {
-            displayResults(data, {...clientPnrDisplayOptions, developerMode: pnrDisplayDevMode });
-        }
-    
-        if (data.databases) {
-            renderDeveloperPanel(data.databases);
-            document.getElementById('developerModePanel').style.display = 'block';
-            developerModeActiveOnClient = true;
-        } else if (developerModeTrigger !== "developer" && developerModeTrigger !== "developermarja") {
-            document.getElementById('developerModePanel').style.display = 'none';
-            developerModeActiveOnClient = false;
-        }
-    
-    } catch (error) {
-        console.error('Conversion error:', error);
-        output.innerHTML = `<div class="error">Failed to process request: ${error.message}</div>`;
-    } finally {
-        loadingSpinner.style.display = 'none';
-    }
-}
-
-function displayResults(response, displayPnrOptions) {
-    const output = document.getElementById('output');
-    const screenshotBtn = document.getElementById('screenshotBtn');
-    const copyTextBtn = document.getElementById('copyTextBtn');
-    output.innerHTML = '';
-
-    if (displayPnrOptions.developerMode) {
-        output.appendChild(createDevBanner("PNR Processed in Dev Context"));
-    }
-
-    if (!response.success) {
-        output.innerHTML += `<div class="error">${response.error || 'Conversion failed.'}</div>`;
-        return;
-    }
-
-    if (response.result?.flights?.length > 0) {
-        screenshotBtn.style.display = 'inline-block';
-        copyTextBtn.style.display = 'inline-block';
-    } else {
-        screenshotBtn.style.display = 'none';
-        copyTextBtn.style.display = 'none';
-    }
-
-    const flights = response.result?.flights || [];
-    const passengers = response.result?.passengers || [];
-    const pnrProcessingAttempted = response.pnrProcessingAttempted;
-
-    const outputContainer = document.createElement('div');
-    outputContainer.className = 'output-container';
-
-    // --- UPDATED LOGIC TO CHECK THE TOGGLE ---
-    if (flights.length > 0 && displayPnrOptions.showItineraryLogo) {
-        const logoContainer = document.createElement('div');
-        logoContainer.className = 'itinerary-main-logo-container';
-        const logoImg = document.createElement('img');
-        logoImg.className = 'itinerary-main-logo';
-        logoImg.src = '/simbavoyages.png';
-        logoImg.alt = 'Itinerary Logo';
-        logoContainer.appendChild(logoImg);
-        outputContainer.appendChild(logoContainer);
-    }
-    
-    if (passengers.length > 0) {
-        const headerDiv = document.createElement('div');
-        headerDiv.className = 'itinerary-header';
-        const title = document.createElement('h4');
-        title.textContent = 'Itinerary For:';
-        headerDiv.appendChild(title);
-        const names = document.createElement('p');
-        names.innerHTML = passengers.join('<br>');
-        headerDiv.appendChild(names);
-        const count = document.createElement('p');
-        count.style.marginTop = '8px';
-        count.style.fontStyle = 'italic';
-        count.textContent = `Total Passengers: ${passengers.length}`;
-        headerDiv.appendChild(count);
-        outputContainer.appendChild(headerDiv);
-    }
-    
-    if (flights.length > 0) {
-        const itineraryBlock = document.createElement('div');
-        itineraryBlock.className = 'itinerary-block';
-
-        for (let i = 0; i < flights.length; i++) {
-            const flight = flights[i];
-            
-            if (displayPnrOptions.showTransit && i > 0 && flight.transitTime) {
-                const transitDiv = document.createElement('div');
-                transitDiv.className = 'transit-item';
-                transitDiv.textContent = `------ Transit: ${flight.transitTime} at ${flights[i - 1].arrival?.city || ''} (${flights[i - 1].arrival?.airport || ''}) ------`;
-                itineraryBlock.appendChild(transitDiv);
-            }
-
-            const flightItem = document.createElement('div');
-            flightItem.className = 'flight-item';
-
-            function createDetailRow(label, value) {
-                if (!value) return null;
-                const detailDiv = document.createElement('div');
-                detailDiv.className = 'flight-detail';
-                const strong = document.createElement('strong');
-                strong.textContent = label + ':';
-                detailDiv.appendChild(strong);
-                detailDiv.appendChild(document.createTextNode(` ${value}`));
-                return detailDiv;
-            }
-
-            const flightContentDiv = document.createElement('div');
-            flightContentDiv.className = 'flight-content';
-
-            if (displayPnrOptions.showAirline) {
-                const logo = document.createElement('img');
-                const airlineLogoCode = (flight.airline?.code || 'xx').toLowerCase();
-                const defaultLogoPath = '/logos/default-airline.svg';
-                logo.src = `/logos/${airlineLogoCode}.svg`;
-                logo.className = 'airline-logo';
-                logo.alt = `${flight.airline?.name} logo`;
-                logo.onerror = function() {
-                    this.onerror = null; this.src = `/logos/${airlineLogoCode}.png`;
-                    this.onerror = function() { this.onerror = null; this.src = defaultLogoPath; };
-                };
-                flightContentDiv.appendChild(logo);
-            }
-
-            const detailsContainer = document.createElement('div');
-            const headerDiv = document.createElement('div');
-            headerDiv.className = 'flight-header';
-            let headerText = `${flight.date} - ${displayPnrOptions.showAirline ? (flight.airline?.name || 'Unknown Airline') : ''} ${flight.flightNumber} - ${flight.duration}`;
-            if (displayPnrOptions.showAircraft && flight.aircraft) headerText += ` - ${flight.aircraft}`;
-            if (displayPnrOptions.showClass && flight.travelClass?.name) headerText += ` - ${flight.travelClass.name}`;
-            headerDiv.textContent = headerText;
-            detailsContainer.appendChild(headerDiv);
-
-            [
-                createDetailRow('Departing', `${flight.departure?.airport} - ${flight.departure?.name} at ${flight.departure?.time}`),
-                createDetailRow('Arriving', `${flight.arrival?.airport} - ${flight.arrival?.name} at ${flight.arrival?.time}`),
-                displayPnrOptions.showMeal ? createDetailRow('Meal', getMealDescription(flight.meal)) : null,
-                flight.operatedBy ? createDetailRow('Operated by', flight.operatedBy) : null,
-                displayPnrOptions.showNotes && flight.notes?.length ? createDetailRow('Notes', flight.notes.join('; ')) : null,
-            ].forEach(el => {
-                if (el) detailsContainer.appendChild(el);
-            });
-
-            flightContentDiv.appendChild(detailsContainer);
-            flightItem.appendChild(flightContentDiv);
-            itineraryBlock.appendChild(flightItem);
-        }
-        
-        const { fare, tax, fee, adult, currency } = response.fareDetails || {};
-        if (fare || tax || fee) {
-            const fareValue = parseFloat(fare) || 0, taxValue = parseFloat(tax) || 0, feeValue = parseFloat(fee) || 0;
-            const adultCount = parseInt(adult) || 1, currencySymbol = getCurrencySymbol(currency);
-            let fareLines = [];
-            if (fareValue > 1) fareLines.push(`Total: ${currencySymbol}${fareValue.toFixed(2)}`);
-            if (taxValue > 0) fareLines.push(`Taxes: ${currencySymbol}${taxValue.toFixed(2)}`);
-            if (feeValue > 0) fareLines.push(`Fees: ${currencySymbol}${feeValue.toFixed(2)}`);
-            const perAdultTotal = fareValue + taxValue + feeValue;
-            if (adultCount > 1) fareLines.push(`Total X ${adultCount}: ${currencySymbol}${(perAdultTotal * adultCount).toFixed(2)}`);
-            
-            if (fareLines.length > 0) {
-                const fareDiv = document.createElement('div');
-                fareDiv.className = 'fare-summary';
-                fareDiv.textContent = fareLines.join('\n');
-                itineraryBlock.appendChild(fareDiv);
-            }
-        }
-        outputContainer.appendChild(itineraryBlock);
-    } 
-    else if (pnrProcessingAttempted) {
-        const infoDiv = document.createElement('div');
-        infoDiv.className = 'info';
-        infoDiv.style.margin = '15px';
-        infoDiv.textContent = 'No flight segments found or PNR format not recognized.';
-        outputContainer.appendChild(infoDiv);
-    }
-    
-    if (outputContainer.hasChildNodes()) {
-        output.appendChild(outputContainer);
-    } else if (!pnrProcessingAttempted) {
-         output.innerHTML = '<div class="info">Enter PNR data and click "Convert PNR".</div>';
-    }
-}
-
-
-// Setup and Event Listeners
-function createDevBanner(message) {
-    const banner = document.createElement('div');
-    banner.className = 'dev-banner';
-    banner.textContent = message;
-    return banner;
-}
-function getMealDescription(mealCode) {
-    const mealMap = {'B':'Breakfast','L':'Lunch','D':'Dinner','S':'Snack','M':'Meal'};
-    return mealMap[mealCode] || `Code ${mealCode}`;
-}
-
-// Developer Panel rendering and data serialization
-let currentDevDBs = {};
-function renderDeveloperPanel(databases) {
-    currentDevDBs = databases;
-    renderSimpleDbTable('airlinesTable', databases.airlineDatabase, ['code', 'name']);
-    renderSimpleDbTable('aircraftTypesTable', databases.aircraftTypes, ['code', 'name']);
-    renderAirportDbTable('airportDatabaseTable', databases.airportDatabase);
-    if(databases.airlineDatabase) window.currentAirlineDatabaseForDevPanel = databases.airlineDatabase;
-}
-function renderSimpleDbTable(tableId, data, columns) {
-    const tbody = document.getElementById(tableId).querySelector('tbody');
-    tbody.innerHTML = '';
-    Object.entries(data).forEach(([key, value]) => {
-        const tr = tbody.insertRow();
-        const rowData = { code: key, name: value };
-        columns.forEach(colKey => {
-            const input = document.createElement('input');
-            input.type = 'text'; input.value = rowData[colKey];
-            input.dataset.key = colKey;
-            if(colKey === 'code') input.readOnly = true;
-            tr.insertCell().appendChild(input);
-        });
-        const deleteBtn = document.createElement('button');
-        deleteBtn.textContent = 'Delete'; deleteBtn.className = 'delete-btn';
-        deleteBtn.onclick = () => tr.remove();
-        tr.insertCell().appendChild(deleteBtn);
-    });
-}
-function renderAirportDbTable(tableId, data) {
-    const tbody = document.getElementById(tableId).querySelector('tbody');
-    tbody.innerHTML = '';
-    Object.entries(data).forEach(([key, value]) => {
-        const tr = tbody.insertRow();
-        const rowData = { code: key, ...value };
-        ['code', 'city', 'name', 'timezone'].forEach(colKey => {
-             const input = document.createElement('input');
-             input.type = 'text'; input.value = rowData[colKey] || '';
-             input.dataset.key = colKey;
-             if(colKey === 'code') input.readOnly = true;
-             tr.insertCell().appendChild(input);
-        });
-        const deleteBtn = document.createElement('button');
-        deleteBtn.textContent = 'Delete'; deleteBtn.className = 'delete-btn';
-        deleteBtn.onclick = () => tr.remove();
-        tr.insertCell().appendChild(deleteBtn);
-    });
-}
-function serializeDevPanelData() {
-    const serializeTable = (tableId, keys) => {
-        const data = {};
-        const tbody = document.getElementById(tableId).tBodies[0];
-        for (const row of tbody.rows) {
-            const codeInput = row.querySelector('input[data-key="code"]');
-            if (codeInput && codeInput.value.trim()) {
-                const code = codeInput.value.trim().toUpperCase();
-                if (keys.length === 1) {
-                    data[code] = row.querySelector(`input[data-key="${keys[0]}"]`).value.trim();
-                } else {
-                    data[code] = {};
-                    keys.forEach(k => {
-                        data[code][k] = row.querySelector(`input[data-key="${k}"]`)?.value.trim() || '';
-                    });
+        if (isPassengerLine) {
+            const cleanedLine = line.replace(/^\s*\d+\.\s*/, '');
+            const nameBlocks = cleanedLine.split(/\s+\d+\.\s*/);
+            for (const nameBlock of nameBlocks) {
+                if (!nameBlock.trim()) continue;
+                const nameParts = nameBlock.trim().split('/');
+                if (nameParts.length < 2) continue;
+                const lastName = nameParts[0].trim();
+                const givenNamesAndTitleRaw = nameParts[1].trim();
+                const titles = ['MR', 'MRS', 'MS', 'MSTR', 'MISS', 'CHD', 'INF'];
+                const words = givenNamesAndTitleRaw.split(/\s+/);
+                const lastWord = words[words.length - 1].toUpperCase();
+                let title = '';
+                if (titles.includes(lastWord)) {
+                    title = words.pop();
+                }
+                const givenNames = words.join(' '); 
+                if (lastName && givenNames) {
+                    let formattedName = `${lastName.toUpperCase()}/${givenNames.toUpperCase()}`;
+                    if (title) {
+                        formattedName += ` ${title}`;
+                    }
+                    if (!passengers.includes(formattedName)) {
+                        passengers.push(formattedName);
+                    }
                 }
             }
         }
-        return data;
+        else if (flightMatch) {
+            if (currentFlight) flights.push(currentFlight);
+            flightIndex++;
+            let precedingTransitTimeForThisSegment = null;
+            const [, segmentNumStr, airlineCode, flightNumRaw, travelClass, depDateStr, depAirport, arrAirport, depTimeStr, arrTimeStr, arrDateStrOrNextDayIndicator] = flightMatch;
+            const flightNum = flightNumRaw;
+            const flightDetailsPart = line.substring(flightMatch[0].length).trim();
+            const detailsParts = flightDetailsPart.split(/\s+/);
+            const aircraftCodeKey = detailsParts.find(p => p.toUpperCase() in aircraftTypes);
+            const mealCode = detailsParts.find(p => p.length === 1 && /[BLDSMFHCVKOPRWYNG]/.test(p.toUpperCase()));
+            const depAirportInfo = airportDatabase[depAirport] || { city: `Unknown`, name: `Airport (${depAirport})`, timezone: 'UTC' };
+            const arrAirportInfo = airportDatabase[arrAirport] || { city: `Unknown`, name: `Airport (${arrAirport})`, timezone: 'UTC' };
+            if (!moment.tz.zone(depAirportInfo.timezone)) depAirportInfo.timezone = 'UTC';
+            if (!moment.tz.zone(arrAirportInfo.timezone)) arrAirportInfo.timezone = 'UTC';
+            const departureMoment = moment.tz(`${depDateStr} ${depTimeStr}`, "DDMMM HHmm", true, depAirportInfo.timezone);
+            let arrivalMoment;
+            if (arrDateStrOrNextDayIndicator) {
+                if (arrDateStrOrNextDayIndicator.startsWith('+')) {
+                    const daysToAdd = parseInt(arrDateStrOrNextDayIndicator.substring(1), 10);
+                    arrivalMoment = moment.tz(`${depDateStr} ${arrTimeStr}`, "DDMMM HHmm", true, arrAirportInfo.timezone).add(daysToAdd, 'day');
+                } else {
+                    arrivalMoment = moment.tz(`${arrDateStrOrNextDayIndicator} ${arrTimeStr}`, "DDMMM HHmm", true, arrAirportInfo.timezone);
+                }
+            } else {
+                arrivalMoment = moment.tz(`${depDateStr} ${arrTimeStr}`, "DDMMM HHmm", true, arrAirportInfo.timezone);
+                if (departureMoment.isValid() && arrivalMoment.isValid() && arrivalMoment.isBefore(departureMoment)) arrivalMoment.add(1, 'day');
+            }
+            if (previousArrivalMoment && previousArrivalMoment.isValid() && departureMoment && departureMoment.isValid()) {
+                const transitDuration = moment.duration(departureMoment.diff(previousArrivalMoment));
+                if (transitDuration.asMinutes() > 0 && transitDuration.asHours() <= 48) {
+                    const hours = Math.floor(transitDuration.asHours());
+                    const minutes = transitDuration.minutes();
+                    precedingTransitTimeForThisSegment = `${hours}h ${minutes < 10 ? '0' : ''}${minutes}m`;
+                }
+            }
+            currentFlight = {
+                segment: parseInt(segmentNumStr, 10) || flightIndex,
+                airline: { code: airlineCode, name: airlineDatabase[airlineCode] || `Unknown Airline (${airlineCode})` },
+                // --- THIS IS THE MODIFIED LINE ---
+                flightNumber: flightNum,
+                travelClass: { code: travelClass || '', name: getTravelClassName(travelClass) },
+                date: departureMoment.isValid() ? departureMoment.format('dddd, DD MMM YYYY') : '',
+                departure: { 
+                    airport: depAirport, 
+                    city: depAirportInfo.city, 
+                    name: depAirportInfo.name,
+                    time: formatMomentTime(departureMoment, options.use24HourFormat) 
+                },
+                arrival: { 
+                    airport: arrAirport, 
+                    city: arrAirportInfo.city, 
+                    name: arrAirportInfo.name,
+                    time: formatMomentTime(arrivalMoment, options.use24HourFormat) 
+                },
+                duration: calculateAndFormatDuration(departureMoment, arrivalMoment),
+                aircraft: aircraftTypes[aircraftCodeKey] || aircraftCodeKey || '',
+                meal: mealCode, notes: [], operatedBy: null,
+                transitTime: precedingTransitTimeForThisSegment
+            };
+            previousArrivalMoment = arrivalMoment.clone();
+        } else if (currentFlight && operatedByMatch) {
+            currentFlight.operatedBy = operatedByMatch[1].trim();
+        } else if (currentFlight && line.trim().length > 0) {
+            currentFlight.notes.push(line.trim());
+        }
     }
-    return {
-        airlineDatabase: serializeTable('airlinesTable', ['name']),
-        aircraftTypes: serializeTable('aircraftTypesTable', ['name']),
-        airportDatabase: serializeTable('airportDatabaseTable', ['city', 'name', 'timezone'])
-    };
+    if (currentFlight) flights.push(currentFlight);
+    return { flights, passengers };
 }
-function addGenericEntry(tableId, columns) {
-    const tbody = document.getElementById(tableId).querySelector('tbody');
-    const tr = tbody.insertRow(0);
-    columns.forEach(col => {
-        const input = document.createElement('input');
-        input.type = 'text'; input.placeholder = col.charAt(0).toUpperCase() + col.slice(1);
-        input.dataset.key = col;
-        if(col === 'code') input.readOnly = false;
-        tr.insertCell().appendChild(input);
-    });
-    const deleteBtn = document.createElement('button');
-    deleteBtn.textContent = 'Delete'; deleteBtn.className = 'delete-btn';
-    deleteBtn.onclick = () => tr.remove();
-    tr.insertCell().appendChild(deleteBtn);
-}
-document.getElementById('addAirlineBtn')?.addEventListener('click', () => addGenericEntry('airlinesTable', ['code', 'name']));
-document.getElementById('addAircraftBtn')?.addEventListener('click', () => addGenericEntry('aircraftTypesTable', ['code', 'name']));
-document.getElementById('addAirportBtn')?.addEventListener('click', () => addGenericEntry('airportDatabaseTable', ['code', 'city', 'name', 'timezone']));
 
-async function saveAllChanges() {
-    const loadingSpinner = document.getElementById('loadingSpinner');
-    loadingSpinner.style.display = 'block';
-    const payload = serializeDevPanelData();
-    try {
-        const response = await fetch('/api/save-databases', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Server error');
-        alert(data.message);
-    } catch (error) {
-        console.error('Save error:', error);
-        alert(`Failed to save changes: ${error.message}`);
-    } finally {
-        loadingSpinner.style.display = 'none';
-    }
-}
-
-
-document.getElementById('saveAllDbChangesBtn').addEventListener('click', saveAllChanges);
-
-document.getElementById('pasteBtn')?.addEventListener('click', async () => {
-  try {
-    const text = await navigator.clipboard.readText();
-    const pnrInput = document.getElementById('pnrInput');
-    if (!text || text.trim() === '') {
-      pnrInput.focus();
-      return; 
-    }
-    pnrInput.value = text;
-    pnrInput.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
-    pnrInput.focus();
-  } catch (err) {
-    console.error('Failed to read clipboard contents: ', err);
-    alert('Could not paste from clipboard. Please ensure you have given the site permission.');
-  }
-});
-
-
-const debouncedConvert = debounce(convertPNR, 300);
-document.getElementById('pnrInput').addEventListener('input', () => debouncedConvert(false));
-document.getElementById('convertBtn').addEventListener('click', () => convertPNR(false));
-[...document.querySelectorAll('.options input, #currencySelect, #adultInput, #fareInput, #taxInput, #feeInput')].forEach(el => {
-    el.addEventListener(el.type === 'checkbox' || el.tagName === 'SELECT' ? 'change' : 'input', () => {
-        saveOptions();
-        debouncedConvert(false);
-    });
-});
-
-document.getElementById('screenshotBtn')?.addEventListener('click', async () => {
-    if (typeof html2canvas === 'undefined') { alert('Screenshot library not loaded.'); return; }
-    const outputEl = document.getElementById('output');
-    try {
-        const canvas = await html2canvas(outputEl, { backgroundColor: '#ffffff', scale: 2 });
-        canvas.toBlob(blob => navigator.clipboard.write([new ClipboardItem({'image/png': blob})]));
-        alert('Screenshot copied to clipboard!');
-    } catch (err) {
-        console.error('Screenshot failed:', err);
-        alert('Could not copy screenshot.');
-    }
-});
-
-document.getElementById('copyTextBtn')?.addEventListener('click', () => {
-    const outputContainer = document.querySelector('.output-container');
-    if (!outputContainer) return;
-    const textToCopy = outputContainer.innerText; 
-    navigator.clipboard.writeText(textToCopy).then(() => {
-        alert('Itinerary copied to clipboard as text!');
-    }).catch(err => {
-        console.error('Could not copy text: ', err);
-        alert('Failed to copy text.');
-    });
-});
-
-document.addEventListener('DOMContentLoaded', () => {
-    loadOptions();
-});
+module.exports = app;
