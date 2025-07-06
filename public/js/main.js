@@ -289,6 +289,7 @@ function displayResults(response, displayPnrOptions) {
             headerDiv.className = 'flight-header';
             let headerText = `${flight.date} - ${displayPnrOptions.showAirline ? (flight.airline?.name || 'Unknown Airline') : ''} ${flight.flightNumber} - ${flight.duration}`;
             if (displayPnrOptions.showAircraft && flight.aircraft) headerText += ` - ${flight.aircraft}`;
+            flight.operatedBy ? createDetailRow('Operated by', flight.operatedBy) : null;
             if (displayPnrOptions.showClass && flight.travelClass?.name) headerText += ` - ${flight.travelClass.name}`;
             headerDiv.textContent = headerText;
             detailsContainer.appendChild(headerDiv);
@@ -297,7 +298,6 @@ function displayResults(response, displayPnrOptions) {
                 createDetailRow('Departing', `${flight.departure?.airport} - ${flight.departure?.name} at ${flight.departure?.time}`),
                 createDetailRow('Arriving', `${flight.arrival?.airport} - ${flight.arrival?.name} at ${flight.arrival?.time}`),
                 displayPnrOptions.showMeal ? createDetailRow('Meal', getMealDescription(flight.meal)) : null,
-                flight.operatedBy ? createDetailRow('Operated by', flight.operatedBy) : null,
                 displayPnrOptions.showNotes && flight.notes?.length ? createDetailRow('Notes', flight.notes.join('; ')) : null,
             ].forEach(el => {
                 if (el) detailsContainer.appendChild(el);
