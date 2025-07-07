@@ -286,58 +286,6 @@
     </div>
   </div>
 
-  <div id="developerModePanel">
-    <h2>Developer Database Editor</h2>
-    <p>Activate by typing "developer" in the input. Save changes by typing "developermarja".</p>
-    
-    <button class="save-all-btn" id="saveAllDbChangesBtn">Save All Database Changes to Server</button>
-    <div id="airlinesEditor">
-      <h3>Airline Codes</h3>
-      <button class="add-btn" id="addAirlineBtn">Add New Airline</button>
-      <table class="db-table" id="airlinesTable">
-        <thead><tr><th>Code</th><th>Name</th><th>Action</th></tr></thead>
-        <tbody></tbody>
-      </table>
-    </div>
-
-    <div id="aircraftTypesEditor">
-      <h3>Aircraft Types</h3>
-      <button class="add-btn" id="addAircraftBtn">Add New Aircraft Type</button>
-      <table class="db-table" id="aircraftTypesTable">
-        <thead><tr><th>Code</th><th>Name</th><th>Action</th></tr></thead>
-        <tbody></tbody>
-      </table>
-    </div>
-
-    <div id="airportDatabaseEditor">
-      <h3>Airport Details</h3>
-      <button class="add-btn" id="addAirportBtn">Add New Airport</button>
-      <table class="db-table" id="airportDatabaseTable">
-        <thead><tr><th>Code</th><th>City</th><th>Name</th><th>Timezone</th><th>Action</th></tr></thead>
-        <tbody></tbody>
-      </table>
-    </div>
-   
-    <div id="logoEditor" style="margin-top: 30px;">
-      <h3>Airline Logo Management</h3>
-      <p>Upload new logos or update existing ones. Images will be saved using the Airline Code as the filename (e.g., BA.png, EK.svg).</p>
-      
-      <div>
-          <label for="logoAirlineCodeOrName">Airline Code or Name:</label>
-          <input type="text" id="logoAirlineCodeOrName" placeholder="e.g., BA or British Airways">
-      </div>
-      <div style="margin-top: 10px;">
-          <label for="logoFileInput">Select Logo File (PNG, SVG, JPG):</label>
-          <input type="file" id="logoFileInput" accept="image/png, image/svg+xml, image/jpeg">
-      </div>
-      <div style="margin-top: 10px;">
-          <img id="logoPreview" src="#" alt="Logo Preview" style="max-width: 150px; max-height: 60px; display: none; border: 1px solid #ccc; padding: 5px;">
-      </div>
-        <button id="uploadLogoBtn" style="margin-top: 15px; background-color: #007bff;">Upload/Update Logo</button>
-        <div id="logoUploadStatus" style="margin-top: 10px;"></div>
-    </div>
-  </div>
-
   <!-- NEW POPUP CONTAINER -->
   <div id="popupContainer" class="popup-notification-container"></div>
 
