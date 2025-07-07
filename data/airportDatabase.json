@@ -190,5 +190,6 @@
   "OAX": {"city": "Oaxaca", "name": "Xoxocotlán International Airport", "timezone": "America/Mexico_City"},
   "TUX": {"city": "Tuxtla Gutiérrez", "name": "Ángel Albino Corzo International Airport", "timezone": "America/Mexico_City"},
   "TGZ": {"city": "Tuxtla Gutiérrez", "name": "Ángel Albino Corzo International Airport", "timezone": "America/Mexico_City"},
-  "ADD": {"city": "Addis Ababa", "name": "Bole International Airport", "timezone": "Africa/Addis_Ababa"}
+  "ADD": {"city": "Addis Ababa", "name": "Bole International Airport", "timezone": "Africa/Addis_Ababa"},
+  "EBB": {"city": "Entebbe", "name": "Entebbe International Airport", "timezone": "Africa/Kampala"}
 }
