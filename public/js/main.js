@@ -110,7 +110,7 @@ function debounce(func, wait) {
     };
 }
 function getCurrencySymbol(currencyCode) {
-    const symbols = { USD: '$', EUR: '€', INR: '₹' };
+    const symbols = { USD: 'USD', EUR: 'EUR', INR: 'INR' };
     return symbols[currencyCode] || currencyCode || '';
 }
 
