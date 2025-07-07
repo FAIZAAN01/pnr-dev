@@ -186,5 +186,13 @@
   "VCV": "Convair CV-580",
   "YK2": "Yakovlev Yak-42",
   "YK4": "Yakovlev Yak-40",
-  "YS1": "NAMC YS-11"
+  "YS1": "NAMC YS-11",
+  "306": "Airbus A300-600",
+  "30B": "Airbus A300B2/B4",
+  "30F": "Airbus A300F (Freight)",
+  "E170": "Embraer 170",
+  "E175": "Embraer 175",
+  "E190": "Embraer 190",
+  "E195": "Embraer 195",
+  "M1F": "McDonnell Douglas MD-11F (Freight)"
 }
