@@ -40,20 +40,32 @@
         transform: translateX(0);
     }
 
-        /* --- ADD THESE NEW STYLES FOR THE MAIN LOGO --- */
+    /* --- UPDATED STYLES FOR THE MAIN LOGO AND TEXT --- */
     .itinerary-main-logo-container {
-      text-align: center; /* Center the logo */
+      display: flex;                 /* 1. Use Flexbox for layout */
+      justify-content: space-between;  /* 2. Push items to opposite ends */
+      align-items: center;             /* 3. Vertically align them */
       padding-bottom: 10px;
       margin-bottom: 10px;
-      border-bottom: 1px solid #eee; /* A subtle separator line */
+      border-bottom: 1px solid #eee;
     }
 
     .itinerary-main-logo {
       max-width: 150px;
-      max-height: 35px; /* Control the logo size */
+      max-height: 35px;
       object-fit: contain;
+      flex-shrink: 0; /* Prevents the logo from shrinking if text is long */
     }
-    /* --- END OF NEW STYLES --- */
+
+    /* New style for the text block */
+    .itinerary-logo-text {
+      font-size: 0.8em;
+      color: #555;
+      text-align: right; /* Aligns the text to the right within its own box */
+      line-height: 1.2;
+      margin-left: 15px; /* Adds space between logo and text */
+    }
+    /* --- END OF UPDATED STYLES --- */
 
     /* --- SLIGHT ADJUSTMENT TO EXISTING STYLE --- */
     /* Remove top border from passenger header if it's following the logo */
