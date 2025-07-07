@@ -86,31 +86,21 @@ app.post('/api/save-brand', limiter, async (req, res) => {
  */
 app.post('/api/convert', limiter, (req, res) => {
     try {
-        const { pnrText, options, fareDetails, developerModeTrigger } = req.body;
+        const { pnrText, options, fareDetails } = req.body;
         let pnrTextForProcessing = pnrText || '';
         let serverOptions = options || {};
-        
-        // This endpoint no longer handles saving data, just parsing.
         const result = pnrTextForProcessing ? parseGalileoEnhanced(pnrTextForProcessing, serverOptions) : { flights: [], passengers: [] };
-
         const responsePayload = {
             success: true, result, fareDetails,
             pnrProcessingAttempted: !!pnrTextForProcessing
         };
-        
-        // Developer mode still reads from the local files to show the data.
-        if (developerModeTrigger === 'developer') {
-            responsePayload.pnrDeveloperModeActive = true;
-            // The databases for the dev panel are the ones from the local files.
-            responsePayload.databases = { airlineDatabase, aircraftTypes, airportDatabase };
-        }
-
         return res.status(200).json(responsePayload);
     } catch (err) {
         console.error("Error during PNR conversion:", err.stack);
         return res.status(400).json({ success: false, error: err.message, result: { flights: [] } });
     }
 });
+
 
 // This endpoint remains disabled on Vercel's read-only file system.
 app.post('/api/upload-logo', limiter, async (req, res) => {
