@@ -1,5 +1,4 @@
 // --- GLOBAL STATE & KEYS ---
-let developerModeActiveOnClient = false;
 let allBrands = []; // Will hold the list of brands fetched from the server
 const OPTIONS_STORAGE_KEY = 'pnrConverterOptions';
 const LAST_BRAND_KEY = 'pnrLastSelectedBrand';
@@ -17,14 +16,11 @@ const CUSTOM_TEXT_KEY = 'pnrConverterCustomText';
 function showPopup(message, duration = 3000) {
     const container = document.getElementById('popupContainer');
     if (!container) return;
-
     const popup = document.createElement('div');
     popup.className = 'popup-notification';
     popup.textContent = message;
     container.appendChild(popup);
-
     setTimeout(() => { popup.classList.add('show'); }, 10);
-
     setTimeout(() => {
         popup.classList.remove('show');
         popup.addEventListener('transitionend', () => popup.remove());
@@ -45,7 +41,6 @@ function debounce(func, wait) {
         timeout = setTimeout(() => func.apply(context, args), wait);
     };
 }
-
 
 // --- LOCAL OPTIONS & BRANDING MANAGEMENT ---
 
@@ -73,7 +68,7 @@ function saveOptions() {
 }
 
 /**
- * Loads and applies user options from localStorage on page load.
+ * Loads and applies user options and local custom branding from localStorage on page load.
  */
 function loadOptions() {
     try {
@@ -92,6 +87,7 @@ function loadOptions() {
             if (savedOptions.currency) document.getElementById('currencySelect').value = savedOptions.currency;
         }
 
+        // Also load the user's locally saved custom branding
         const customLogoData = localStorage.getItem(CUSTOM_LOGO_KEY);
         const customTextData = localStorage.getItem(CUSTOM_TEXT_KEY);
         const logoPreview = document.getElementById('customLogoPreview');
@@ -142,7 +138,7 @@ async function loadBrands() {
             selector.value = lastBrandIndex;
             applySelectedBrand();
         } else {
-             // If no brand is pre-selected, still run convert once with default view
+            // If no brand is pre-selected, run convert once with the default view
             debouncedConvert();
         }
     } catch (error) {
@@ -160,6 +156,7 @@ function applySelectedBrand() {
     const textInput = document.getElementById('customTextInput');
 
     if (selectedIndex === 'default' || !allBrands[selectedIndex]) {
+        // When "Select a Brand" is chosen, clear the local storage for custom branding
         localStorage.removeItem(CUSTOM_LOGO_KEY);
         localStorage.removeItem(CUSTOM_TEXT_KEY);
         logoPreview.style.display = 'none';
@@ -167,6 +164,7 @@ function applySelectedBrand() {
         textInput.value = '';
     } else {
         const selectedBrand = allBrands[selectedIndex];
+        // When a shared brand is chosen, save it to local storage and update the inputs
         localStorage.setItem(CUSTOM_LOGO_KEY, selectedBrand.logo);
         localStorage.setItem(CUSTOM_TEXT_KEY, selectedBrand.text);
         logoPreview.src = selectedBrand.logo;
@@ -183,10 +181,10 @@ async function saveNewBrand() {
         return;
     }
 
-    const logoDataUrl = document.getElementById('customLogoPreview').src;
-    const textData = document.getElementById('customTextInput').value;
+    const logoDataUrl = localStorage.getItem(CUSTOM_LOGO_KEY);
+    const textData = localStorage.getItem(CUSTOM_TEXT_KEY);
 
-    if (!logoDataUrl.startsWith('data:image') || !textData) {
+    if (!logoDataUrl || !textData) {
         showPopup("Please upload a logo and add text before saving.");
         return;
     }
@@ -254,10 +252,6 @@ async function convertPNR() {
             currency: document.getElementById('currencySelect').value
         }
     };
-    
-    if (rawInput.toLowerCase().includes("developer")) {
-        payload.developerModeTrigger = "developer";
-    }
 
     try {
         const response = await fetch('/api/convert', {
@@ -270,14 +264,6 @@ async function convertPNR() {
         if (!response.ok) throw new Error(data.error || `Server error: ${response.status} ${response.statusText}`);
         
         displayResults(data, clientPnrDisplayOptions);
-        
-        const developerPanel = document.getElementById('developerModePanel');
-        if (data.pnrDeveloperModeActive && data.databases) {
-            renderDeveloperPanel(data.databases);
-            developerPanel.style.display = 'block';
-        } else {
-            developerPanel.style.display = 'none';
-        }
     
     } catch (error) {
         console.error('Conversion error:', error);
@@ -378,6 +364,11 @@ function displayResults(response, displayPnrOptions) {
                 return detailDiv;
             }
 
+            function getMealDescription(mealCode) {
+                 const mealMap = {'B':'Breakfast','L':'Lunch','D':'Dinner','S':'Snack','M':'Meal'};
+                 return mealMap[mealCode] || `Code ${mealCode}`;
+            }
+
             const flightContentDiv = document.createElement('div');
             flightContentDiv.className = 'flight-content';
 
@@ -418,6 +409,7 @@ function displayResults(response, displayPnrOptions) {
         }
         
         const { fare, tax, fee, adult, currency } = response.fareDetails || {};
+        const getCurrencySymbol = (code) => ({ USD: '$', EUR: '€', INR: '₹' }[code] || code);
         if (fare || tax || fee) {
             const fareValue = parseFloat(fare) || 0, taxValue = parseFloat(tax) || 0, feeValue = parseFloat(fee) || 0;
             const adultCount = parseInt(adult) || 1, currencySymbol = getCurrencySymbol(currency);
@@ -452,6 +444,7 @@ function displayResults(response, displayPnrOptions) {
     }
 }
 
+
 // --- EVENT LISTENERS ---
 
 const debouncedConvert = debounce(convertPNR, 300);
@@ -461,21 +454,17 @@ document.addEventListener('DOMContentLoaded', () => {
     loadBrands();
 });
 
+// Brand Management Listeners
 document.getElementById('brandSelector')?.addEventListener('change', applySelectedBrand);
 document.getElementById('saveAsBrandBtn')?.addEventListener('click', saveNewBrand);
 document.getElementById('clearCustomBrandingBtn')?.addEventListener('click', () => {
-    if (confirm('Are you sure you want to clear the current custom branding? This will select "Default Branding".')) {
+    if (confirm('Are you sure you want to clear your custom branding? This will select "Default Branding".')) {
         document.getElementById('brandSelector').value = 'default';
         applySelectedBrand();
     }
 });
 
-document.getElementById('showItineraryLogo')?.addEventListener('change', () => {
-    toggleCustomBrandingSection();
-    saveOptions();
-    debouncedConvert();
-});
-
+// Custom Branding Input Listeners
 document.getElementById('customLogoInput')?.addEventListener('change', (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -484,41 +473,39 @@ document.getElementById('customLogoInput')?.addEventListener('change', (event) =
         const dataUrl = e.target.result;
         document.getElementById('customLogoPreview').src = dataUrl;
         document.getElementById('customLogoPreview').style.display = 'block';
-        localStorage.setItem(CUSTOM_LOGO_KEY, dataUrl); // Save to local storage for persistence
+        localStorage.setItem(CUSTOM_LOGO_KEY, dataUrl);
         debouncedConvert();
     };
     reader.readAsDataURL(file);
 });
-
 document.getElementById('customTextInput')?.addEventListener('input', (event) => {
     localStorage.setItem(CUSTOM_TEXT_KEY, event.target.value);
     debouncedConvert();
 });
 
+// Main Action Button Listeners
 document.getElementById('pasteBtn')?.addEventListener('click', async () => {
   try {
     const text = await navigator.clipboard.readText();
-    document.getElementById('pnrInput').value = text;
-    convertPNR(); // Convert immediately on paste
+    document.getElementById('pnrInput').value = text || '';
+    convertPNR(); // Convert immediately
   } catch (err) {
     console.error('Failed to read clipboard contents: ', err);
     showPopup('Could not paste from clipboard.');
   }
 });
-
 document.getElementById('pnrInput').addEventListener('input', debouncedConvert);
 document.getElementById('convertBtn').addEventListener('click', convertPNR);
 
-// Generic listener for all other options
+// Generic Listener for all other options
 [...document.querySelectorAll('.options input, #currencySelect, #adultInput, #fareInput, #taxInput, #feeInput')].forEach(el => {
-    if (el.id !== 'showItineraryLogo') {
-        el.addEventListener('change', () => {
-            saveOptions();
-            debouncedConvert();
-        });
-    }
+    el.addEventListener('change', () => {
+        saveOptions();
+        debouncedConvert();
+    });
 });
 
+// Output Action Buttons
 document.getElementById('screenshotBtn')?.addEventListener('click', async () => {
     if (typeof html2canvas === 'undefined') return showPopup('Screenshot library not loaded.');
     const outputEl = document.getElementById('output');
@@ -531,7 +518,6 @@ document.getElementById('screenshotBtn')?.addEventListener('click', async () => 
         showPopup('Could not copy screenshot.');
     }
 });
-
 document.getElementById('copyTextBtn')?.addEventListener('click', () => {
     const outputContainer = document.querySelector('.output-container');
     if (!outputContainer) return;
