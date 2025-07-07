@@ -189,5 +189,6 @@
   "HUX": {"city": "Huatulco", "name": "Bahías de Huatulco International Airport", "timezone": "America/Mexico_City"},
   "OAX": {"city": "Oaxaca", "name": "Xoxocotlán International Airport", "timezone": "America/Mexico_City"},
   "TUX": {"city": "Tuxtla Gutiérrez", "name": "Ángel Albino Corzo International Airport", "timezone": "America/Mexico_City"},
-  "TGZ": {"city": "Tuxtla Gutiérrez", "name": "Ángel Albino Corzo International Airport", "timezone": "America/Mexico_City"}
+  "TGZ": {"city": "Tuxtla Gutiérrez", "name": "Ángel Albino Corzo International Airport", "timezone": "America/Mexico_City"},
+  "ADD": {"city": "Addis Ababa", "name": "Bole International Airport", "timezone": "Africa/Addis_Ababa"}
 }
