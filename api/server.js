@@ -54,32 +54,29 @@ const limiter = rateLimit({
     message: { success: false, error: "Too many requests, please try again later.", result: { flights: [] } }
 });
 
+// --- TO (The new, simplified function) ---
 app.post('/api/convert', (req, res) => {
     try {
-        const { pnrText, options, fareDetails, developerModeTrigger, updatedDatabases } = req.body;
-        let pnrTextForProcessing = pnrText || '';
-        let serverOptions = options || {};
-        let developerSave = false;
-
-        if ((developerModeTrigger === "save_databases" || developerModeTrigger === "developermarja") && updatedDatabases) {
-            console.warn("NOTE: Filesystem is read-only on Vercel. Changes will not persist.");
-            developerSave = true;
-        }
+        const { pnrText, options, fareDetails } = req.body;
         
-        const result = pnrTextForProcessing ? parseGalileoEnhanced(pnrTextForProcessing, serverOptions) : { flights: [], passengers: [] };
+        // Use provided PNR text or an empty string if null/undefined
+        const pnrTextForProcessing = pnrText || '';
+        const serverOptions = options || {};
+        
+        // Parse the PNR or return an empty structure if no text is provided
+        const result = pnrTextForProcessing 
+            ? parseGalileoEnhanced(pnrTextForProcessing, serverOptions) 
+            : { flights: [], passengers: [] };
 
         const responsePayload = {
-            success: true, result, fareDetails,
-            message: developerSave ? "Database 'save' simulated. Changes are not persistent on Vercel." : null,
+            success: true,
+            result,
+            fareDetails,
             pnrProcessingAttempted: !!pnrTextForProcessing
         };
         
-        if (developerModeTrigger === 'developer' || developerModeTrigger === 'developermarja' || developerSave) {
-            responsePayload.pnrDeveloperModeActive = true;
-            responsePayload.databases = { airlineDatabase, aircraftTypes, airportDatabase };
-        }
-
         return res.status(200).json(responsePayload);
+
     } catch (err) {
         console.error("Error during PNR conversion:", err.stack);
         return res.status(400).json({ success: false, error: err.message, result: { flights: [] } });
@@ -169,7 +166,6 @@ function parseGalileoEnhanced(pnrText, options) {
             flightIndex++;
             let precedingTransitTimeForThisSegment = null;
             const [, segmentNumStr, airlineCode, flightNumRaw, travelClass, depDateStr, depAirport, arrAirport, depTimeStr, arrTimeStr, arrDateStrOrNextDayIndicator] = flightMatch;
-            const flightNum = flightNumRaw;
             const flightDetailsPart = line.substring(flightMatch[0].length).trim();
             const detailsParts = flightDetailsPart.split(/\s+/);
             const aircraftCodeKey = detailsParts.find(p => p.toUpperCase() in aircraftTypes);
@@ -203,7 +199,7 @@ function parseGalileoEnhanced(pnrText, options) {
                 segment: parseInt(segmentNumStr, 10) || flightIndex,
                 airline: { code: airlineCode, name: airlineDatabase[airlineCode] || `Unknown Airline (${airlineCode})` },
                 // --- THIS IS THE MODIFIED LINE ---
-                flightNumber: flightNum,
+                flightNumber: flightNumRaw,
                 travelClass: { code: travelClass || '', name: getTravelClassName(travelClass) },
                 date: departureMoment.isValid() ? departureMoment.format('dddd, DD MMM YYYY') : '',
                 departure: { 

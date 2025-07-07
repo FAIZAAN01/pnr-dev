@@ -1,4 +1,3 @@
-let developerModeActiveOnClient = false;
 const OPTIONS_STORAGE_KEY = 'pnrConverterOptions';
 
 //------------logog and custom text ---
@@ -114,59 +113,39 @@ function getCurrencySymbol(currencyCode) {
     return symbols[currencyCode] || currencyCode || '';
 }
 
+// --- TO (The new, simplified function) ---
 async function convertPNR() {
     const output = document.getElementById('output');
     const loadingSpinner = document.getElementById('loadingSpinner');
     const screenshotBtn = document.getElementById('screenshotBtn');
     const copyTextBtn = document.getElementById('copyTextBtn');
-    let rawInput = document.getElementById('pnrInput').value;
     
-    let pnrTextForServer = rawInput;
-    let developerModeTrigger = "none";
-    let payload = {};
-
     loadingSpinner.style.display = 'block';
     screenshotBtn.style.display = 'none';
     copyTextBtn.style.display = 'none';
-    
     output.innerHTML = ''; 
-  
-    if (rawInput.toLowerCase().includes("developermarja")) {
-        developerModeTrigger = "developermarja";
-        pnrTextForServer = rawInput.replace(/developermarja/gi, '').trim(); 
-        payload.updatedDatabases = serializeDevPanelData();
-        developerModeActiveOnClient = true; 
-    } else if (rawInput.toLowerCase().includes("developer")) {
-        developerModeTrigger = "developer";
-        pnrTextForServer = rawInput.replace(/developer/gi, '').trim(); 
-        developerModeActiveOnClient = true; 
-    } else {
-        pnrTextForServer = rawInput.replace(/developer|developermarja|save_databases/gi, '').trim();
-    }
-    
-    const clientPnrDisplayOptions = {
-        showItineraryLogo: document.getElementById('showItineraryLogo').checked,
-        showAirline: document.getElementById('showAirline').checked,
-        showAircraft: document.getElementById('showAircraft').checked,
-        showOperatedBy: document.getElementById('showOperatedBy').checked,
-        showClass: document.getElementById('showClass').checked,
-        showMeal: document.getElementById('showMeal').checked,
-        showNotes: document.getElementById('showNotes').checked,
-        showTransit: document.getElementById('showTransit').checked,
-        use24HourFormat: document.getElementById('use24HourFormat').checked,
-        developerMode: developerModeActiveOnClient
-    };
 
-    payload.pnrText = pnrTextForServer; 
-    payload.options = clientPnrDisplayOptions;
-    payload.fareDetails = {
-        fare: document.getElementById('fareInput').value,
-        tax: document.getElementById('taxInput').value,
-        fee: document.getElementById('feeInput').value,
-        adult: document.getElementById('adultInput').value,
-        currency: document.getElementById('currencySelect').value
+    const payload = {
+        pnrText: document.getElementById('pnrInput').value,
+        options: {
+            showItineraryLogo: document.getElementById('showItineraryLogo').checked,
+            showAirline: document.getElementById('showAirline').checked,
+            showAircraft: document.getElementById('showAircraft').checked,
+            showOperatedBy: document.getElementById('showOperatedBy').checked,
+            showClass: document.getElementById('showClass').checked,
+            showMeal: document.getElementById('showMeal').checked,
+            showNotes: document.getElementById('showNotes').checked,
+            showTransit: document.getElementById('showTransit').checked,
+            use24HourFormat: document.getElementById('use24HourFormat').checked,
+        },
+        fareDetails: {
+            fare: document.getElementById('fareInput').value,
+            tax: document.getElementById('taxInput').value,
+            fee: document.getElementById('feeInput').value,
+            adult: document.getElementById('adultInput').value,
+            currency: document.getElementById('currencySelect').value
+        }
     };
-    payload.developerModeTrigger = developerModeTrigger;
 
     try {
         const response = await fetch('/api/convert', {
@@ -175,24 +154,13 @@ async function convertPNR() {
             body: JSON.stringify(payload)
         });
 
-        let data = await response.json();
+        const data = await response.json();
         if (!response.ok) {
-            throw new Error(data.error || `Server error: ${response.status} ${response.statusText}`);
+            throw new Error(data.error || `Server error: ${response.status}`);
         }
         
-        const pnrDisplayDevMode = data.pnrDeveloperModeActive || false;
-    
-        if (data.pnrProcessingAttempted || data.databases) {
-            displayResults(data, {...clientPnrDisplayOptions, developerMode: pnrDisplayDevMode });
-        }
-    
-        if (data.databases) {
-            renderDeveloperPanel(data.databases);
-            document.getElementById('developerModePanel').style.display = 'block';
-            developerModeActiveOnClient = true;
-        } else if (developerModeTrigger !== "developer" && developerModeTrigger !== "developermarja") {
-            document.getElementById('developerModePanel').style.display = 'none';
-            developerModeActiveOnClient = false;
+        if (data.pnrProcessingAttempted) {
+            displayResults(data, payload.options);
         }
     
     } catch (error) {
@@ -208,10 +176,6 @@ function displayResults(response, displayPnrOptions) {
     const screenshotBtn = document.getElementById('screenshotBtn');
     const copyTextBtn = document.getElementById('copyTextBtn');
     output.innerHTML = '';
-
-    if (displayPnrOptions.developerMode) {
-        output.appendChild(createDevBanner("PNR Processed in Dev Context"));
-    }
 
     if (!response.success) {
         output.innerHTML += `<div class="error">${response.error || 'Conversion failed.'}</div>`;
@@ -418,133 +382,15 @@ document.getElementById('clearCustomBrandingBtn')?.addEventListener('click', () 
     }
 });
 
-// Setup and Event Listeners
-function createDevBanner(message) {
-    const banner = document.createElement('div');
-    banner.className = 'dev-banner';
-    banner.textContent = message;
-    return banner;
-}
 function getMealDescription(mealCode) {
-    const mealMap = {'B':'Breakfast','L':'Lunch','D':'Dinner','S':'Snack','M':'Meal'};
+    const mealMap = {
+        'B': 'Breakfast', 'L': 'Lunch', 'D': 'Dinner', 'S': 'Snack', 'M': 'Meal',
+        'H': 'Hot Meal', 'C': 'Cold Meal', 'R': 'Refreshment', 'K': 'Kosher Meal',
+        'V': 'Vegetarian Meal', 'F': 'Food for Purchase', 'O': 'No Meal Service'
+        // Add other relevant codes as needed
+    };
     return mealMap[mealCode] || `Code ${mealCode}`;
 }
-
-// Developer Panel rendering and data serialization
-let currentDevDBs = {};
-function renderDeveloperPanel(databases) {
-    currentDevDBs = databases;
-    renderSimpleDbTable('airlinesTable', databases.airlineDatabase, ['code', 'name']);
-    renderSimpleDbTable('aircraftTypesTable', databases.aircraftTypes, ['code', 'name']);
-    renderAirportDbTable('airportDatabaseTable', databases.airportDatabase);
-    if(databases.airlineDatabase) window.currentAirlineDatabaseForDevPanel = databases.airlineDatabase;
-}
-function renderSimpleDbTable(tableId, data, columns) {
-    const tbody = document.getElementById(tableId).querySelector('tbody');
-    tbody.innerHTML = '';
-    Object.entries(data).forEach(([key, value]) => {
-        const tr = tbody.insertRow();
-        const rowData = { code: key, name: value };
-        columns.forEach(colKey => {
-            const input = document.createElement('input');
-            input.type = 'text'; input.value = rowData[colKey];
-            input.dataset.key = colKey;
-            if(colKey === 'code') input.readOnly = true;
-            tr.insertCell().appendChild(input);
-        });
-        const deleteBtn = document.createElement('button');
-        deleteBtn.textContent = 'Delete'; deleteBtn.className = 'delete-btn';
-        deleteBtn.onclick = () => tr.remove();
-        tr.insertCell().appendChild(deleteBtn);
-    });
-}
-function renderAirportDbTable(tableId, data) {
-    const tbody = document.getElementById(tableId).querySelector('tbody');
-    tbody.innerHTML = '';
-    Object.entries(data).forEach(([key, value]) => {
-        const tr = tbody.insertRow();
-        const rowData = { code: key, ...value };
-        ['code', 'city', 'name', 'timezone'].forEach(colKey => {
-             const input = document.createElement('input');
-             input.type = 'text'; input.value = rowData[colKey] || '';
-             input.dataset.key = colKey;
-             if(colKey === 'code') input.readOnly = true;
-             tr.insertCell().appendChild(input);
-        });
-        const deleteBtn = document.createElement('button');
-        deleteBtn.textContent = 'Delete'; deleteBtn.className = 'delete-btn';
-        deleteBtn.onclick = () => tr.remove();
-        tr.insertCell().appendChild(deleteBtn);
-    });
-}
-function serializeDevPanelData() {
-    const serializeTable = (tableId, keys) => {
-        const data = {};
-        const tbody = document.getElementById(tableId).tBodies[0];
-        for (const row of tbody.rows) {
-            const codeInput = row.querySelector('input[data-key="code"]');
-            if (codeInput && codeInput.value.trim()) {
-                const code = codeInput.value.trim().toUpperCase();
-                if (keys.length === 1) {
-                    data[code] = row.querySelector(`input[data-key="${keys[0]}"]`).value.trim();
-                } else {
-                    data[code] = {};
-                    keys.forEach(k => {
-                        data[code][k] = row.querySelector(`input[data-key="${k}"]`)?.value.trim() || '';
-                    });
-                }
-            }
-        }
-        return data;
-    }
-    return {
-        airlineDatabase: serializeTable('airlinesTable', ['name']),
-        aircraftTypes: serializeTable('aircraftTypesTable', ['name']),
-        airportDatabase: serializeTable('airportDatabaseTable', ['city', 'name', 'timezone'])
-    };
-}
-function addGenericEntry(tableId, columns) {
-    const tbody = document.getElementById(tableId).querySelector('tbody');
-    const tr = tbody.insertRow(0);
-    columns.forEach(col => {
-        const input = document.createElement('input');
-        input.type = 'text'; input.placeholder = col.charAt(0).toUpperCase() + col.slice(1);
-        input.dataset.key = col;
-        if(col === 'code') input.readOnly = false;
-        tr.insertCell().appendChild(input);
-    });
-    const deleteBtn = document.createElement('button');
-    deleteBtn.textContent = 'Delete'; deleteBtn.className = 'delete-btn';
-    deleteBtn.onclick = () => tr.remove();
-    tr.insertCell().appendChild(deleteBtn);
-}
-document.getElementById('addAirlineBtn')?.addEventListener('click', () => addGenericEntry('airlinesTable', ['code', 'name']));
-document.getElementById('addAircraftBtn')?.addEventListener('click', () => addGenericEntry('aircraftTypesTable', ['code', 'name']));
-document.getElementById('addAirportBtn')?.addEventListener('click', () => addGenericEntry('airportDatabaseTable', ['code', 'city', 'name', 'timezone']));
-
-async function saveAllChanges() {
-    const loadingSpinner = document.getElementById('loadingSpinner');
-    loadingSpinner.style.display = 'block';
-    const payload = serializeDevPanelData();
-    try {
-        const response = await fetch('/api/save-databases', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Server error');
-        showPopup(data.message); // Use popup instead of alert
-    } catch (error) {
-        console.error('Save error:', error);
-        showPopup(`Failed to save changes: ${error.message}`); // Use popup for errors too
-    } finally {
-        loadingSpinner.style.display = 'none';
-    }
-}
-
-
-document.getElementById('saveAllDbChangesBtn').addEventListener('click', saveAllChanges);
 
 document.getElementById('pasteBtn')?.addEventListener('click', async () => {
   try {
