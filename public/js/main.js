@@ -322,7 +322,6 @@ function displayResults(response, displayPnrOptions) {
             let headerText = `${flight.date} - ${displayPnrOptions.showAirline ? (flight.airline?.name || 'Unknown Airline') : ''} ${flight.flightNumber} - ${flight.duration}`;
             if (displayPnrOptions.showAircraft && flight.aircraft) headerText += ` - ${flight.aircraft}`;
             if (displayPnrOptions.showClass && flight.travelClass?.name) headerText += ` - ${flight.travelClass.name}`;
-            headerText += '   ';
             headerDiv.textContent = headerText;
             detailsContainer.appendChild(headerDiv);
 
