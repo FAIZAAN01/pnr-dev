@@ -75,30 +75,51 @@
     }
     textarea#pnrInput { width: 100%; height: 100px; padding: 12px; border: 1px solid #ddd; border-radius: 4px; font-family: Raleway,sans-serif; resize: vertical; box-sizing: border-box; }
     
-    /* --- UPDATED LOGO CONTAINER STYLES --- */
-    .itinerary-main-logo-container {
-      display: flex; /* Use Flexbox for layout */
-      justify-content: space-between; /* Pushes logo to left and text to right */
-      align-items: left; /* Vertically aligns logo and text */
-      padding-bottom: 5px;
-      margin-bottom: 3px;
-      border-bottom: 1px solid #eee;
+    /* Add these new rules inside your main <style> block */
+
+    #customBrandingSection {
+        margin-top: 15px;
+        padding-top: 15px;
+        border-top: 1px solid #e0e0e0;
     }
 
-    .itinerary-main-logo {
-      max-width: 150px;
-      max-height: 35px;
-      object-fit: contain;
-      flex-shrink: 0; /* Prevents the logo from shrinking */
+    #customBrandingSection.hidden {
+        display: none;
     }
 
-    /* Style for the new text block */
-    .itinerary-logo-text {
-      font-size: 0.8em;
-      color: #363636;
-      text-align: right; /* Aligns the text to the right within its container */
-      line-height: 1.2;
-      margin: 5px 10px 0 15px; /* Adds some space between the logo and text */
+    .custom-branding-input {
+        margin-bottom: 15px;
+    }
+
+    .custom-branding-input label {
+        font-weight: 500;
+        margin-bottom: 5px;
+    }
+
+    .custom-branding-input input[type="file"],
+    .custom-branding-input textarea {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 6px;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+    }
+
+    .custom-logo-preview {
+        max-height: 40px;
+        max-width: 150px;
+        margin-top: 8px;
+        display: none; /* Hidden by default */
+        border: 1px solid #ddd;
+        padding: 3px;
+        border-radius: 4px;
+    }
+
+    .clear-btn {
+        background-color: #e74c3c; /* Red color */
+        padding: 6px 12px;
+        font-size: 0.9em;
+        margin-top: 0;
     }
 
     /* Button Specifics */
@@ -212,6 +233,19 @@
         <label><input type="checkbox" id="showNotes"> Show Notes</label>
         <label><input type="checkbox" id="showTransit" checked> Show Transit Times</label>
         <label><input type="checkbox" id="use24HourFormat" checked> Use 24-Hour Time</label>
+      </div>
+      <div id="customBrandingSection">
+        <div class="custom-branding-input">
+          <label for="customLogoInput">Custom Logo:</label>
+          <input type="file" id="customLogoInput" accept="image/png, image/jpeg, image/gif">
+          <img id="customLogoPreview" alt="Logo Preview" class="custom-logo-preview">
+        </div>
+        <div class="custom-branding-input">
+          <label for="customTextInput">Custom Text (use <br> for line breaks):</label>
+          <textarea id="customTextInput" rows="3" placeholder="Your Company Name
+    Contact: +1 234 567 890"></textarea>
+        </div>
+        <button id="clearCustomBrandingBtn" class="clear-btn">Clear Custom Branding</button>
       </div>
     </div>
   </div>

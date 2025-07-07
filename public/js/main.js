@@ -1,6 +1,10 @@
 let developerModeActiveOnClient = false;
 const OPTIONS_STORAGE_KEY = 'pnrConverterOptions';
 
+//------------logog and custom text ---
+const CUSTOM_LOGO_KEY = 'pnrConverterCustomLogo';
+const CUSTOM_TEXT_KEY = 'pnrConverterCustomText';
+
 // --- NEW POPUP NOTIFICATION FUNCTION ---
 function showPopup(message, duration = 3000) {
     const container = document.getElementById('popupContainer');
@@ -55,28 +59,47 @@ function saveOptions() {
 function loadOptions() {
     try {
         const savedOptionsJSON = localStorage.getItem(OPTIONS_STORAGE_KEY);
-        if (!savedOptionsJSON) return;
+        if (savedOptionsJSON) {
+            const savedOptions = JSON.parse(savedOptionsJSON);
+            document.getElementById('showItineraryLogo').checked = savedOptions.showItineraryLogo ?? true;
+            document.getElementById('showAirline').checked = savedOptions.showAirline ?? true;
+            document.getElementById('showAircraft').checked = savedOptions.showAircraft ?? true;
+            document.getElementById('showClass').checked = savedOptions.showClass ?? false;
+            document.getElementById('showMeal').checked = savedOptions.showMeal ?? false;
+            document.getElementById('showNotes').checked = savedOptions.showNotes ?? false;
+            document.getElementById('showTransit').checked = savedOptions.showTransit ?? true;
+            document.getElementById('use24HourFormat').checked = savedOptions.use24HourFormat ?? true;
+            if (savedOptions.currency) document.getElementById('currencySelect').value = savedOptions.currency;
+        }
 
-        const savedOptions = JSON.parse(savedOptionsJSON);
+        // Load custom branding
+        const customLogoData = localStorage.getItem(CUSTOM_LOGO_KEY);
+        const customTextData = localStorage.getItem(CUSTOM_TEXT_KEY);
+        const logoPreview = document.getElementById('customLogoPreview');
+        if (customLogoData && logoPreview) {
+            logoPreview.src = customLogoData;
+            logoPreview.style.display = 'block';
+        }
+        if (customTextData) {
+            document.getElementById('customTextInput').value = customTextData;
+        }
 
-        document.getElementById('showItineraryLogo').checked = savedOptions.showItineraryLogo ?? true;
-        document.getElementById('showAirline').checked = savedOptions.showAirline ?? true;
-        document.getElementById('showAircraft').checked = savedOptions.showAircraft ?? true;
-        document.getElementById('showOperatedBy').checked = savedOptions.showOperatedBy ?? true;
-        document.getElementById('showClass').checked = savedOptions.showClass ?? false;
-        document.getElementById('showMeal').checked = savedOptions.showMeal ?? false;
-        document.getElementById('showNotes').checked = savedOptions.showNotes ?? false;
-        document.getElementById('showTransit').checked = savedOptions.showTransit ?? true;
-        document.getElementById('use24HourFormat').checked = savedOptions.use24HourFormat ?? true;
-
-        if (savedOptions.currency) document.getElementById('currencySelect').value = savedOptions.currency;
-        
+        toggleCustomBrandingSection(); // Set initial visibility
     } catch (e) {
         console.error("Failed to load/parse options from localStorage:", e);
-        localStorage.removeItem(OPTIONS_STORAGE_KEY);
     }
 }
 
+// --- NEW: Function to toggle visibility of the custom branding section ---
+function toggleCustomBrandingSection() {
+    const showLogoCheckbox = document.getElementById('showItineraryLogo');
+    const brandingSection = document.getElementById('customBrandingSection');
+    if (showLogoCheckbox.checked) {
+        brandingSection.classList.remove('hidden');
+    } else {
+        brandingSection.classList.add('hidden');
+    }
+}
 
 function debounce(func, wait) {
     let timeout;
@@ -210,18 +233,25 @@ function displayResults(response, displayPnrOptions) {
     const outputContainer = document.createElement('div');
     outputContainer.className = 'output-container';
 
+    // UPDATED LOGIC TO USE SAVED/DEFAULT LOGO AND TEXT
     if (flights.length > 0 && displayPnrOptions.showItineraryLogo) {
         const logoContainer = document.createElement('div');
         logoContainer.className = 'itinerary-main-logo-container';
+
         const logoImg = document.createElement('img');
         logoImg.className = 'itinerary-main-logo';
-        logoImg.src = '/simbavoyages.png';
+        // Use custom logo from localStorage, or fall back to default
+        logoImg.src = localStorage.getItem(CUSTOM_LOGO_KEY) || '/simbavoyages.png';
         logoImg.alt = 'Itinerary Logo';
         logoContainer.appendChild(logoImg);
+
         const logoText = document.createElement('div');
         logoText.className = 'itinerary-logo-text';
-        logoText.innerHTML = "KN2 Ave 26, Nyarugenge Dist, Muhima <br>Kigali Rwanda";
+        // Use custom text from localStorage, or fall back to default
+        const customText = localStorage.getItem(CUSTOM_TEXT_KEY);
+        logoText.innerHTML = customText || "Lorem ipsum dolor sit amet,<br>consectetur adipiscing elit.";
         logoContainer.appendChild(logoText);
+        
         outputContainer.appendChild(logoContainer);
     }
     
@@ -346,6 +376,48 @@ function displayResults(response, displayPnrOptions) {
     }
 }
 
+// NEW: Event listener for the main logo toggle
+document.getElementById('showItineraryLogo')?.addEventListener('change', () => {
+    toggleCustomBrandingSection();
+    saveOptions(); // Save the state of the checkbox
+});
+
+// NEW: Event listener for the custom logo file input
+document.getElementById('customLogoInput')?.addEventListener('change', (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const dataUrl = e.target.result;
+        localStorage.setItem(CUSTOM_LOGO_KEY, dataUrl);
+        const logoPreview = document.getElementById('customLogoPreview');
+        logoPreview.src = dataUrl;
+        logoPreview.style.display = 'block';
+        showPopup('Custom logo saved!');
+        debouncedConvert(false); // Auto-refresh the itinerary
+    };
+    reader.readAsDataURL(file);
+});
+
+// NEW: Event listener for the custom text input
+document.getElementById('customTextInput')?.addEventListener('input', (event) => {
+    localStorage.setItem(CUSTOM_TEXT_KEY, event.target.value);
+    // No need to call convert here, we can let the debounce handle it
+});
+
+// NEW: Event listener to clear custom branding
+document.getElementById('clearCustomBrandingBtn')?.addEventListener('click', () => {
+    if (confirm('Are you sure you want to clear your saved logo and text?')) {
+        localStorage.removeItem(CUSTOM_LOGO_KEY);
+        localStorage.removeItem(CUSTOM_TEXT_KEY);
+        document.getElementById('customLogoInput').value = '';
+        document.getElementById('customTextInput').value = '';
+        document.getElementById('customLogoPreview').style.display = 'none';
+        showPopup('Custom branding cleared.');
+        debouncedConvert(false);
+    }
+});
 
 // Setup and Event Listeners
 function createDevBanner(message) {
@@ -362,19 +434,90 @@ function getMealDescription(mealCode) {
 // Developer Panel rendering and data serialization
 let currentDevDBs = {};
 function renderDeveloperPanel(databases) {
-    // ... (rest of function is unchanged)
+    currentDevDBs = databases;
+    renderSimpleDbTable('airlinesTable', databases.airlineDatabase, ['code', 'name']);
+    renderSimpleDbTable('aircraftTypesTable', databases.aircraftTypes, ['code', 'name']);
+    renderAirportDbTable('airportDatabaseTable', databases.airportDatabase);
+    if(databases.airlineDatabase) window.currentAirlineDatabaseForDevPanel = databases.airlineDatabase;
 }
 function renderSimpleDbTable(tableId, data, columns) {
-    // ... (rest of function is unchanged)
+    const tbody = document.getElementById(tableId).querySelector('tbody');
+    tbody.innerHTML = '';
+    Object.entries(data).forEach(([key, value]) => {
+        const tr = tbody.insertRow();
+        const rowData = { code: key, name: value };
+        columns.forEach(colKey => {
+            const input = document.createElement('input');
+            input.type = 'text'; input.value = rowData[colKey];
+            input.dataset.key = colKey;
+            if(colKey === 'code') input.readOnly = true;
+            tr.insertCell().appendChild(input);
+        });
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = 'Delete'; deleteBtn.className = 'delete-btn';
+        deleteBtn.onclick = () => tr.remove();
+        tr.insertCell().appendChild(deleteBtn);
+    });
 }
 function renderAirportDbTable(tableId, data) {
-    // ... (rest of function is unchanged)
+    const tbody = document.getElementById(tableId).querySelector('tbody');
+    tbody.innerHTML = '';
+    Object.entries(data).forEach(([key, value]) => {
+        const tr = tbody.insertRow();
+        const rowData = { code: key, ...value };
+        ['code', 'city', 'name', 'timezone'].forEach(colKey => {
+             const input = document.createElement('input');
+             input.type = 'text'; input.value = rowData[colKey] || '';
+             input.dataset.key = colKey;
+             if(colKey === 'code') input.readOnly = true;
+             tr.insertCell().appendChild(input);
+        });
+        const deleteBtn = document.createElement('button');
+        deleteBtn.textContent = 'Delete'; deleteBtn.className = 'delete-btn';
+        deleteBtn.onclick = () => tr.remove();
+        tr.insertCell().appendChild(deleteBtn);
+    });
 }
 function serializeDevPanelData() {
-    // ... (rest of function is unchanged)
+    const serializeTable = (tableId, keys) => {
+        const data = {};
+        const tbody = document.getElementById(tableId).tBodies[0];
+        for (const row of tbody.rows) {
+            const codeInput = row.querySelector('input[data-key="code"]');
+            if (codeInput && codeInput.value.trim()) {
+                const code = codeInput.value.trim().toUpperCase();
+                if (keys.length === 1) {
+                    data[code] = row.querySelector(`input[data-key="${keys[0]}"]`).value.trim();
+                } else {
+                    data[code] = {};
+                    keys.forEach(k => {
+                        data[code][k] = row.querySelector(`input[data-key="${k}"]`)?.value.trim() || '';
+                    });
+                }
+            }
+        }
+        return data;
+    }
+    return {
+        airlineDatabase: serializeTable('airlinesTable', ['name']),
+        aircraftTypes: serializeTable('aircraftTypesTable', ['name']),
+        airportDatabase: serializeTable('airportDatabaseTable', ['city', 'name', 'timezone'])
+    };
 }
 function addGenericEntry(tableId, columns) {
-    // ... (rest of function is unchanged)
+    const tbody = document.getElementById(tableId).querySelector('tbody');
+    const tr = tbody.insertRow(0);
+    columns.forEach(col => {
+        const input = document.createElement('input');
+        input.type = 'text'; input.placeholder = col.charAt(0).toUpperCase() + col.slice(1);
+        input.dataset.key = col;
+        if(col === 'code') input.readOnly = false;
+        tr.insertCell().appendChild(input);
+    });
+    const deleteBtn = document.createElement('button');
+    deleteBtn.textContent = 'Delete'; deleteBtn.className = 'delete-btn';
+    deleteBtn.onclick = () => tr.remove();
+    tr.insertCell().appendChild(deleteBtn);
 }
 document.getElementById('addAirlineBtn')?.addEventListener('click', () => addGenericEntry('airlinesTable', ['code', 'name']));
 document.getElementById('addAircraftBtn')?.addEventListener('click', () => addGenericEntry('aircraftTypesTable', ['code', 'name']));
