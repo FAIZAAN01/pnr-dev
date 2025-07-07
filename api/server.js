@@ -7,20 +7,18 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const morgan = require('morgan');
-const { kv } = require('@vercel/kv'); // Using Vercel KV for brands
 
 const app = express();
 
-// --- DATABASE KEYS & PATHS ---
-const DB_BRANDS_KEY = 'pnr-brands';
+// --- LOCAL FILE PATHS for PNR Data ---
 const DATA_DIR = path.join(process.cwd(), 'data');
 const AIRLINES_FILE = path.join(DATA_DIR, 'airlines.json');
 const AIRCRAFT_TYPES_FILE = path.join(DATA_DIR, 'aircraftTypes.json');
 const AIRPORT_DATABASE_FILE = path.join(DATA_DIR, 'airportDatabase.json');
 
 // --- MIDDLEWARE ---
-app.use(express.json({ limit: '2mb' })); // Increased limit for logo data
-app.use(bodyParser.urlencoded({ extended: true, limit: '2mb' }));
+app.use(express.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use(cors());
 app.use(morgan('dev'));
 app.use(helmet({ contentSecurityPolicy: false }));
@@ -31,7 +29,6 @@ let airlineDatabase = {};
 let aircraftTypes = {};
 let airportDatabase = {};
 
-// This function loads the PNR data from local files, as you intended.
 function loadPnrDataFromFiles() {
   try {
     if (fs.existsSync(AIRLINES_FILE)) airlineDatabase = JSON.parse(fs.readFileSync(AIRLINES_FILE, 'utf-8'));
@@ -43,56 +40,20 @@ function loadPnrDataFromFiles() {
   }
 }
 
-// Load the local file data when the serverless function starts.
 loadPnrDataFromFiles();
-
 
 // --- API ENDPOINTS ---
 
 /**
- * Endpoint to fetch all saved brands from Vercel KV.
- */
-app.get('/api/brands', async (req, res) => {
-    try {
-        const brands = await kv.lrange(DB_BRANDS_KEY, 0, -1);
-        res.status(200).json({ success: true, brands: brands || [] });
-    } catch (error) {
-        console.error("Error fetching brands from KV:", error);
-        res.status(500).json({ success: false, error: "Could not fetch brands." });
-    }
-});
-
-/**
- * Endpoint to save a new brand to Vercel KV.
- */
-app.post('/api/save-brand', limiter, async (req, res) => {
-    const { name, logo, text } = req.body;
-    if (!name || !logo || !text) {
-        return res.status(400).json({ success: false, error: 'Brand name, logo, and text are required.' });
-    }
-
-    try {
-        const newBrand = { name, logo, text };
-        await kv.lpush(DB_BRANDS_KEY, newBrand);
-        res.status(200).json({ success: true, message: `Brand "${name}" saved successfully!` });
-    } catch (error) {
-        console.error("Error saving brand to KV:", error);
-        res.status(500).json({ success: false, error: "Could not save the brand." });
-    }
-});
-
-/**
- * Your original PNR conversion endpoint. It uses the data loaded from local files.
+ * The ONLY endpoint needed: PNR conversion.
  */
 app.post('/api/convert', limiter, (req, res) => {
     try {
         const { pnrText, options, fareDetails } = req.body;
-        let pnrTextForProcessing = pnrText || '';
-        let serverOptions = options || {};
-        const result = pnrTextForProcessing ? parseGalileoEnhanced(pnrTextForProcessing, serverOptions) : { flights: [], passengers: [] };
+        const result = pnrText ? parseGalileoEnhanced(pnrText, options || {}) : { flights: [], passengers: [] };
         const responsePayload = {
             success: true, result, fareDetails,
-            pnrProcessingAttempted: !!pnrTextForProcessing
+            pnrProcessingAttempted: !!pnrText
         };
         return res.status(200).json(responsePayload);
     } catch (err) {
@@ -100,14 +61,6 @@ app.post('/api/convert', limiter, (req, res) => {
         return res.status(400).json({ success: false, error: err.message, result: { flights: [] } });
     }
 });
-
-
-// This endpoint remains disabled on Vercel's read-only file system.
-app.post('/api/upload-logo', limiter, async (req, res) => {
-    console.error("Logo upload is not supported on Vercel's read-only filesystem.");
-    return res.status(400).json({ success: false, error: "This feature is disabled on the live deployment." });
-});
-
 
 // --- HELPER AND PARSING FUNCTIONS (Unchanged) ---
 
@@ -136,6 +89,7 @@ function getTravelClassName(classCode) {
     if (economyCodes.includes(code)) return 'Economy';
     return `Class ${code}`;
 }
+
 
 function parseGalileoEnhanced(pnrText, options) {
     const flights = [];
@@ -222,7 +176,7 @@ function parseGalileoEnhanced(pnrText, options) {
                 segment: parseInt(segmentNumStr, 10) || flightIndex,
                 airline: { code: airlineCode, name: airlineDatabase[airlineCode] || `Unknown Airline (${airlineCode})` },
                 flightNumber: flightNum,
-                travelClass: { code: travelClass || '', name: getTravelClassName(travelClass) },
+                travelClass: { code: travelClass || '', name: getTravelClassName(classCode) },
                 date: departureMoment.isValid() ? departureMoment.format('dddd, DD MMM YYYY') : '',
                 departure: { 
                     airport: depAirport, 

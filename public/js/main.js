@@ -1,9 +1,10 @@
-// --- GLOBAL STATE & KEYS ---
-let allBrands = []; // Will hold the list of brands loaded from localStorage
+// --- LOCALSTORAGE KEYS ---
 const OPTIONS_STORAGE_KEY = 'pnrConverterOptions';
+const BRAND_LIST_KEY = 'pnrConverterBrandList'; // Stores the array of all custom brands
 const LAST_BRAND_KEY = 'pnrLastSelectedBrand'; // Stores the NAME of the last used brand
-const CUSTOM_LOGO_KEY = 'pnrConverterCustomLogo'; // For unsaved custom logo
-const CUSTOM_TEXT_KEY = 'pnrConverterCustomText'; // For unsaved custom text
+
+// --- GLOBAL STATE ---
+let allBrands = []; // Will hold the list of brands loaded from localStorage
 
 // --- CORE UI FUNCTIONS ---
 
@@ -79,36 +80,27 @@ function toggleCustomBrandingSection() {
     brandingSection.classList.toggle('hidden', !showLogoCheckbox.checked);
 }
 
-// --- SHARED BRAND MANAGEMENT (VIA API) ---
+// --- LOCAL BRAND MANAGEMENT ---
 
-async function loadBrands() {
-    try {
-        const response = await fetch('/api/brands');
-        const data = await response.json();
-        if (!data.success) throw new Error(data.error);
+function loadBrands() {
+    const brandsJSON = localStorage.getItem(BRAND_LIST_KEY);
+    allBrands = brandsJSON ? JSON.parse(brandsJSON) : [];
+    
+    const selector = document.getElementById('brandSelector');
+    selector.innerHTML = '<option value="custom">-- Custom Branding --</option>'; // Default non-saved option
 
-        allBrands = data.brands || [];
-        const selector = document.getElementById('brandSelector');
-        selector.innerHTML = '<option value="custom">-- Custom (Not Saved) --</option>';
+    allBrands.forEach(brand => {
+        const option = document.createElement('option');
+        option.value = brand.name;
+        option.textContent = brand.name;
+        selector.appendChild(option);
+    });
 
-        allBrands.forEach(brand => {
-            const option = document.createElement('option');
-            option.value = brand.name;
-            option.textContent = brand.name;
-            selector.appendChild(option);
-        });
-
-        const lastBrandName = localStorage.getItem(LAST_BRAND_KEY);
-        if (lastBrandName && allBrands.some(b => b.name === lastBrandName)) {
-            selector.value = lastBrandName;
-        } else {
-            selector.value = 'custom';
-        }
-        applySelectedBrand();
-    } catch (error) {
-        console.error("Failed to load brands:", error);
-        showPopup("Could not load brand presets.");
+    const lastBrandName = localStorage.getItem(LAST_BRAND_KEY);
+    if (lastBrandName && allBrands.some(b => b.name === lastBrandName)) {
+        selector.value = lastBrandName;
     }
+    applySelectedBrand();
 }
 
 function applySelectedBrand() {
@@ -121,17 +113,8 @@ function applySelectedBrand() {
     const logoInput = document.getElementById('customLogoInput');
 
     if (selectedBrandName === 'custom') {
-        // When in custom mode, load from the dedicated custom keys
-        const customLogoData = localStorage.getItem(CUSTOM_LOGO_KEY);
-        const customTextData = localStorage.getItem(CUSTOM_TEXT_KEY);
-        if (customLogoData) {
-            logoPreview.src = customLogoData;
-            logoPreview.style.display = 'block';
-        } else {
-            logoPreview.style.display = 'none';
-            logoPreview.src = '';
-        }
-        textInput.value = customTextData || '';
+        // In "Custom" mode, the inputs are independent.
+        // We don't change them, allowing the user to create a new unsaved brand.
     } else {
         const selectedBrand = allBrands.find(b => b.name === selectedBrandName);
         if (selectedBrand) {
@@ -140,11 +123,11 @@ function applySelectedBrand() {
             textInput.value = selectedBrand.text;
         }
     }
-    logoInput.value = ''; // Always clear file input
+    logoInput.value = ''; // Always clear file input on selection change
     debouncedConvert();
 }
 
-async function saveNewBrand() {
+function saveNewBrand() {
     const brandName = prompt("Enter a name for this new brand:");
     if (!brandName || !brandName.trim()) {
         showPopup("Brand name cannot be empty.");
@@ -164,28 +147,15 @@ async function saveNewBrand() {
         return;
     }
 
-    showPopup("Saving brand...");
+    const newBrand = { name: brandName.trim(), logo: logoDataUrl, text: textData };
+    allBrands.push(newBrand);
+    localStorage.setItem(BRAND_LIST_KEY, JSON.stringify(allBrands));
 
-    try {
-        const response = await fetch('/api/save-brand', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name: brandName.trim(), logo: logoDataUrl, text: textData })
-        });
-
-        const result = await response.json();
-        if (!result.success) throw new Error(result.error);
-        
-        showPopup(result.message);
-        await loadBrands();
-        
-        // Auto-select the newly created brand
-        document.getElementById('brandSelector').value = brandName.trim();
-        applySelectedBrand();
-    } catch (error) {
-        console.error("Failed to save brand:", error);
-        showPopup(`Error: ${error.message}`);
-    }
+    showPopup(`Brand "${brandName}" saved successfully!`);
+    loadBrands();
+    
+    document.getElementById('brandSelector').value = newBrand.name;
+    applySelectedBrand();
 }
 
 // --- MAIN PNR CONVERSION & DISPLAY LOGIC ---
@@ -276,7 +246,6 @@ function displayResults(response, displayPnrOptions) {
         const customLogoSrc = document.getElementById('customLogoPreview').src;
         const customText = document.getElementById('customTextInput').value;
         
-        // This is the key logic: only render the header if a valid custom logo is present
         if (customLogoSrc.startsWith('data:image')) {
             const logoContainer = document.createElement('div');
             logoContainer.className = 'itinerary-main-logo-container';
@@ -435,9 +404,9 @@ document.addEventListener('DOMContentLoaded', () => {
 document.getElementById('brandSelector')?.addEventListener('change', applySelectedBrand);
 document.getElementById('saveAsBrandBtn')?.addEventListener('click', saveNewBrand);
 document.getElementById('clearCustomBrandingBtn')?.addEventListener('click', () => {
-    if (confirm('Are you sure you want to clear your custom branding and switch to "Custom (Not Saved)" mode?')) {
+    if (confirm('Are you sure you want to clear your custom branding? This will switch to "Custom" mode.')) {
         document.getElementById('brandSelector').value = 'custom';
-        applySelectedBrand(); // This will clear the inputs
+        applySelectedBrand();
     }
 });
 
@@ -452,15 +421,13 @@ document.getElementById('customLogoInput')?.addEventListener('change', (event) =
         document.getElementById('customLogoPreview').style.display = 'block';
         document.getElementById('brandSelector').value = 'custom';
         localStorage.setItem(LAST_BRAND_KEY, 'custom');
-        localStorage.setItem(CUSTOM_LOGO_KEY, dataUrl); // Save to local storage for persistence
         debouncedConvert();
     };
     reader.readAsDataURL(file);
 });
-document.getElementById('customTextInput')?.addEventListener('input', (event) => {
+document.getElementById('customTextInput')?.addEventListener('input', () => {
     document.getElementById('brandSelector').value = 'custom';
     localStorage.setItem(LAST_BRAND_KEY, 'custom');
-    localStorage.setItem(CUSTOM_TEXT_KEY, event.target.value);
     debouncedConvert();
 });
 
@@ -471,21 +438,19 @@ document.getElementById('pasteBtn')?.addEventListener('click', async () => {
     document.getElementById('pnrInput').value = text || '';
     convertPNR();
   } catch (err) {
-    console.error('Failed to read clipboard contents: ', err);
     showPopup('Could not paste from clipboard.');
   }
 });
 document.getElementById('pnrInput').addEventListener('input', debouncedConvert);
 document.getElementById('convertBtn').addEventListener('click', convertPNR);
 
-// Generic Listener for all other options
+// Generic Listener for all display and fare options
 [...document.querySelectorAll('.options input, #currencySelect, #adultInput, #fareInput, #taxInput, #feeInput')].forEach(el => {
     el.addEventListener('change', () => {
         saveOptions();
         debouncedConvert();
     });
 });
-
 
 // Output Action Buttons
 document.getElementById('screenshotBtn')?.addEventListener('click', async () => {
