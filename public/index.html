@@ -65,6 +65,8 @@
       line-height: 1.2;
       margin-left: 15px; /* Adds space between logo and text */
     }
+    /* --- END OF UPDATED STYLES --- */
+
     /* --- SLIGHT ADJUSTMENT TO EXISTING STYLE --- */
     /* Remove top border from passenger header if it's following the logo */
     .itinerary-main-logo-container + .itinerary-header {
@@ -274,19 +276,12 @@
         </div>
         <div class="custom-branding-input">
           <label for="customTextInput">Custom Text:</label>
-          <textarea id="customTextInput" rows="3" placeholder="Brand Address & Contact"></textarea>
+          <textarea id="customTextInput" rows="3" placeholder="Your Company Name
+    Contact: +1 234 567 890"></textarea>
         </div>
-        <!-- This button is now for saving the brand for everyone -->
-        <button id="saveAsBrandBtn" class="save-brand-btn">Save as New Brand</button>
+        <button id="clearCustomBrandingBtn" class="clear-btn">Clear Custom Branding</button>
       </div>
-      <!-- NEW: Brand Selector Section -->
-      <div class="brand-selector-section">
-        <h3>Select Brand</h3>
-        <select id="brandSelector">
-          <option value="default">Default Branding</option>
-          <!-- Brands will be populated here by JavaScript -->
-        </select>
-      </div>
+      
     </div>
   </div>
 

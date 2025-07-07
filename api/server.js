@@ -10,51 +10,75 @@ const morgan = require('morgan');
 
 const app = express();
 
-// --- LOCAL FILE PATHS for PNR Data ---
 const DATA_DIR = path.join(process.cwd(), 'data');
 const AIRLINES_FILE = path.join(DATA_DIR, 'airlines.json');
 const AIRCRAFT_TYPES_FILE = path.join(DATA_DIR, 'aircraftTypes.json');
 const AIRPORT_DATABASE_FILE = path.join(DATA_DIR, 'airportDatabase.json');
 
-// --- MIDDLEWARE ---
 app.use(express.json());
-app.use(bodyParser.urlencoded({ extended: true }));
-app.use(cors());
-app.use(morgan('dev'));
-app.use(helmet({ contentSecurityPolicy: false }));
-const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true, legacyHeaders: false });
 
-// --- DATA LOADING ---
 let airlineDatabase = {};
 let aircraftTypes = {};
 let airportDatabase = {};
 
-function loadPnrDataFromFiles() {
+function loadDbFromFile(filePath, defaultDb) {
   try {
-    if (fs.existsSync(AIRLINES_FILE)) airlineDatabase = JSON.parse(fs.readFileSync(AIRLINES_FILE, 'utf-8'));
-    if (fs.existsSync(AIRCRAFT_TYPES_FILE)) aircraftTypes = JSON.parse(fs.readFileSync(AIRCRAFT_TYPES_FILE, 'utf-8'));
-    if (fs.existsSync(AIRPORT_DATABASE_FILE)) airportDatabase = JSON.parse(fs.readFileSync(AIRPORT_DATABASE_FILE, 'utf-8'));
-    console.log("PNR data (Airlines, Airports, Aircraft) loaded from local files.");
+    if (fs.existsSync(filePath)) {
+      const fileData = fs.readFileSync(filePath, 'utf-8');
+      return JSON.parse(fileData);
+    }
   } catch (error) {
-    console.error("Error loading PNR data from files:", error);
+    console.error(`Error loading ${path.basename(filePath)}:`, error.message);
   }
+  return defaultDb;
+}
+function loadAllDatabases() {
+  airlineDatabase = loadDbFromFile(AIRLINES_FILE, {});
+  aircraftTypes = loadDbFromFile(AIRCRAFT_TYPES_FILE, {});
+  airportDatabase = loadDbFromFile(AIRPORT_DATABASE_FILE, {});
 }
 
-loadPnrDataFromFiles();
+loadAllDatabases();
 
-// --- API ENDPOINTS ---
+app.use(morgan('dev'));
+app.use(cors());
+app.use(bodyParser.json({ limit: '10mb' }));
+app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
+app.use(helmet({ contentSecurityPolicy: false }));
 
-/**
- * The ONLY endpoint needed: PNR conversion.
- */
-app.post('/api/convert', limiter, (req, res) => {
+const limiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 200,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, error: "Too many requests, please try again later.", result: { flights: [] } }
+});
+
+app.post('/api/convert', (req, res) => {
     try {
-        const { pnrText, options, fareDetails } = req.body;
-        const result = pnrText ? parseGalileoEnhanced(pnrText, options || {}) : { flights: [], passengers: [] };
+        const { pnrText, options, fareDetails, developerModeTrigger, updatedDatabases } = req.body;
+        let pnrTextForProcessing = pnrText || '';
+        let serverOptions = options || {};
+        let developerSave = false;
+
+        if ((developerModeTrigger === "save_databases" || developerModeTrigger === "developermarja") && updatedDatabases) {
+            console.warn("NOTE: Filesystem is read-only on Vercel. Changes will not persist.");
+            developerSave = true;
+        }
+        
+        const result = pnrTextForProcessing ? parseGalileoEnhanced(pnrTextForProcessing, serverOptions) : { flights: [], passengers: [] };
+
         const responsePayload = {
             success: true, result, fareDetails,
-            pnrProcessingAttempted: !!pnrText
+            message: developerSave ? "Database 'save' simulated. Changes are not persistent on Vercel." : null,
+            pnrProcessingAttempted: !!pnrTextForProcessing
         };
+        
+        if (developerModeTrigger === 'developer' || developerModeTrigger === 'developermarja' || developerSave) {
+            responsePayload.pnrDeveloperModeActive = true;
+            responsePayload.databases = { airlineDatabase, aircraftTypes, airportDatabase };
+        }
+
         return res.status(200).json(responsePayload);
     } catch (err) {
         console.error("Error during PNR conversion:", err.stack);
@@ -62,8 +86,12 @@ app.post('/api/convert', limiter, (req, res) => {
     }
 });
 
-// --- HELPER AND PARSING FUNCTIONS (Unchanged) ---
+app.post('/api/upload-logo', limiter, async (req, res) => {
+    console.error("Logo upload is not supported on Vercel's read-only filesystem.");
+    return res.status(400).json({ success: false, error: "This feature is disabled on the live deployment." });
+});
 
+// --- Helper Functions ---
 function formatMomentTime(momentObj, use24 = false) {
     if (!momentObj || !momentObj.isValid()) return '';
     return momentObj.format(use24 ? 'HH:mm' : 'hh:mm A');
@@ -89,7 +117,6 @@ function getTravelClassName(classCode) {
     if (economyCodes.includes(code)) return 'Economy';
     return `Class ${code}`;
 }
-
 
 function parseGalileoEnhanced(pnrText, options) {
     const flights = [];
@@ -175,8 +202,9 @@ function parseGalileoEnhanced(pnrText, options) {
             currentFlight = {
                 segment: parseInt(segmentNumStr, 10) || flightIndex,
                 airline: { code: airlineCode, name: airlineDatabase[airlineCode] || `Unknown Airline (${airlineCode})` },
+                // --- THIS IS THE MODIFIED LINE ---
                 flightNumber: flightNum,
-                travelClass: { code: travelClass || '', name: getTravelClassName(classCode) },
+                travelClass: { code: travelClass || '', name: getTravelClassName(travelClass) },
                 date: departureMoment.isValid() ? departureMoment.format('dddd, DD MMM YYYY') : '',
                 departure: { 
                     airport: depAirport, 
@@ -206,5 +234,4 @@ function parseGalileoEnhanced(pnrText, options) {
     return { flights, passengers };
 }
 
-// Export the app for Vercel
 module.exports = app;
