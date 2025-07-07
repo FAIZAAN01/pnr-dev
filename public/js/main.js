@@ -249,9 +249,8 @@ function displayResults(response, displayPnrOptions) {
         logoText.className = 'itinerary-logo-text';
         // Use custom text from localStorage, or fall back to default
         const customText = localStorage.getItem(CUSTOM_TEXT_KEY);
-        logoText.innerHTML = customText || "Lorem ipsum dolor sit amet,<br>consectetur adipiscing elit.";
+        logoText.innerHTML = customText ? customText.replace(/\n/g, '<br>') : "Lorem ipsum dolor sit amet,<br>consectetur adipiscing elit.";        
         logoContainer.appendChild(logoText);
-        
         outputContainer.appendChild(logoContainer);
     }
     
