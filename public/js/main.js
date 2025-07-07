@@ -249,7 +249,7 @@ function displayResults(response, displayPnrOptions) {
         logoText.className = 'itinerary-logo-text';
         // Use custom text from localStorage, or fall back to default
         const customText = localStorage.getItem(CUSTOM_TEXT_KEY);
-        logoText.innerHTML = customText ? customText.replace(/\n/g, '<br>') : "Lorem ipsum dolor sit amet,<br>consectetur adipiscing elit.";        
+        logoText.innerHTML = customText ? customText.replace(/\n/g, '<br>') : "KN2 Ave 26, Nyarugenge Dist, Muhima<BR>Kigali Rwanda";        
         logoContainer.appendChild(logoText);
         outputContainer.appendChild(logoContainer);
     }
