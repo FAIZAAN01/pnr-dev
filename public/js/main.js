@@ -266,7 +266,7 @@ function displayResults(response, displayPnrOptions) {
         const count = document.createElement('p');
         count.style.marginTop = '8px';
         count.style.fontStyle = 'italic';
-        count.textContent = `Total Passengers: ${passengers.length}`;
+        (passengers.length > 1) ? count.textContent = `Total Passengers: ${passengers.length}`: null;
         headerDiv.appendChild(count);
         outputContainer.appendChild(headerDiv);
     }
