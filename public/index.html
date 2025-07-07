@@ -67,6 +67,35 @@
     }
     /* --- END OF UPDATED STYLES --- */
 
+    /* Add these new rules to your <style> block */
+
+    .brand-selector-section {
+        padding: 20px;
+        background-color: #e8f4f8; /* A different background to stand out */
+        border-radius: 8px;
+        margin-bottom: 20px;
+        border: 1px solid #d0e0e6;
+    }
+
+    .brand-selector-section h3 {
+        margin-top: 0;
+        color: #2c3e50;
+    }
+
+    #brandSelector {
+        width: 100%;
+        padding: 8px;
+        border-radius: 4px;
+        border: 1px solid #ccc;
+        font-size: 1em;
+    }
+
+    .save-brand-btn {
+        background-color: #9b59b6; /* A distinct purple color */
+        width: 100%;
+        margin-top: 5px;
+    }
+
     /* --- SLIGHT ADJUSTMENT TO EXISTING STYLE --- */
     /* Remove top border from passenger header if it's following the logo */
     .itinerary-main-logo-container + .itinerary-header {
@@ -276,10 +305,18 @@
         </div>
         <div class="custom-branding-input">
           <label for="customTextInput">Custom Text:</label>
-          <textarea id="customTextInput" rows="3" placeholder="Your Company Name
-    Contact: +1 234 567 890"></textarea>
+          <textarea id="customTextInput" rows="3" placeholder="Brand Address & Contact"></textarea>
         </div>
-        <button id="clearCustomBrandingBtn" class="clear-btn">Clear Custom Branding</button>
+        <!-- This button is now for saving the brand for everyone -->
+        <button id="saveAsBrandBtn" class="save-brand-btn">Save as New Brand</button>
+      </div>
+      <!-- NEW: Brand Selector Section -->
+      <div class="brand-selector-section">
+        <h3>Select Brand</h3>
+        <select id="brandSelector">
+          <option value="default">Default Branding</option>
+          <!-- Brands will be populated here by JavaScript -->
+        </select>
       </div>
     </div>
   </div>

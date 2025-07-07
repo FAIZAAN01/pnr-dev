@@ -7,75 +7,101 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const morgan = require('morgan');
+const { kv } = require('@vercel/kv'); // Using Vercel KV for brands
 
 const app = express();
 
+// --- DATABASE KEYS & PATHS ---
+const DB_BRANDS_KEY = 'pnr-brands';
 const DATA_DIR = path.join(process.cwd(), 'data');
 const AIRLINES_FILE = path.join(DATA_DIR, 'airlines.json');
 const AIRCRAFT_TYPES_FILE = path.join(DATA_DIR, 'aircraftTypes.json');
 const AIRPORT_DATABASE_FILE = path.join(DATA_DIR, 'airportDatabase.json');
 
-app.use(express.json());
+// --- MIDDLEWARE ---
+app.use(express.json({ limit: '2mb' })); // Increased limit for logo data
+app.use(bodyParser.urlencoded({ extended: true, limit: '2mb' }));
+app.use(cors());
+app.use(morgan('dev'));
+app.use(helmet({ contentSecurityPolicy: false }));
+const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 200, standardHeaders: true, legacyHeaders: false });
 
+// --- DATA LOADING ---
 let airlineDatabase = {};
 let aircraftTypes = {};
 let airportDatabase = {};
 
-function loadDbFromFile(filePath, defaultDb) {
+// This function loads the PNR data from local files, as you intended.
+function loadPnrDataFromFiles() {
   try {
-    if (fs.existsSync(filePath)) {
-      const fileData = fs.readFileSync(filePath, 'utf-8');
-      return JSON.parse(fileData);
-    }
+    if (fs.existsSync(AIRLINES_FILE)) airlineDatabase = JSON.parse(fs.readFileSync(AIRLINES_FILE, 'utf-8'));
+    if (fs.existsSync(AIRCRAFT_TYPES_FILE)) aircraftTypes = JSON.parse(fs.readFileSync(AIRCRAFT_TYPES_FILE, 'utf-8'));
+    if (fs.existsSync(AIRPORT_DATABASE_FILE)) airportDatabase = JSON.parse(fs.readFileSync(AIRPORT_DATABASE_FILE, 'utf-8'));
+    console.log("PNR data (Airlines, Airports, Aircraft) loaded from local files.");
   } catch (error) {
-    console.error(`Error loading ${path.basename(filePath)}:`, error.message);
+    console.error("Error loading PNR data from files:", error);
   }
-  return defaultDb;
-}
-function loadAllDatabases() {
-  airlineDatabase = loadDbFromFile(AIRLINES_FILE, {});
-  aircraftTypes = loadDbFromFile(AIRCRAFT_TYPES_FILE, {});
-  airportDatabase = loadDbFromFile(AIRPORT_DATABASE_FILE, {});
 }
 
-loadAllDatabases();
+// Load the local file data when the serverless function starts.
+loadPnrDataFromFiles();
 
-app.use(morgan('dev'));
-app.use(cors());
-app.use(bodyParser.json({ limit: '10mb' }));
-app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
-app.use(helmet({ contentSecurityPolicy: false }));
 
-const limiter = rateLimit({
-    windowMs: 15 * 60 * 1000,
-    max: 200,
-    standardHeaders: true,
-    legacyHeaders: false,
-    message: { success: false, error: "Too many requests, please try again later.", result: { flights: [] } }
+// --- API ENDPOINTS ---
+
+/**
+ * Endpoint to fetch all saved brands from Vercel KV.
+ */
+app.get('/api/brands', async (req, res) => {
+    try {
+        const brands = await kv.lrange(DB_BRANDS_KEY, 0, -1);
+        res.status(200).json({ success: true, brands: brands || [] });
+    } catch (error) {
+        console.error("Error fetching brands from KV:", error);
+        res.status(500).json({ success: false, error: "Could not fetch brands." });
+    }
 });
 
-app.post('/api/convert', (req, res) => {
+/**
+ * Endpoint to save a new brand to Vercel KV.
+ */
+app.post('/api/save-brand', limiter, async (req, res) => {
+    const { name, logo, text } = req.body;
+    if (!name || !logo || !text) {
+        return res.status(400).json({ success: false, error: 'Brand name, logo, and text are required.' });
+    }
+
     try {
-        const { pnrText, options, fareDetails, developerModeTrigger, updatedDatabases } = req.body;
+        const newBrand = { name, logo, text };
+        await kv.lpush(DB_BRANDS_KEY, newBrand);
+        res.status(200).json({ success: true, message: `Brand "${name}" saved successfully!` });
+    } catch (error) {
+        console.error("Error saving brand to KV:", error);
+        res.status(500).json({ success: false, error: "Could not save the brand." });
+    }
+});
+
+/**
+ * Your original PNR conversion endpoint. It uses the data loaded from local files.
+ */
+app.post('/api/convert', limiter, (req, res) => {
+    try {
+        const { pnrText, options, fareDetails, developerModeTrigger } = req.body;
         let pnrTextForProcessing = pnrText || '';
         let serverOptions = options || {};
-        let developerSave = false;
-
-        if ((developerModeTrigger === "save_databases" || developerModeTrigger === "developermarja") && updatedDatabases) {
-            console.warn("NOTE: Filesystem is read-only on Vercel. Changes will not persist.");
-            developerSave = true;
-        }
         
+        // This endpoint no longer handles saving data, just parsing.
         const result = pnrTextForProcessing ? parseGalileoEnhanced(pnrTextForProcessing, serverOptions) : { flights: [], passengers: [] };
 
         const responsePayload = {
             success: true, result, fareDetails,
-            message: developerSave ? "Database 'save' simulated. Changes are not persistent on Vercel." : null,
             pnrProcessingAttempted: !!pnrTextForProcessing
         };
         
-        if (developerModeTrigger === 'developer' || developerModeTrigger === 'developermarja' || developerSave) {
+        // Developer mode still reads from the local files to show the data.
+        if (developerModeTrigger === 'developer') {
             responsePayload.pnrDeveloperModeActive = true;
+            // The databases for the dev panel are the ones from the local files.
             responsePayload.databases = { airlineDatabase, aircraftTypes, airportDatabase };
         }
 
@@ -86,12 +112,15 @@ app.post('/api/convert', (req, res) => {
     }
 });
 
+// This endpoint remains disabled on Vercel's read-only file system.
 app.post('/api/upload-logo', limiter, async (req, res) => {
     console.error("Logo upload is not supported on Vercel's read-only filesystem.");
     return res.status(400).json({ success: false, error: "This feature is disabled on the live deployment." });
 });
 
-// --- Helper Functions ---
+
+// --- HELPER AND PARSING FUNCTIONS (Unchanged) ---
+
 function formatMomentTime(momentObj, use24 = false) {
     if (!momentObj || !momentObj.isValid()) return '';
     return momentObj.format(use24 ? 'HH:mm' : 'hh:mm A');
@@ -202,7 +231,6 @@ function parseGalileoEnhanced(pnrText, options) {
             currentFlight = {
                 segment: parseInt(segmentNumStr, 10) || flightIndex,
                 airline: { code: airlineCode, name: airlineDatabase[airlineCode] || `Unknown Airline (${airlineCode})` },
-                // --- THIS IS THE MODIFIED LINE ---
                 flightNumber: flightNum,
                 travelClass: { code: travelClass || '', name: getTravelClassName(travelClass) },
                 date: departureMoment.isValid() ? departureMoment.format('dddd, DD MMM YYYY') : '',
@@ -234,4 +262,5 @@ function parseGalileoEnhanced(pnrText, options) {
     return { flights, passengers };
 }
 
+// Export the app for Vercel
 module.exports = app;

@@ -1,11 +1,19 @@
+// --- GLOBAL STATE & KEYS ---
 let developerModeActiveOnClient = false;
+let allBrands = []; // Will hold the list of brands fetched from the server
 const OPTIONS_STORAGE_KEY = 'pnrConverterOptions';
-
-//------------logog and custom text ---
+const LAST_BRAND_KEY = 'pnrLastSelectedBrand';
 const CUSTOM_LOGO_KEY = 'pnrConverterCustomLogo';
 const CUSTOM_TEXT_KEY = 'pnrConverterCustomText';
 
-// --- NEW POPUP NOTIFICATION FUNCTION ---
+
+// --- CORE UI FUNCTIONS ---
+
+/**
+ * Displays a non-intrusive, auto-hiding notification popup.
+ * @param {string} message The message to display.
+ * @param {number} [duration=3000] How long the popup stays visible in ms.
+ */
 function showPopup(message, duration = 3000) {
     const container = document.getElementById('popupContainer');
     if (!container) return;
@@ -13,28 +21,37 @@ function showPopup(message, duration = 3000) {
     const popup = document.createElement('div');
     popup.className = 'popup-notification';
     popup.textContent = message;
-
     container.appendChild(popup);
 
-    // Trigger the slide-in animation
-    setTimeout(() => {
-        popup.classList.add('show');
-    }, 10); // A tiny delay to allow the element to be in the DOM before animating
+    setTimeout(() => { popup.classList.add('show'); }, 10);
 
-    // Set a timer to remove the popup
     setTimeout(() => {
         popup.classList.remove('show');
-        // Wait for the slide-out animation to finish before removing from DOM
-        popup.addEventListener('transitionend', () => {
-            if (popup.parentElement) {
-                container.removeChild(popup);
-            }
-        });
+        popup.addEventListener('transitionend', () => popup.remove());
     }, duration);
 }
 
+/**
+ * Creates a debounced function that delays invoking the func until after wait
+ * milliseconds have elapsed since the last time the debounced function was invoked.
+ * @param {Function} func The function to debounce.
+ * @param {number} wait The number of milliseconds to delay.
+ */
+function debounce(func, wait) {
+    let timeout;
+    return function(...args) {
+        const context = this;
+        clearTimeout(timeout);
+        timeout = setTimeout(() => func.apply(context, args), wait);
+    };
+}
 
-// Function to save current options to localStorage
+
+// --- LOCAL OPTIONS & BRANDING MANAGEMENT ---
+
+/**
+ * Saves the user's current display options to localStorage.
+ */
 function saveOptions() {
     try {
         const optionsToSave = {
@@ -55,7 +72,9 @@ function saveOptions() {
     }
 }
 
-// Function to load options from localStorage and apply them to the UI
+/**
+ * Loads and applies user options from localStorage on page load.
+ */
 function loadOptions() {
     try {
         const savedOptionsJSON = localStorage.getItem(OPTIONS_STORAGE_KEY);
@@ -64,6 +83,7 @@ function loadOptions() {
             document.getElementById('showItineraryLogo').checked = savedOptions.showItineraryLogo ?? true;
             document.getElementById('showAirline').checked = savedOptions.showAirline ?? true;
             document.getElementById('showAircraft').checked = savedOptions.showAircraft ?? true;
+            document.getElementById('showOperatedBy').checked = savedOptions.showOperatedBy ?? true;
             document.getElementById('showClass').checked = savedOptions.showClass ?? false;
             document.getElementById('showMeal').checked = savedOptions.showMeal ?? false;
             document.getElementById('showNotes').checked = savedOptions.showNotes ?? false;
@@ -72,7 +92,6 @@ function loadOptions() {
             if (savedOptions.currency) document.getElementById('currencySelect').value = savedOptions.currency;
         }
 
-        // Load custom branding
         const customLogoData = localStorage.getItem(CUSTOM_LOGO_KEY);
         const customTextData = localStorage.getItem(CUSTOM_TEXT_KEY);
         const logoPreview = document.getElementById('customLogoPreview');
@@ -84,65 +103,133 @@ function loadOptions() {
             document.getElementById('customTextInput').value = customTextData;
         }
 
-        toggleCustomBrandingSection(); // Set initial visibility
+        toggleCustomBrandingSection();
     } catch (e) {
         console.error("Failed to load/parse options from localStorage:", e);
     }
 }
 
-// --- NEW: Function to toggle visibility of the custom branding section ---
+/**
+ * Shows or hides the custom branding input section based on its checkbox.
+ */
 function toggleCustomBrandingSection() {
     const showLogoCheckbox = document.getElementById('showItineraryLogo');
     const brandingSection = document.getElementById('customBrandingSection');
-    if (showLogoCheckbox.checked) {
-        brandingSection.classList.remove('hidden');
-    } else {
-        brandingSection.classList.add('hidden');
+    brandingSection.classList.toggle('hidden', !showLogoCheckbox.checked);
+}
+
+// --- SHARED BRAND MANAGEMENT (VIA API) ---
+
+async function loadBrands() {
+    try {
+        const response = await fetch('/api/brands');
+        const data = await response.json();
+        if (!data.success) throw new Error(data.error);
+
+        allBrands = data.brands || [];
+        const selector = document.getElementById('brandSelector');
+        selector.innerHTML = '<option value="default">-- Select a Brand --</option>';
+
+        allBrands.forEach((brand, index) => {
+            const option = document.createElement('option');
+            option.value = index;
+            option.textContent = brand.name;
+            selector.appendChild(option);
+        });
+
+        const lastBrandIndex = localStorage.getItem(LAST_BRAND_KEY);
+        if (lastBrandIndex && lastBrandIndex < allBrands.length) {
+            selector.value = lastBrandIndex;
+            applySelectedBrand();
+        } else {
+             // If no brand is pre-selected, still run convert once with default view
+            debouncedConvert();
+        }
+    } catch (error) {
+        console.error("Failed to load brands:", error);
+        showPopup("Could not load brand presets.");
     }
 }
 
-function debounce(func, wait) {
-    let timeout;
-    return function(...args) {
-    const context = this;
-    clearTimeout(timeout);
-    timeout = setTimeout(() => func.apply(context, args), wait);
-    };
+function applySelectedBrand() {
+    const selector = document.getElementById('brandSelector');
+    const selectedIndex = selector.value;
+    localStorage.setItem(LAST_BRAND_KEY, selectedIndex);
+
+    const logoPreview = document.getElementById('customLogoPreview');
+    const textInput = document.getElementById('customTextInput');
+
+    if (selectedIndex === 'default' || !allBrands[selectedIndex]) {
+        localStorage.removeItem(CUSTOM_LOGO_KEY);
+        localStorage.removeItem(CUSTOM_TEXT_KEY);
+        logoPreview.style.display = 'none';
+        logoPreview.src = '';
+        textInput.value = '';
+    } else {
+        const selectedBrand = allBrands[selectedIndex];
+        localStorage.setItem(CUSTOM_LOGO_KEY, selectedBrand.logo);
+        localStorage.setItem(CUSTOM_TEXT_KEY, selectedBrand.text);
+        logoPreview.src = selectedBrand.logo;
+        logoPreview.style.display = 'block';
+        textInput.value = selectedBrand.text;
+    }
+    debouncedConvert();
 }
-function getCurrencySymbol(currencyCode) {
-    const symbols = { USD: '$', EUR: '€', INR: '₹' };
-    return symbols[currencyCode] || currencyCode || '';
+
+async function saveNewBrand() {
+    const brandName = prompt("Enter a name for this new brand:");
+    if (!brandName || !brandName.trim()) {
+        showPopup("Brand name cannot be empty.");
+        return;
+    }
+
+    const logoDataUrl = document.getElementById('customLogoPreview').src;
+    const textData = document.getElementById('customTextInput').value;
+
+    if (!logoDataUrl.startsWith('data:image') || !textData) {
+        showPopup("Please upload a logo and add text before saving.");
+        return;
+    }
+
+    showPopup("Saving brand...");
+
+    try {
+        const response = await fetch('/api/save-brand', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: brandName.trim(), logo: logoDataUrl, text: textData })
+        });
+
+        const result = await response.json();
+        if (!result.success) throw new Error(result.error);
+        
+        showPopup(result.message);
+        await loadBrands();
+        
+        const newBrandIndex = allBrands.findIndex(b => b.name === brandName.trim());
+        if(newBrandIndex > -1) {
+            document.getElementById('brandSelector').value = newBrandIndex;
+            applySelectedBrand();
+        }
+    } catch (error) {
+        console.error("Failed to save brand:", error);
+        showPopup(`Error: ${error.message}`);
+    }
 }
+
+// --- MAIN PNR CONVERSION & DISPLAY LOGIC ---
 
 async function convertPNR() {
     const output = document.getElementById('output');
     const loadingSpinner = document.getElementById('loadingSpinner');
     const screenshotBtn = document.getElementById('screenshotBtn');
     const copyTextBtn = document.getElementById('copyTextBtn');
-    let rawInput = document.getElementById('pnrInput').value;
+    const rawInput = document.getElementById('pnrInput').value;
     
-    let pnrTextForServer = rawInput;
-    let developerModeTrigger = "none";
-    let payload = {};
-
     loadingSpinner.style.display = 'block';
     screenshotBtn.style.display = 'none';
     copyTextBtn.style.display = 'none';
-    
     output.innerHTML = ''; 
-  
-    if (rawInput.toLowerCase().includes("developermarja")) {
-        developerModeTrigger = "developermarja";
-        pnrTextForServer = rawInput.replace(/developermarja/gi, '').trim(); 
-        payload.updatedDatabases = serializeDevPanelData();
-        developerModeActiveOnClient = true; 
-    } else if (rawInput.toLowerCase().includes("developer")) {
-        developerModeTrigger = "developer";
-        pnrTextForServer = rawInput.replace(/developer/gi, '').trim(); 
-        developerModeActiveOnClient = true; 
-    } else {
-        pnrTextForServer = rawInput.replace(/developer|developermarja|save_databases/gi, '').trim();
-    }
     
     const clientPnrDisplayOptions = {
         showItineraryLogo: document.getElementById('showItineraryLogo').checked,
@@ -154,19 +241,23 @@ async function convertPNR() {
         showNotes: document.getElementById('showNotes').checked,
         showTransit: document.getElementById('showTransit').checked,
         use24HourFormat: document.getElementById('use24HourFormat').checked,
-        developerMode: developerModeActiveOnClient
     };
 
-    payload.pnrText = pnrTextForServer; 
-    payload.options = clientPnrDisplayOptions;
-    payload.fareDetails = {
-        fare: document.getElementById('fareInput').value,
-        tax: document.getElementById('taxInput').value,
-        fee: document.getElementById('feeInput').value,
-        adult: document.getElementById('adultInput').value,
-        currency: document.getElementById('currencySelect').value
+    const payload = {
+        pnrText: rawInput, 
+        options: clientPnrDisplayOptions,
+        fareDetails: {
+            fare: document.getElementById('fareInput').value,
+            tax: document.getElementById('taxInput').value,
+            fee: document.getElementById('feeInput').value,
+            adult: document.getElementById('adultInput').value,
+            currency: document.getElementById('currencySelect').value
+        }
     };
-    payload.developerModeTrigger = developerModeTrigger;
+    
+    if (rawInput.toLowerCase().includes("developer")) {
+        payload.developerModeTrigger = "developer";
+    }
 
     try {
         const response = await fetch('/api/convert', {
@@ -175,24 +266,17 @@ async function convertPNR() {
             body: JSON.stringify(payload)
         });
 
-        let data = await response.json();
-        if (!response.ok) {
-            throw new Error(data.error || `Server error: ${response.status} ${response.statusText}`);
-        }
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || `Server error: ${response.status} ${response.statusText}`);
         
-        const pnrDisplayDevMode = data.pnrDeveloperModeActive || false;
-    
-        if (data.pnrProcessingAttempted || data.databases) {
-            displayResults(data, {...clientPnrDisplayOptions, developerMode: pnrDisplayDevMode });
-        }
-    
-        if (data.databases) {
+        displayResults(data, clientPnrDisplayOptions);
+        
+        const developerPanel = document.getElementById('developerModePanel');
+        if (data.pnrDeveloperModeActive && data.databases) {
             renderDeveloperPanel(data.databases);
-            document.getElementById('developerModePanel').style.display = 'block';
-            developerModeActiveOnClient = true;
-        } else if (developerModeTrigger !== "developer" && developerModeTrigger !== "developermarja") {
-            document.getElementById('developerModePanel').style.display = 'none';
-            developerModeActiveOnClient = false;
+            developerPanel.style.display = 'block';
+        } else {
+            developerPanel.style.display = 'none';
         }
     
     } catch (error) {
@@ -208,10 +292,6 @@ function displayResults(response, displayPnrOptions) {
     const screenshotBtn = document.getElementById('screenshotBtn');
     const copyTextBtn = document.getElementById('copyTextBtn');
     output.innerHTML = '';
-
-    if (displayPnrOptions.developerMode) {
-        output.appendChild(createDevBanner("PNR Processed in Dev Context"));
-    }
 
     if (!response.success) {
         output.innerHTML += `<div class="error">${response.error || 'Conversion failed.'}</div>`;
@@ -233,24 +313,22 @@ function displayResults(response, displayPnrOptions) {
     const outputContainer = document.createElement('div');
     outputContainer.className = 'output-container';
 
-    // UPDATED LOGIC TO USE SAVED/DEFAULT LOGO AND TEXT
     if (flights.length > 0 && displayPnrOptions.showItineraryLogo) {
         const logoContainer = document.createElement('div');
         logoContainer.className = 'itinerary-main-logo-container';
-
+        
         const logoImg = document.createElement('img');
         logoImg.className = 'itinerary-main-logo';
-        // Use custom logo from localStorage, or fall back to default
-        logoImg.src = localStorage.getItem(CUSTOM_LOGO_KEY) || '/simbavoyages.png';
-        logoImg.alt = 'Itinerary Logo';
+        const customLogoSrc = localStorage.getItem(CUSTOM_LOGO_KEY);
+        logoImg.src = customLogoSrc || '/simbavoyages.png';
         logoContainer.appendChild(logoImg);
 
         const logoText = document.createElement('div');
         logoText.className = 'itinerary-logo-text';
-        // Use custom text from localStorage, or fall back to default
         const customText = localStorage.getItem(CUSTOM_TEXT_KEY);
-        logoText.innerHTML = customText ? customText.replace(/\n/g, '<br>') : "Lorem ipsum dolor sit amet,<br>consectetur adipiscing elit.";        
+        logoText.innerHTML = customText ? customText.replace(/\n/g, '<br>') : "Your Company Name<br>Contact Info";
         logoContainer.appendChild(logoText);
+
         outputContainer.appendChild(logoContainer);
     }
     
@@ -288,14 +366,15 @@ function displayResults(response, displayPnrOptions) {
             const flightItem = document.createElement('div');
             flightItem.className = 'flight-item';
 
-            function createDetailRow(label, value) {
+            function createDetailRow(label, value, customClass = '') {
                 if (!value) return null;
                 const detailDiv = document.createElement('div');
-                detailDiv.className = 'flight-detail';
+                detailDiv.className = `flight-detail ${customClass}`;
                 const strong = document.createElement('strong');
                 strong.textContent = label + ':';
                 detailDiv.appendChild(strong);
-                detailDiv.appendChild(document.createTextNode(` ${value}`));
+                const textValue = (label === 'Notes') ? value.join('\n') : value;
+                detailDiv.appendChild(document.createTextNode(` ${textValue}`));
                 return detailDiv;
             }
 
@@ -330,10 +409,8 @@ function displayResults(response, displayPnrOptions) {
                 createDetailRow('Arriving', `${flight.arrival?.airport} - ${flight.arrival?.name} at ${flight.arrival?.time}`),
                 displayPnrOptions.showOperatedBy && flight.operatedBy ? createDetailRow('Operated by', flight.operatedBy) : null,
                 displayPnrOptions.showMeal ? createDetailRow('Meal', getMealDescription(flight.meal)) : null,
-                displayPnrOptions.showNotes && flight.notes?.length ? createDetailRow('Notes', flight.notes.join('; ')) : null,
-            ].forEach(el => {
-                if (el) detailsContainer.appendChild(el);
-            });
+                displayPnrOptions.showNotes && flight.notes?.length ? createDetailRow('Notes', flight.notes, 'notes-detail') : null,
+            ].forEach(el => { if (el) detailsContainer.appendChild(el); });
 
             flightContentDiv.appendChild(detailsContainer);
             flightItem.appendChild(flightContentDiv);
@@ -345,11 +422,11 @@ function displayResults(response, displayPnrOptions) {
             const fareValue = parseFloat(fare) || 0, taxValue = parseFloat(tax) || 0, feeValue = parseFloat(fee) || 0;
             const adultCount = parseInt(adult) || 1, currencySymbol = getCurrencySymbol(currency);
             let fareLines = [];
-            if (fareValue > 1) fareLines.push(`Total: ${currencySymbol}${fareValue.toFixed(2)}`);
+            if (fareValue > 1) fareLines.push(`Fare: ${currencySymbol}${fareValue.toFixed(2)}`);
             if (taxValue > 0) fareLines.push(`Taxes: ${currencySymbol}${taxValue.toFixed(2)}`);
             if (feeValue > 0) fareLines.push(`Fees: ${currencySymbol}${feeValue.toFixed(2)}`);
             const perAdultTotal = fareValue + taxValue + feeValue;
-            if (adultCount > 1) fareLines.push(`Total X ${adultCount}: ${currencySymbol}${(perAdultTotal * adultCount).toFixed(2)}`);
+            if (adultCount > 1) fareLines.push(`Total for ${adultCount} Pax: ${currencySymbol}${(perAdultTotal * adultCount).toFixed(2)}`);
             
             if (fareLines.length > 0) {
                 const fareDiv = document.createElement('div');
@@ -375,235 +452,94 @@ function displayResults(response, displayPnrOptions) {
     }
 }
 
-// NEW: Event listener for the main logo toggle
-document.getElementById('showItineraryLogo')?.addEventListener('change', () => {
-    toggleCustomBrandingSection();
-    saveOptions(); // Save the state of the checkbox
+// --- EVENT LISTENERS ---
+
+const debouncedConvert = debounce(convertPNR, 300);
+
+document.addEventListener('DOMContentLoaded', () => {
+    loadOptions();
+    loadBrands();
 });
 
-// NEW: Event listener for the custom logo file input
+document.getElementById('brandSelector')?.addEventListener('change', applySelectedBrand);
+document.getElementById('saveAsBrandBtn')?.addEventListener('click', saveNewBrand);
+document.getElementById('clearCustomBrandingBtn')?.addEventListener('click', () => {
+    if (confirm('Are you sure you want to clear the current custom branding? This will select "Default Branding".')) {
+        document.getElementById('brandSelector').value = 'default';
+        applySelectedBrand();
+    }
+});
+
+document.getElementById('showItineraryLogo')?.addEventListener('change', () => {
+    toggleCustomBrandingSection();
+    saveOptions();
+    debouncedConvert();
+});
+
 document.getElementById('customLogoInput')?.addEventListener('change', (event) => {
     const file = event.target.files[0];
     if (!file) return;
-
     const reader = new FileReader();
     reader.onload = (e) => {
         const dataUrl = e.target.result;
-        localStorage.setItem(CUSTOM_LOGO_KEY, dataUrl);
-        const logoPreview = document.getElementById('customLogoPreview');
-        logoPreview.src = dataUrl;
-        logoPreview.style.display = 'block';
-        showPopup('Custom logo saved!');
-        debouncedConvert(false); // Auto-refresh the itinerary
+        document.getElementById('customLogoPreview').src = dataUrl;
+        document.getElementById('customLogoPreview').style.display = 'block';
+        localStorage.setItem(CUSTOM_LOGO_KEY, dataUrl); // Save to local storage for persistence
+        debouncedConvert();
     };
     reader.readAsDataURL(file);
 });
 
-// NEW: Event listener for the custom text input
 document.getElementById('customTextInput')?.addEventListener('input', (event) => {
     localStorage.setItem(CUSTOM_TEXT_KEY, event.target.value);
-    // No need to call convert here, we can let the debounce handle it
+    debouncedConvert();
 });
-
-// NEW: Event listener to clear custom branding
-document.getElementById('clearCustomBrandingBtn')?.addEventListener('click', () => {
-    if (confirm('Are you sure you want to clear your saved logo and text?')) {
-        localStorage.removeItem(CUSTOM_LOGO_KEY);
-        localStorage.removeItem(CUSTOM_TEXT_KEY);
-        document.getElementById('customLogoInput').value = '';
-        document.getElementById('customTextInput').value = '';
-        document.getElementById('customLogoPreview').style.display = 'none';
-        showPopup('Custom branding cleared.');
-        debouncedConvert(false);
-    }
-});
-
-// Setup and Event Listeners
-function createDevBanner(message) {
-    const banner = document.createElement('div');
-    banner.className = 'dev-banner';
-    banner.textContent = message;
-    return banner;
-}
-function getMealDescription(mealCode) {
-    const mealMap = {'B':'Breakfast','L':'Lunch','D':'Dinner','S':'Snack','M':'Meal'};
-    return mealMap[mealCode] || `Code ${mealCode}`;
-}
-
-// Developer Panel rendering and data serialization
-let currentDevDBs = {};
-function renderDeveloperPanel(databases) {
-    currentDevDBs = databases;
-    renderSimpleDbTable('airlinesTable', databases.airlineDatabase, ['code', 'name']);
-    renderSimpleDbTable('aircraftTypesTable', databases.aircraftTypes, ['code', 'name']);
-    renderAirportDbTable('airportDatabaseTable', databases.airportDatabase);
-    if(databases.airlineDatabase) window.currentAirlineDatabaseForDevPanel = databases.airlineDatabase;
-}
-function renderSimpleDbTable(tableId, data, columns) {
-    const tbody = document.getElementById(tableId).querySelector('tbody');
-    tbody.innerHTML = '';
-    Object.entries(data).forEach(([key, value]) => {
-        const tr = tbody.insertRow();
-        const rowData = { code: key, name: value };
-        columns.forEach(colKey => {
-            const input = document.createElement('input');
-            input.type = 'text'; input.value = rowData[colKey];
-            input.dataset.key = colKey;
-            if(colKey === 'code') input.readOnly = true;
-            tr.insertCell().appendChild(input);
-        });
-        const deleteBtn = document.createElement('button');
-        deleteBtn.textContent = 'Delete'; deleteBtn.className = 'delete-btn';
-        deleteBtn.onclick = () => tr.remove();
-        tr.insertCell().appendChild(deleteBtn);
-    });
-}
-function renderAirportDbTable(tableId, data) {
-    const tbody = document.getElementById(tableId).querySelector('tbody');
-    tbody.innerHTML = '';
-    Object.entries(data).forEach(([key, value]) => {
-        const tr = tbody.insertRow();
-        const rowData = { code: key, ...value };
-        ['code', 'city', 'name', 'timezone'].forEach(colKey => {
-             const input = document.createElement('input');
-             input.type = 'text'; input.value = rowData[colKey] || '';
-             input.dataset.key = colKey;
-             if(colKey === 'code') input.readOnly = true;
-             tr.insertCell().appendChild(input);
-        });
-        const deleteBtn = document.createElement('button');
-        deleteBtn.textContent = 'Delete'; deleteBtn.className = 'delete-btn';
-        deleteBtn.onclick = () => tr.remove();
-        tr.insertCell().appendChild(deleteBtn);
-    });
-}
-function serializeDevPanelData() {
-    const serializeTable = (tableId, keys) => {
-        const data = {};
-        const tbody = document.getElementById(tableId).tBodies[0];
-        for (const row of tbody.rows) {
-            const codeInput = row.querySelector('input[data-key="code"]');
-            if (codeInput && codeInput.value.trim()) {
-                const code = codeInput.value.trim().toUpperCase();
-                if (keys.length === 1) {
-                    data[code] = row.querySelector(`input[data-key="${keys[0]}"]`).value.trim();
-                } else {
-                    data[code] = {};
-                    keys.forEach(k => {
-                        data[code][k] = row.querySelector(`input[data-key="${k}"]`)?.value.trim() || '';
-                    });
-                }
-            }
-        }
-        return data;
-    }
-    return {
-        airlineDatabase: serializeTable('airlinesTable', ['name']),
-        aircraftTypes: serializeTable('aircraftTypesTable', ['name']),
-        airportDatabase: serializeTable('airportDatabaseTable', ['city', 'name', 'timezone'])
-    };
-}
-function addGenericEntry(tableId, columns) {
-    const tbody = document.getElementById(tableId).querySelector('tbody');
-    const tr = tbody.insertRow(0);
-    columns.forEach(col => {
-        const input = document.createElement('input');
-        input.type = 'text'; input.placeholder = col.charAt(0).toUpperCase() + col.slice(1);
-        input.dataset.key = col;
-        if(col === 'code') input.readOnly = false;
-        tr.insertCell().appendChild(input);
-    });
-    const deleteBtn = document.createElement('button');
-    deleteBtn.textContent = 'Delete'; deleteBtn.className = 'delete-btn';
-    deleteBtn.onclick = () => tr.remove();
-    tr.insertCell().appendChild(deleteBtn);
-}
-document.getElementById('addAirlineBtn')?.addEventListener('click', () => addGenericEntry('airlinesTable', ['code', 'name']));
-document.getElementById('addAircraftBtn')?.addEventListener('click', () => addGenericEntry('aircraftTypesTable', ['code', 'name']));
-document.getElementById('addAirportBtn')?.addEventListener('click', () => addGenericEntry('airportDatabaseTable', ['code', 'city', 'name', 'timezone']));
-
-async function saveAllChanges() {
-    const loadingSpinner = document.getElementById('loadingSpinner');
-    loadingSpinner.style.display = 'block';
-    const payload = serializeDevPanelData();
-    try {
-        const response = await fetch('/api/save-databases', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error || 'Server error');
-        showPopup(data.message); // Use popup instead of alert
-    } catch (error) {
-        console.error('Save error:', error);
-        showPopup(`Failed to save changes: ${error.message}`); // Use popup for errors too
-    } finally {
-        loadingSpinner.style.display = 'none';
-    }
-}
-
-
-document.getElementById('saveAllDbChangesBtn').addEventListener('click', saveAllChanges);
 
 document.getElementById('pasteBtn')?.addEventListener('click', async () => {
   try {
     const text = await navigator.clipboard.readText();
-    const pnrInput = document.getElementById('pnrInput');
-    if (!text || text.trim() === '') {
-      pnrInput.focus();
-      return; 
-    }
-    pnrInput.value = text;
-    pnrInput.dispatchEvent(new Event('input', { bubbles: true, cancelable: true }));
-    pnrInput.focus();
+    document.getElementById('pnrInput').value = text;
+    convertPNR(); // Convert immediately on paste
   } catch (err) {
     console.error('Failed to read clipboard contents: ', err);
-    showPopup('Could not paste from clipboard.'); // Use popup
+    showPopup('Could not paste from clipboard.');
   }
 });
 
+document.getElementById('pnrInput').addEventListener('input', debouncedConvert);
+document.getElementById('convertBtn').addEventListener('click', convertPNR);
 
-const debouncedConvert = debounce(convertPNR, 300);
-document.getElementById('pnrInput').addEventListener('input', () => debouncedConvert(false));
-document.getElementById('convertBtn').addEventListener('click', () => convertPNR(false));
+// Generic listener for all other options
 [...document.querySelectorAll('.options input, #currencySelect, #adultInput, #fareInput, #taxInput, #feeInput')].forEach(el => {
-    el.addEventListener(el.type === 'checkbox' || el.tagName === 'SELECT' ? 'change' : 'input', () => {
-        saveOptions();
-        debouncedConvert(false);
-    });
+    if (el.id !== 'showItineraryLogo') {
+        el.addEventListener('change', () => {
+            saveOptions();
+            debouncedConvert();
+        });
+    }
 });
 
-// --- UPDATED SCREENSHOT BUTTON ---
 document.getElementById('screenshotBtn')?.addEventListener('click', async () => {
-    if (typeof html2canvas === 'undefined') {
-        showPopup('Screenshot library not loaded.');
-        return;
-    }
+    if (typeof html2canvas === 'undefined') return showPopup('Screenshot library not loaded.');
     const outputEl = document.getElementById('output');
     try {
         const canvas = await html2canvas(outputEl, { backgroundColor: '#ffffff', scale: 2 });
         canvas.toBlob(blob => navigator.clipboard.write([new ClipboardItem({'image/png': blob})]));
-        showPopup('Screenshot copied to clipboard!'); // Use popup
+        showPopup('Screenshot copied to clipboard!');
     } catch (err) {
         console.error('Screenshot failed:', err);
-        showPopup('Could not copy screenshot.'); // Use popup
+        showPopup('Could not copy screenshot.');
     }
 });
 
-// --- UPDATED COPY TEXT BUTTON ---
 document.getElementById('copyTextBtn')?.addEventListener('click', () => {
     const outputContainer = document.querySelector('.output-container');
     if (!outputContainer) return;
     const textToCopy = outputContainer.innerText; 
     navigator.clipboard.writeText(textToCopy).then(() => {
-        showPopup('Itinerary copied to clipboard as text!'); // Use popup
+        showPopup('Itinerary copied to clipboard as text!');
     }).catch(err => {
         console.error('Could not copy text: ', err);
-        showPopup('Failed to copy text.'); // Use popup
+        showPopup('Failed to copy text.');
     });
-});
-
-document.addEventListener('DOMContentLoaded', () => {
-    loadOptions();
 });
