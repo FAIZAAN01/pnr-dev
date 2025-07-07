@@ -39,6 +39,28 @@
         opacity: 1;
         transform: translateX(0);
     }
+
+        /* --- ADD THESE NEW STYLES FOR THE MAIN LOGO --- */
+    .itinerary-main-logo-container {
+      text-align: center; /* Center the logo */
+      padding-bottom: 10px;
+      margin-bottom: 10px;
+      border-bottom: 1px solid #eee; /* A subtle separator line */
+    }
+
+    .itinerary-main-logo {
+      max-width: 150px;
+      max-height: 35px; /* Control the logo size */
+      object-fit: contain;
+    }
+    /* --- END OF NEW STYLES --- */
+
+    /* --- SLIGHT ADJUSTMENT TO EXISTING STYLE --- */
+    /* Remove top border from passenger header if it's following the logo */
+    .itinerary-main-logo-container + .itinerary-header {
+        border-top: none;
+    }
+
     /* --- New Layout Styles --- */
     .container { 
       display: flex; 
