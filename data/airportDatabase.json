@@ -33,6 +33,7 @@
   "BOM": {"city": "Mumbai", "name": "Chhatrapati Shivaji Maharaj International Airport", "timezone": "Asia/Kolkata"},
   "DEL": {"city": "Delhi", "name": "Indira Gandhi International Airport", "timezone": "Asia/Kolkata"},
   "JNB": {"city": "Johannesburg", "name": "O. R. Tambo International Airport", "timezone": "Africa/Johannesburg"},
+  "JRO": {"city": "Arusha / Kilimanjaro", "name": "Kilimanjaro International Airport", "timezone": "Africa/Dar_es_Salaam"},
   "CPT": {"city": "Cape Town", "name": "Cape Town International Airport", "timezone": "Africa/Johannesburg"},
   "DOH": {"city": "Doha", "name": "Hamad International Airport", "timezone": "Asia/Qatar"},
   "KGL": {"city": "Kigali", "name": "Kigali International Airport", "timezone": "Africa/Kigali"},
