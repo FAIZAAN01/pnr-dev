@@ -37,28 +37,45 @@ function showPopup(message, duration = 3000) {
 }
 
 /**
- * Saves the latest successful conversion result to localStorage.
- * @param {object} resultObject - The result object from the API response.
+ * Saves a new entry to the history. Now includes raw text and optional screenshot data.
+ * @param {object} resultObject - The result from the API.
+ * @param {string} rawPnrText - The original PNR text input by the user.
+ * @param {string|null} screenshotDataUrl - A compressed Data URL of the screenshot, or null.
  */
 
-function saveToHistory(resultObject) {
-    if (!resultObject || !resultObject.flights || resultObject.flights.length === 0) {
-        return; // Don't save empty or failed conversions
-    }
-    // Add a timestamp for display purposes
+function saveToHistory(resultObject, rawPnrText, screenshotDataUrl = null) {
+    if (!resultObject?.flights?.length) return;
+
     const historyEntry = {
+        id: Date.now(), // Unique ID for each entry
         timestamp: new Date().toISOString(),
-        data: resultObject
+        data: resultObject,
+        rawText: rawPnrText,
+        screenshot: screenshotDataUrl // Can be null
     };
-    // Add the new entry to the start of the array
+
     conversionHistory.unshift(historyEntry);
-    // Limit history to the last 20 entries to prevent localStorage from getting too big
-    if (conversionHistory.length > 20) {
-        conversionHistory = conversionHistory.slice(0, 20);
+    if (conversionHistory.length > 30) { // Increased history limit
+        conversionHistory = conversionHistory.slice(0, 30);
     }
-    // Save back to localStorage
     localStorage.setItem(HISTORY_KEY, JSON.stringify(conversionHistory));
 }
+
+
+/**
+ * Updates an existing history entry, specifically to add a screenshot after the fact.
+ * @param {number} entryId - The unique ID of the history entry.
+ * @param {string} screenshotDataUrl - The compressed Data URL of the screenshot.
+ */
+function updateHistoryWithScreenshot(entryId, screenshotDataUrl) {
+    const entryIndex = conversionHistory.findIndex(entry => entry.id === entryId);
+    if (entryIndex > -1) {
+        conversionHistory[entryIndex].screenshot = screenshotDataUrl;
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(conversionHistory));
+        showPopup("Screenshot saved to this history entry.");
+    }
+}
+
 /**
  * Loads the history from localStorage into the global variable.
  */
@@ -79,54 +96,101 @@ function loadHistory() {
  */
 function renderHistory() {
     const historyList = document.getElementById('historyList');
-    historyList.innerHTML = ''; // Clear previous items
+    const searchTerm = document.getElementById('historySearchInput').value.toLowerCase();
+    const sortOrder = document.getElementById('historySortSelect').value;
+    historyList.innerHTML = '';
 
-    if (conversionHistory.length === 0) {
-        historyList.innerHTML = '<p style="text-align:center; color:#888;">No history yet.</p>';
+    let filteredHistory = [...conversionHistory];
+
+    // Apply search filter
+    if (searchTerm) {
+        filteredHistory = filteredHistory.filter(entry => {
+            const pax = (entry.data.passengers[0] || '').toLowerCase();
+            const route = entry.data.flights.map(f => f.departure.airport).join('-').toLowerCase();
+            return pax.includes(searchTerm) || route.includes(searchTerm);
+        });
+    }
+
+    // Apply sorting
+    filteredHistory.sort((a, b) => {
+        if (sortOrder === 'oldest') {
+            return new Date(a.timestamp) - new Date(b.timestamp);
+        }
+        return new Date(b.timestamp) - new Date(a.timestamp); // Newest first (default)
+    });
+
+    if (filteredHistory.length === 0) {
+        historyList.innerHTML = '<p style="text-align:center; color:#888;">No matching history found.</p>';
         return;
     }
 
-    conversionHistory.forEach((entry, index) => {
+    filteredHistory.forEach(entry => {
         const item = document.createElement('div');
         item.className = 'history-item';
-        item.dataset.historyIndex = index; // Store index to retrieve later
-
-        const paxName = entry.data.passengers[0] || 'Unknown Passenger';
-        const flightCount = entry.data.flights.length;
+        
+        const paxName = entry.data.passengers[0] || 'N/A';
+        const route = entry.data.flights.map(f => f.departure.airport).concat(entry.data.flights.slice(-1).map(f => f.arrival.airport)).join(' - ');
         const flightDate = new Date(entry.timestamp);
 
         item.innerHTML = `
-            <div class="history-item-pax">${paxName}</div>
-            <div class="history-item-details">
-                ${flightCount} flight(s) - Saved on ${flightDate.toLocaleDateString()} at ${flightDate.toLocaleTimeString()}
+            <div class="history-item-info">
+                <div class="history-item-pax">${paxName}</div>
+                <div class="history-item-details">
+                    <span>Route: <strong>${route}</strong></span>
+                    <span>Saved: ${flightDate.toLocaleDateString()}</span>
+                </div>
+            </div>
+            <div class="history-item-actions">
+                <button class="load-btn">Load</button>
             </div>
         `;
 
-        // Add click listener to load this history item
-        item.addEventListener('click', () => {
-            const historyIndex = parseInt(item.dataset.historyIndex, 10);
-            const selectedEntry = conversionHistory[historyIndex];
-            if (selectedEntry) {
-                // Re-create the response structure and call displayResults
-                const mockResponse = { success: true, result: selectedEntry.data };
-                const currentOptions = getDisplayOptions(); // Get current display options
-                displayResults(mockResponse, currentOptions);
-                showPopup("Loaded itinerary from history.");
-                closeHistoryModal();
-            }
-        });
+        item.querySelector('.history-item-info').addEventListener('click', () => showHistoryPreview(entry));
+        item.querySelector('.load-btn').addEventListener('click', () => loadFromHistory(entry));
 
         historyList.appendChild(item);
     });
 }
 
-// --- MODAL CONTROL FUNCTIONS ---
-function openHistoryModal() {
-    renderHistory(); // Re-render the list every time the modal is opened
-    document.getElementById('historyModal').classList.remove('hidden');
+function showHistoryPreview(entry) {
+    const previewPanel = document.getElementById('historyPreviewPanel');
+    const previewContent = document.getElementById('previewContent');
+    previewContent.innerHTML = '';
+
+    if (entry.screenshot) {
+        const img = document.createElement('img');
+        img.src = entry.screenshot;
+        previewContent.appendChild(img);
+    } else {
+        const pre = document.createElement('pre');
+        pre.textContent = entry.rawText;
+        previewContent.appendChild(pre);
+    }
+
+    previewPanel.classList.remove('hidden');
 }
 
+function closeHistoryPreview() {
+    document.getElementById('historyPreviewPanel').classList.add('hidden');
+}
+
+function loadFromHistory(entry) {
+    const mockResponse = { success: true, result: entry.data };
+    const currentOptions = getDisplayOptions();
+    displayResults(mockResponse, currentOptions);
+    // Also load the original text back into the input box
+    document.getElementById('pnrInput').value = entry.rawText;
+    showPopup("Loaded itinerary from history.");
+    closeHistoryModal();
+}
+
+// --- MODAL CONTROL ---
+function openHistoryModal() {
+    renderHistory();
+    document.getElementById('historyModal').classList.remove('hidden');
+}
 function closeHistoryModal() {
+    closeHistoryPreview(); // Ensure preview is closed too
     document.getElementById('historyModal').classList.add('hidden');
 }
 
@@ -257,11 +321,13 @@ async function convertPNR() {
         }
         
         if (data.pnrProcessingAttempted) {
-            displayResults(data, payload.options);
+            displayResults(data, payload.options, Date.now());
         }
 
         if (data.success && data.result?.flights?.length > 0) {
-            saveToHistory(data.result);
+            // We save it here without a screenshot initially.
+            // The screenshot will be added later if the user clicks the button.
+            saveToHistory(data.result, rawInput); 
         }
     
     } catch (error) {
@@ -272,11 +338,12 @@ async function convertPNR() {
     }
 }
 
-function displayResults(response, displayPnrOptions) {
+function displayResults(response, displayPnrOptions, entryId = null) {
     const output = document.getElementById('output');
     const screenshotBtn = document.getElementById('screenshotBtn');
     const copyTextBtn = document.getElementById('copyTextBtn');
     output.innerHTML = '';
+    window.currentEntryId = entryId; // Store it globally for the screenshot button
 
     if (!response.success) {
         output.innerHTML += `<div class="error">${response.error || 'Conversion failed.'}</div>`;
@@ -521,24 +588,43 @@ document.getElementById('convertBtn').addEventListener('click', () => convertPNR
     });
 });
 
-// --- UPDATED SCREENSHOT BUTTON ---
+// UPDATE screenshotBtn listener
 document.getElementById('screenshotBtn')?.addEventListener('click', async () => {
+    const outputEl = document.getElementById('output');
     if (typeof html2canvas === 'undefined') {
         showPopup('Screenshot library not loaded.');
         return;
     }
-    const outputEl = document.getElementById('output');
     try {
-        const canvas = await html2canvas(outputEl, { backgroundColor: '#ffffff', scale: 2,            // These four options are the solution:
+        const canvas = await html2canvas(outputEl, {
+            backgroundColor: '#ffffff',
+            scale: 2,
             scrollX: -window.scrollX,
             scrollY: -window.scrollY,
             windowWidth: outputEl.scrollWidth,
-            windowHeight: outputEl.scrollHeight });
-        canvas.toBlob(blob => navigator.clipboard.write([new ClipboardItem({'image/png': blob})]));
-        showPopup('Screenshot copied to clipboard!'); // Use popup
+            windowHeight: outputEl.scrollHeight
+        });
+        
+        // --- NEW LOGIC ---
+        // 1. Copy the high-quality image to clipboard
+        canvas.toBlob(blob => {
+            navigator.clipboard.write([new ClipboardItem({'image/png': blob})]);
+            showPopup('Screenshot copied to clipboard!');
+        });
+
+        // 2. Create a compressed version to save in history
+        // Quality set to 0.5 (50%) to reduce size for localStorage
+        const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.5);
+
+        // 3. Update the history entry if we have an ID for it
+        if (window.currentEntryId) {
+            updateHistoryWithScreenshot(window.currentEntryId, compressedDataUrl);
+        }
+        // --- END OF NEW LOGIC ---
+
     } catch (err) {
         console.error('Screenshot failed:', err);
-        showPopup('Could not copy screenshot.'); // Use popup
+        showPopup('Could not copy screenshot.');
     }
 });
 
@@ -558,12 +644,12 @@ document.getElementById('copyTextBtn')?.addEventListener('click', () => {
 // Add listeners for the new history modal
 document.getElementById('historyBtn')?.addEventListener('click', openHistoryModal);
 document.getElementById('closeHistoryBtn')?.addEventListener('click', closeHistoryModal);
-document.getElementById('historyModal')?.addEventListener('click', (event) => {
-    // Close modal if user clicks on the dark overlay background
-    if (event.target === event.currentTarget) {
-        closeHistoryModal();
-    }
+document.getElementById('historyModal')?.addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeHistoryModal();
 });
+document.getElementById('historySearchInput')?.addEventListener('input', renderHistory);
+document.getElementById('historySortSelect')?.addEventListener('change', renderHistory);
+document.getElementById('closePreviewBtn')?.addEventListener('click', closeHistoryPreview);
 
 document.addEventListener('DOMContentLoaded', () => {
     loadOptions();

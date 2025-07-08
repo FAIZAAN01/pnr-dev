@@ -90,13 +90,18 @@
         flex-grow: 1;
     }
 
+    /* Updated History Item Style */
     .history-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
         padding: 15px;
         border-bottom: 1px solid #f0f0f0;
-        cursor: pointer;
-        transition: background-color 0.2s;
     }
-
+    .history-item-info {
+        cursor: pointer; /* The info part is clickable for preview */
+        flex-grow: 1;
+    }
     .history-item:hover {
         background-color: #f8f9fa;
     }
@@ -114,8 +119,93 @@
     .history-item-details {
         font-size: 0.9em;
         color: #7f8c8d;
+        display: flex;
+        gap: 15px;
+        flex-wrap: wrap;
     }
 
+    .history-item-actions button {
+        background-color: #3498db;
+        color: white;
+        padding: 6px 12px;
+        font-size: 0.9em;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        margin-left: 10px;
+        margin-top: 0;
+    }
+
+    /* Preview Panel Styles */
+    #historyPreviewPanel {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: white;
+        display: flex;
+        flex-direction: column;
+        transition: transform 0.3s ease;
+        transform: translateX(100%);
+    }
+
+    #historyPreviewPanel:not(.hidden) {
+        transform: translateX(0);
+    }
+
+    .preview-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 15px 25px;
+        border-bottom: 1px solid #eee;
+        flex-shrink: 0;
+    }
+    .preview-header h3 { margin: 0; }
+
+    .preview-content {
+        padding: 20px;
+        overflow: auto;
+        flex-grow: 1;
+    }
+    .preview-content img {
+        max-width: 100%;
+        height: auto;
+        display: block;
+        margin: 0 auto;
+        border: 1px solid #ddd;
+    }
+    .preview-content pre { /* For displaying raw text */
+        white-space: pre-wrap;
+        word-wrap: break-word;
+        background: #f4f4f4;
+        padding: 15px;
+        border-radius: 4px;
+    }
+
+    /* Add/Update these CSS rules */
+
+    .history-controls {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 15px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #eee;
+    }
+
+    #historySearchInput {
+        flex-grow: 1;
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
+
+    #historySortSelect {
+        padding: 8px;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+    }
     /* Utility class to hide the modal */
     .hidden {
         display: none !important;
@@ -406,8 +496,26 @@
               <h2>Conversion History</h2>
               <button id="closeHistoryBtn" class="close-btn">×</button>
           </div>
+          <!-- NEW: Search and Sort Controls -->
+          <div class="history-controls">
+              <input type="text" id="historySearchInput" placeholder="Search by passenger or route...">
+              <select id="historySortSelect">
+                  <option value="newest">Sort by Newest First</option>
+                  <option value="oldest">Sort by Oldest First</option>
+              </select>
+          </div>
           <div id="historyList" class="history-list">
               <!-- History items will be populated here by JavaScript -->
+          </div>
+          <!-- NEW: Preview Panel within the modal -->
+          <div id="historyPreviewPanel" class="hidden">
+              <div class="preview-header">
+                  <h3>Preview</h3>
+                  <button id="closePreviewBtn" class="close-btn">×</button>
+              </div>
+              <div id="previewContent" class="preview-content">
+                  <!-- Screenshot or text will be shown here -->
+              </div>
           </div>
       </div>
   </div>
