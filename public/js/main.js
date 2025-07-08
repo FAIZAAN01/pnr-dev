@@ -327,7 +327,7 @@ async function convertPNR() {
         if (data.success && data.result?.flights?.length > 0) {
             // We save it here without a screenshot initially.
             // The screenshot will be added later if the user clicks the button.
-            saveToHistory(data.result, rawInput); 
+            saveToHistory(data.result, rawPnrText); 
         }
     
     } catch (error) {
