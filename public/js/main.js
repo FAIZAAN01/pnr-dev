@@ -428,7 +428,11 @@ document.getElementById('screenshotBtn')?.addEventListener('click', async () => 
     }
     const outputEl = document.getElementById('output');
     try {
-        const canvas = await html2canvas(outputEl, { backgroundColor: '#ffffff', scale: 2 });
+        const canvas = await html2canvas(outputEl, { backgroundColor: '#ffffff', scale: 2,            // These four options are the solution:
+            scrollX: -window.scrollX,
+            scrollY: -window.scrollY,
+            windowWidth: outputEl.scrollWidth,
+            windowHeight: outputEl.scrollHeight });
         canvas.toBlob(blob => navigator.clipboard.write([new ClipboardItem({'image/png': blob})]));
         showPopup('Screenshot copied to clipboard!'); // Use popup
     } catch (err) {
