@@ -7,6 +7,119 @@
   <link rel="shortcut icon" href="pass.png" type="image/x-icon">
 
   <style>
+    /* --- NEW HISTORY BUTTON AND MODAL STYLES --- */
+
+    /* The button itself */
+    .history-btn {
+        background-color: #8e44ad; /* A nice purple */
+        margin-left: 10px;
+    }
+
+    /* The full-screen overlay for the modal */
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.6);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 2000;
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out;
+    }
+
+    .modal-overlay:not(.hidden) {
+        opacity: 1;
+    }
+
+    /* The main modal pop-up window */
+    .modal-content {
+        background: white;
+        padding: 25px;
+        border-radius: 8px;
+        box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+        width: 90%;
+        max-width: 600px;
+        max-height: 80vh;
+        display: flex;
+        flex-direction: column;
+        transform: scale(0.95);
+        transition: transform 0.3s ease-in-out;
+    }
+
+    .modal-overlay:not(.hidden) .modal-content {
+        transform: scale(1);
+    }
+
+    .modal-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 15px;
+        margin-bottom: 15px;
+    }
+
+    .modal-header h2 {
+        margin: 0;
+        color: #2c3e50;
+    }
+
+    /* The 'X' close button */
+    .modal-header .close-btn {
+        background: none;
+        border: none;
+        font-size: 2.5rem;
+        line-height: 1;
+        color: #888;
+        cursor: pointer;
+        padding: 0;
+        margin: 0;
+        margin-top: -10px; /* Adjust alignment */
+    }
+    .modal-header .close-btn:hover {
+        color: #333;
+    }
+
+    /* The scrollable list of history items */
+    .history-list {
+        overflow-y: auto;
+        flex-grow: 1;
+    }
+
+    .history-item {
+        padding: 15px;
+        border-bottom: 1px solid #f0f0f0;
+        cursor: pointer;
+        transition: background-color 0.2s;
+    }
+
+    .history-item:hover {
+        background-color: #f8f9fa;
+    }
+
+    .history-item:last-child {
+        border-bottom: none;
+    }
+
+    .history-item-pax {
+        font-weight: bold;
+        color: #34495e;
+        margin-bottom: 5px;
+    }
+
+    .history-item-details {
+        font-size: 0.9em;
+        color: #7f8c8d;
+    }
+
+    /* Utility class to hide the modal */
+    .hidden {
+        display: none !important;
+    }
     /* --- General Styles --- */
     body { font-family: Raleway,sans-serif; max-width: auto; margin: 0 auto; padding: 20px; background-color: #f5f5f5; }
     h1 { color: #2c3e50; text-align: center; margin-bottom: 30px; }
@@ -244,6 +357,7 @@
         <!-- NEW PASTE BUTTON ADDED -->
         <button id="convertBtn">Convert PNR</button>
         <button id="pasteBtn">📋 Paste from Clipboard</button>
+        <button id="historyBtn" class="history-btn">📜 History</button>
         <div class="loading-spinner" id="loadingSpinner"></div>
       </div>
       <div class="output-area">
@@ -284,6 +398,18 @@
       </div>
       
     </div>
+  </div>
+  <!-- ADD THIS ENTIRE MODAL STRUCTURE -->
+  <div id="historyModal" class="modal-overlay hidden">
+      <div class="modal-content">
+          <div class="modal-header">
+              <h2>Conversion History</h2>
+              <button id="closeHistoryBtn" class="close-btn">×</button>
+          </div>
+          <div id="historyList" class="history-list">
+              <!-- History items will be populated here by JavaScript -->
+          </div>
+      </div>
   </div>
 
   <!-- NEW POPUP CONTAINER -->

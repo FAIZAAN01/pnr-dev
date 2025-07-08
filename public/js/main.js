@@ -3,6 +3,10 @@ const OPTIONS_STORAGE_KEY = 'pnrConverterOptions';
 //------------logog and custom text ---
 const CUSTOM_LOGO_KEY = 'pnrConverterCustomLogo';
 const CUSTOM_TEXT_KEY = 'pnrConverterCustomText';
+// --- NEW HISTORY KEY ---
+const HISTORY_KEY = 'pnrConversionHistory';
+let allBrands = [];
+let conversionHistory = [];
 
 // --- NEW POPUP NOTIFICATION FUNCTION ---
 function showPopup(message, duration = 3000) {
@@ -32,6 +36,99 @@ function showPopup(message, duration = 3000) {
     }, duration);
 }
 
+/**
+ * Saves the latest successful conversion result to localStorage.
+ * @param {object} resultObject - The result object from the API response.
+ */
+
+function saveToHistory(resultObject) {
+    if (!resultObject || !resultObject.flights || resultObject.flights.length === 0) {
+        return; // Don't save empty or failed conversions
+    }
+    // Add a timestamp for display purposes
+    const historyEntry = {
+        timestamp: new Date().toISOString(),
+        data: resultObject
+    };
+    // Add the new entry to the start of the array
+    conversionHistory.unshift(historyEntry);
+    // Limit history to the last 20 entries to prevent localStorage from getting too big
+    if (conversionHistory.length > 20) {
+        conversionHistory = conversionHistory.slice(0, 20);
+    }
+    // Save back to localStorage
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(conversionHistory));
+}
+/**
+ * Loads the history from localStorage into the global variable.
+ */
+function loadHistory() {
+    const savedHistory = localStorage.getItem(HISTORY_KEY);
+    if (savedHistory) {
+        try {
+            conversionHistory = JSON.parse(savedHistory);
+        } catch (e) {
+            console.error("Could not parse history, resetting.", e);
+            conversionHistory = [];
+        }
+    }
+}
+
+/**
+ * Renders the history items into the modal list.
+ */
+function renderHistory() {
+    const historyList = document.getElementById('historyList');
+    historyList.innerHTML = ''; // Clear previous items
+
+    if (conversionHistory.length === 0) {
+        historyList.innerHTML = '<p style="text-align:center; color:#888;">No history yet.</p>';
+        return;
+    }
+
+    conversionHistory.forEach((entry, index) => {
+        const item = document.createElement('div');
+        item.className = 'history-item';
+        item.dataset.historyIndex = index; // Store index to retrieve later
+
+        const paxName = entry.data.passengers[0] || 'Unknown Passenger';
+        const flightCount = entry.data.flights.length;
+        const flightDate = new Date(entry.timestamp);
+
+        item.innerHTML = `
+            <div class="history-item-pax">${paxName}</div>
+            <div class="history-item-details">
+                ${flightCount} flight(s) - Saved on ${flightDate.toLocaleDateString()} at ${flightDate.toLocaleTimeString()}
+            </div>
+        `;
+
+        // Add click listener to load this history item
+        item.addEventListener('click', () => {
+            const historyIndex = parseInt(item.dataset.historyIndex, 10);
+            const selectedEntry = conversionHistory[historyIndex];
+            if (selectedEntry) {
+                // Re-create the response structure and call displayResults
+                const mockResponse = { success: true, result: selectedEntry.data };
+                const currentOptions = getDisplayOptions(); // Get current display options
+                displayResults(mockResponse, currentOptions);
+                showPopup("Loaded itinerary from history.");
+                closeHistoryModal();
+            }
+        });
+
+        historyList.appendChild(item);
+    });
+}
+
+// --- MODAL CONTROL FUNCTIONS ---
+function openHistoryModal() {
+    renderHistory(); // Re-render the list every time the modal is opened
+    document.getElementById('historyModal').classList.remove('hidden');
+}
+
+function closeHistoryModal() {
+    document.getElementById('historyModal').classList.add('hidden');
+}
 
 // Function to save current options to localStorage
 function saveOptions() {
@@ -161,6 +258,10 @@ async function convertPNR() {
         
         if (data.pnrProcessingAttempted) {
             displayResults(data, payload.options);
+        }
+
+        if (data.success && data.result?.flights?.length > 0) {
+            saveToHistory(data.result);
         }
     
     } catch (error) {
@@ -454,6 +555,17 @@ document.getElementById('copyTextBtn')?.addEventListener('click', () => {
     });
 });
 
+// Add listeners for the new history modal
+document.getElementById('historyBtn')?.addEventListener('click', openHistoryModal);
+document.getElementById('closeHistoryBtn')?.addEventListener('click', closeHistoryModal);
+document.getElementById('historyModal')?.addEventListener('click', (event) => {
+    // Close modal if user clicks on the dark overlay background
+    if (event.target === event.currentTarget) {
+        closeHistoryModal();
+    }
+});
+
 document.addEventListener('DOMContentLoaded', () => {
     loadOptions();
+    loadHistory();
 });
