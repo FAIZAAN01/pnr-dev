@@ -601,15 +601,6 @@ document.getElementById('copyTextBtn')?.addEventListener('click', () => {
     });
 });
 
-// NEW: Event listener for the Clear button
-document.getElementById('clearBtn')?.addEventListener('click', () => {
-    document.getElementById('pnrInput').value = '';
-    document.getElementById('output').innerHTML = '<div class="info">Enter PNR data to begin.</div>';
-    document.getElementById('screenshotBtn').style.display = 'none';
-    document.getElementById('copyTextBtn').style.display = 'none';
-    showPopup("Input cleared.");
-});
-
 document.getElementById('historyBtn')?.addEventListener('click', openHistoryModal);
 document.getElementById('closeHistoryBtn')?.addEventListener('click', closeHistoryModal);
 document.getElementById('historyModal')?.addEventListener('click', (e) => {
