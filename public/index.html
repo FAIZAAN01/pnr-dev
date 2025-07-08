@@ -184,6 +184,13 @@
         border-radius: 4px;
     }
 
+    /* Add this new CSS rule inside your <style> block */
+
+    .clear-input-btn {
+        background-color: #e74c3c; /* A distinct red color */
+        margin-right: 10px; /* Add some space between it and the paste button */
+    }
+
     /* Add/Update these CSS rules */
 
     .history-controls {
@@ -445,8 +452,7 @@
           </div>
         </div>
         <!-- NEW PASTE BUTTON ADDED -->
-        <button id="convertBtn">Convert PNR</button>
-        <button id="pasteBtn">📋 Paste from Clipboard</button>
+        <button id="clearBtn" class="clear-input-btn">❌ Clear Input</button>        <button id="pasteBtn">📋 Paste from Clipboard</button>
         <button id="historyBtn" class="history-btn">📜 History</button>
         <div class="loading-spinner" id="loadingSpinner"></div>
       </div>
@@ -455,7 +461,7 @@
         <button id="screenshotBtn" style="display:none;">📷 Copy Screenshot</button>
         <button id="copyTextBtn" style="display:none;">📋 Copy as Text</button>
         <div id="output" contenteditable="true">
-          <div class="info">Enter PNR data and click "Convert PNR".</div>
+          <div class="info">Click "Paste from Clipboard".</div>
         </div>
       </div>
     </div>
