@@ -6,7 +6,7 @@ const rateLimit = require('express-rate-limit');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
-const morgan = require('morgan');
+const morgan = 'morgan';
 
 const app = express();
 
@@ -40,7 +40,7 @@ function loadAllDatabases() {
 
 loadAllDatabases();
 
-app.use(morgan('dev'));
+app.use(require('morgan')('dev'));
 app.use(cors());
 app.use(bodyParser.json({ limit: '10mb' }));
 app.use(bodyParser.urlencoded({ extended: true, limit: '10mb' }));
@@ -54,16 +54,14 @@ const limiter = rateLimit({
     message: { success: false, error: "Too many requests, please try again later.", result: { flights: [] } }
 });
 
-// --- TO (The new, simplified function) ---
+// --- UPDATED ENDPOINT ---
 app.post('/api/convert', (req, res) => {
     try {
-        const { pnrText, options, fareDetails } = req.body;
+        const { pnrText, options, fareDetails, baggageDetails } = req.body; // <-- Added baggageDetails
         
-        // Use provided PNR text or an empty string if null/undefined
         const pnrTextForProcessing = pnrText || '';
         const serverOptions = options || {};
         
-        // Parse the PNR or return an empty structure if no text is provided
         const result = pnrTextForProcessing 
             ? parseGalileoEnhanced(pnrTextForProcessing, serverOptions) 
             : { flights: [], passengers: [] };
@@ -72,6 +70,7 @@ app.post('/api/convert', (req, res) => {
             success: true,
             result,
             fareDetails,
+            baggageDetails, // <-- Echo baggageDetails back to the frontend
             pnrProcessingAttempted: !!pnrTextForProcessing
         };
         
@@ -83,12 +82,13 @@ app.post('/api/convert', (req, res) => {
     }
 });
 
+
 app.post('/api/upload-logo', limiter, async (req, res) => {
     console.error("Logo upload is not supported on Vercel's read-only filesystem.");
     return res.status(400).json({ success: false, error: "This feature is disabled on the live deployment." });
 });
 
-// --- Helper Functions ---
+// --- Helper Functions (Unchanged) ---
 function formatMomentTime(momentObj, use24 = false) {
     if (!momentObj || !momentObj.isValid()) return '';
     return momentObj.format(use24 ? 'HH:mm' : 'hh:mm A');
@@ -115,6 +115,7 @@ function getTravelClassName(classCode) {
     return `Class ${code}`;
 }
 
+// --- Main Parser Function (Unchanged) ---
 function parseGalileoEnhanced(pnrText, options) {
     const flights = [];
     const passengers = [];
@@ -198,22 +199,11 @@ function parseGalileoEnhanced(pnrText, options) {
             currentFlight = {
                 segment: parseInt(segmentNumStr, 10) || flightIndex,
                 airline: { code: airlineCode, name: airlineDatabase[airlineCode] || `Unknown Airline (${airlineCode})` },
-                // --- THIS IS THE MODIFIED LINE ---
                 flightNumber: flightNumRaw,
                 travelClass: { code: travelClass || '', name: getTravelClassName(travelClass) },
                 date: departureMoment.isValid() ? departureMoment.format('dddd, DD MMM YYYY') : '',
-                departure: { 
-                    airport: depAirport, 
-                    city: depAirportInfo.city, 
-                    name: depAirportInfo.name,
-                    time: formatMomentTime(departureMoment, options.use24HourFormat) 
-                },
-                arrival: { 
-                    airport: arrAirport, 
-                    city: arrAirportInfo.city, 
-                    name: arrAirportInfo.name,
-                    time: formatMomentTime(arrivalMoment, options.use24HourFormat) 
-                },
+                departure: { airport: depAirport, city: depAirportInfo.city, name: depAirportInfo.name, time: formatMomentTime(departureMoment, options.use24HourFormat) },
+                arrival: { airport: arrAirport, city: arrAirportInfo.city, name: arrAirportInfo.name, time: formatMomentTime(arrivalMoment, options.use24HourFormat) },
                 duration: calculateAndFormatDuration(departureMoment, arrivalMoment),
                 aircraft: aircraftTypes[aircraftCodeKey] || aircraftCodeKey || '',
                 meal: mealCode, notes: [], operatedBy: null,
