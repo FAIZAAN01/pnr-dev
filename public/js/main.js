@@ -556,6 +556,7 @@ document.getElementById('clearBtn')?.addEventListener('click', () => {
     document.getElementById('copyTextBtn').style.display = 'none';
     showPopup("Input cleared.");
 });
+
 [...document.querySelectorAll('.options input, #currencySelect, #adultInput, #fareInput, #taxInput, #feeInput')].forEach(el => {
     if (el.id === 'showItineraryLogo') return;
     el.addEventListener('change', () => {
