@@ -191,7 +191,7 @@ function parseGalileoEnhanced(pnrText, options) {
             }
             if (previousArrivalMoment && previousArrivalMoment.isValid() && departureMoment && departureMoment.isValid()) {
                 const transitDuration = moment.duration(departureMoment.diff(previousArrivalMoment));
-                if (transitDuration.asMinutes() > 0 && transitDuration.asHours() <= 48) {
+                if (transitDuration.asMinutes() > 50 && transitDuration.asHours() <= 23) {
                     const hours = Math.floor(transitDuration.asHours());
                     const minutes = transitDuration.minutes();
                     precedingTransitTimeForThisSegment = `${hours}h ${minutes < 10 ? '0' : ''}${minutes}m`;
