@@ -106,11 +106,16 @@ async function convertPNR() {
             showTransit: document.getElementById('showTransit').checked,
             use24HourFormat: document.getElementById('use24HourFormat').checked,
         },
+        // === UPDATED fareDetails OBJECT ===
         fareDetails: {
-            fare: document.getElementById('fareInput').value,
+            adultCount: document.getElementById('adultCountInput').value,
+            adultFare: document.getElementById('adultFareInput').value,
+            childCount: document.getElementById('childCountInput').value,
+            childFare: document.getElementById('childFareInput').value,
+            infantCount: document.getElementById('infantCountInput').value,
+            infantFare: document.getElementById('infantFareInput').value,
             tax: document.getElementById('taxInput').value,
             fee: document.getElementById('feeInput').value,
-            adult: document.getElementById('adultInput').value,
             currency: document.getElementById('currencySelect').value
         },
         baggageDetails: {
@@ -172,6 +177,7 @@ function displayResults(response, displayPnrOptions) {
     const outputContainer = document.createElement('div');
     outputContainer.className = 'output-container';
 
+    // ... (Logo and Passenger header rendering remains the same)
     if (flights.length > 0 && displayPnrOptions.showItineraryLogo) {
         const logoContainer = document.createElement('div');
         logoContainer.className = 'itinerary-main-logo-container';
@@ -185,7 +191,6 @@ function displayResults(response, displayPnrOptions) {
         logoContainer.appendChild(logoText);
         outputContainer.appendChild(logoContainer);
     }
-    
     if (passengers.length > 0) {
         const headerDiv = document.createElement('div');
         headerDiv.className = 'itinerary-header';
@@ -196,6 +201,7 @@ function displayResults(response, displayPnrOptions) {
     if (flights.length > 0) {
         const itineraryBlock = document.createElement('div');
         itineraryBlock.className = 'itinerary-block';
+        // ... (Flight item rendering loop remains the same)
         flights.forEach((flight, i) => {
             if (displayPnrOptions.showTransit && i > 0 && flight.transitTime) {
                 const transitDiv = document.createElement('div');
@@ -254,20 +260,52 @@ function displayResults(response, displayPnrOptions) {
             itineraryBlock.appendChild(flightItem);
         });
 
-        const { fare, tax, fee, adult, currency } = response.fareDetails || {};
-        if (fare || tax || fee) {
-            const fareValue = parseFloat(fare) || 0, taxValue = parseFloat(tax) || 0, feeValue = parseFloat(fee) || 0;
-            const adultCount = parseInt(adult) || 1, currencySymbol = currency || 'USD';
-            let fareLines = [];
-            if (fareValue > 1) fareLines.push(`Fare(${currencySymbol}): ${fareValue.toFixed(2)}`);
-            if (taxValue > 0) fareLines.push(`Taxes(${currencySymbol}): ${taxValue.toFixed(2)}`);
-            if (feeValue > 0) fareLines.push(`Fees(${currencySymbol}): ${feeValue.toFixed(2)}`);
-            if (adultCount > 1) fareLines.push(`Total(${currencySymbol}) for ${adultCount}: ${((fareValue + taxValue + feeValue) * adultCount).toFixed(2)}`);
+        // === UPDATED FARE SUMMARY LOGIC ===
+        const { adultCount, adultFare, childCount, childFare, infantCount, infantFare, tax, fee, currency } = response.fareDetails || {};
+        const adultCountNum = parseInt(adultCount) || 0;
+        const childCountNum = parseInt(childCount) || 0;
+        const infantCountNum = parseInt(infantCount) || 0;
+        const totalPax = adultCountNum + childCountNum + infantCountNum;
+
+        if (totalPax > 0) {
+            const adultFareNum = parseFloat(adultFare) || 0;
+            const childFareNum = parseFloat(childFare) || 0;
+            const infantFareNum = parseFloat(infantFare) || 0;
+            const taxNum = parseFloat(tax) || 0;
+            const feeNum = parseFloat(fee) || 0;
+            const currencySymbol = currency || 'USD';
             
-            if (fareLines.length > 0) {
+            const adultBaseTotal = adultCountNum * adultFareNum;
+            const childBaseTotal = childCountNum * childFareNum;
+            const infantBaseTotal = infantCountNum * infantFareNum;
+            
+            const totalTaxes = totalPax * taxNum;
+            const totalFees = totalPax * feeNum;
+            
+            const grandTotal = adultBaseTotal + childBaseTotal + infantBaseTotal + totalTaxes + totalFees;
+
+            if (grandTotal > 0) {
+                let fareLines = [];
+                if (adultBaseTotal > 0) {
+                    fareLines.push(`Adults (${adultCountNum} x ${adultFareNum.toFixed(2)}): ${adultBaseTotal.toFixed(2)}`);
+                }
+                if (childBaseTotal > 0) {
+                    fareLines.push(`Children (${childCountNum} x ${childFareNum.toFixed(2)}): ${childBaseTotal.toFixed(2)}`);
+                }
+                if (infantBaseTotal > 0) {
+                    fareLines.push(`Infants (${infantCountNum} x ${infantFareNum.toFixed(2)}): ${infantBaseTotal.toFixed(2)}`);
+                }
+                if (totalTaxes > 0) {
+                    fareLines.push(`Taxes (${totalPax} x ${taxNum.toFixed(2)}): ${totalTaxes.toFixed(2)}`);
+                }
+                if (totalFees > 0) {
+                    fareLines.push(`Fees (${totalPax} x ${feeNum.toFixed(2)}): ${totalFees.toFixed(2)}`);
+                }
+                fareLines.push(`<strong>Grand Total (${currencySymbol}): ${grandTotal.toFixed(2)}</strong>`);
+
                 const fareDiv = document.createElement('div');
                 fareDiv.className = 'fare-summary';
-                fareDiv.textContent = fareLines.join('\n');
+                fareDiv.innerHTML = fareLines.join('<br>');
                 itineraryBlock.appendChild(fareDiv);
             }
         }
@@ -289,7 +327,7 @@ function getMealDescription(mealCode) {
     return mealMap[mealCode] || `Code ${mealCode}`;
 }
 
-// --- HISTORY MANAGER ---
+// ... (History Manager remains the same)
 const historyManager = {
     get: () => JSON.parse(localStorage.getItem(HISTORY_STORAGE_KEY) || '[]'),
     save: (history) => localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history)),
@@ -414,9 +452,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // Options listeners
-    [...document.querySelectorAll('.options input, #currencySelect, .fare-options input, .baggage-options input, #baggageAmountInput, #baggageUnitSelect')].forEach(el => {
-        el.addEventListener('change', () => {
+    // === UPDATED EVENT LISTENER QUERY ===
+    // This now includes all the new fare inputs
+    const allInputs = '.options input, .fare-options-grid input, .fare-options-grid select, .baggage-options input, #baggageAmountInput, #baggageUnitSelect';
+    [...document.querySelectorAll(allInputs)].forEach(el => {
+        const eventType = el.type === 'checkbox' || el.tagName === 'SELECT' || el.type === 'radio' ? 'change' : 'input';
+        el.addEventListener(eventType, () => {
             if (el.type === 'checkbox' || el.id === 'currencySelect') saveOptions();
             debouncedConvert();
         });
@@ -430,7 +471,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Branding listeners
+    // ... (Branding and Output action listeners remain the same)
     document.getElementById('showItineraryLogo').addEventListener('change', () => {
         toggleCustomBrandingSection();
         saveOptions();
@@ -464,16 +505,10 @@ document.addEventListener('DOMContentLoaded', () => {
             debouncedConvert();
         }
     });
-
-    // Output action buttons
     document.getElementById('screenshotBtn').addEventListener('click', async () => {
         const outputEl = document.getElementById('output');
         try {
-                const canvas = await html2canvas(outputEl.querySelector('.output-container'), {
-                    backgroundColor: '#ffffff', scale: 2,
-                    scrollX: -window.scrollX, scrollY: -window.scrollY,
-                    windowWidth: outputEl.scrollWidth, windowHeight: outputEl.scrollHeight
-            });
+            const canvas = await html2canvas(outputEl.querySelector('.output-container'), { backgroundColor: '#ffffff', scale: 2 });
             canvas.toBlob(blob => navigator.clipboard.write([new ClipboardItem({'image/png': blob})]));
             showPopup('Screenshot copied to clipboard!');
         } catch (err) {
