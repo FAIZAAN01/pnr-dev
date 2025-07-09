@@ -232,15 +232,15 @@ function displayResults(response, displayPnrOptions) {
                 let transitClassName = '';
                 const minutes = flight.transitDurationMinutes;
 
-                if (minutes <= 120) { // 2 hours or less
+                if (minutes > 0 && minutes <= 120) { // 2 hours or less
                     transitClassName = 'transit-short';
-                    transitText = `----- short transit ${flight.transitTime} -----`;
+                    transitText = `----- Short Transit ${flight.transitTime} -----`;
                 } else if (minutes > 120 && minutes <= 300) { // 2 to 5 hours
                     transitClassName = 'transit-minimum';
-                    transitText = `----- Minimum transit ${flight.transitTime} -----`;
+                    transitText = `----- Transit ${flight.transitTime} -----`;
                 } else { // More than 5 hours
                     transitClassName = 'transit-long';
-                    transitText = `----- Long transit ${flight.transitTime} -----`;
+                    transitText = `----- Long Transit ${flight.transitTime} -----`;
                 }
 
                 transitDiv.className = `transit-item ${transitClassName}`;
@@ -259,7 +259,7 @@ function displayResults(response, displayPnrOptions) {
                 if (baggageDetails.option === 'alltheway' && i === 0) {
                     baggageText = ` (Checked through)`;
                 } else if (baggageDetails.option === 'particular') {
-                    baggageText = ` (Per segment)`;
+                    baggageText = ` `;
                 }
             }
             // === NEW LOGIC TO BUILD THE ARRIVAL STRING ===
@@ -269,7 +269,7 @@ function displayResults(response, displayPnrOptions) {
             const detailRows = [
                 { label: 'Departing ', value: `${flight.departure.airport} - ${flight.departure.name} at ${flight.departure.time}` },
                 { label: 'Arriving \u00A0\u00A0\u00A0', value: arrivalString }, // <-- Use the new arrival string
-                { label: 'Baggage', value: (baggageText ? `${baggageDetails.amount}${baggageDetails.unit}${baggageText}` : null) },
+                { label: 'Baggage \u00A0\u00A0\u00A0', value: (baggageText ? `${baggageDetails.amount}${baggageDetails.unit}${baggageText}` : null) },
                 { label: 'Operated by', value: (displayPnrOptions.showOperatedBy && flight.operatedBy) ? flight.operatedBy : null },
                 { label: 'Meal', value: (displayPnrOptions.showMeal && flight.meal) ? getMealDescription(flight.meal) : null },
                 { label: 'Notes', value: (displayPnrOptions.showNotes && flight.notes?.length) ? flight.notes.join('; ') : null, isNote: true }
