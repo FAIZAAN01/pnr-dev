@@ -26,6 +26,14 @@ function debounce(func, wait) {
     };
 }
 
+// === NEW HELPER FUNCTION ===
+function toggleFareInputsVisibility() {
+    const showTaxes = document.getElementById('showTaxes').checked;
+    const showFees = document.getElementById('showFees').checked;
+    document.getElementById('taxInputContainer').classList.toggle('hidden', !showTaxes);
+    document.getElementById('feeInputContainer').classList.toggle('hidden', !showFees);
+}
+
 // --- OPTIONS & BRANDING MANAGEMENT ---
 function saveOptions() {
     try {
@@ -40,6 +48,8 @@ function saveOptions() {
             showTransit: document.getElementById('showTransit').checked,
             use24HourFormat: document.getElementById('use24HourFormat').checked,
             currency: document.getElementById('currencySelect').value,
+            showTaxes: document.getElementById('showTaxes').checked,
+            showFees: document.getElementById('showFees').checked,
         };
         localStorage.setItem(OPTIONS_STORAGE_KEY, JSON.stringify(optionsToSave));
     } catch (e) { console.error("Failed to save options:", e); }
@@ -57,6 +67,9 @@ function loadOptions() {
         document.getElementById('showNotes').checked = savedOptions.showNotes ?? false;
         document.getElementById('showTransit').checked = savedOptions.showTransit ?? true;
         document.getElementById('use24HourFormat').checked = savedOptions.use24HourFormat ?? true;
+        document.getElementById('showTaxes').checked = savedOptions.showTaxes ?? true;
+        document.getElementById('showFees').checked = savedOptions.showFees ?? true;
+        
         if (savedOptions.currency) document.getElementById('currencySelect').value = savedOptions.currency;
 
         const customLogoData = localStorage.getItem(CUSTOM_LOGO_KEY);
@@ -116,7 +129,10 @@ async function convertPNR() {
             infantFare: document.getElementById('infantFareInput').value,
             tax: document.getElementById('taxInput').value,
             fee: document.getElementById('feeInput').value,
-            currency: document.getElementById('currencySelect').value
+            currency: document.getElementById('currencySelect').value,
+            // === PASS CHECKBOX STATE TO BACKEND ===
+            showTaxes: document.getElementById('showTaxes').checked,
+            showFees: document.getElementById('showFees').checked,
         },
         baggageDetails: {
             option: baggageOption,
@@ -260,8 +276,8 @@ function displayResults(response, displayPnrOptions) {
             itineraryBlock.appendChild(flightItem);
         });
 
-        // === UPDATED FARE SUMMARY LOGIC ===
-        const { adultCount, adultFare, childCount, childFare, infantCount, infantFare, tax, fee, currency } = response.fareDetails || {};
+         // === UPDATED FARE SUMMARY LOGIC ===
+        const { adultCount, adultFare, childCount, childFare, infantCount, infantFare, tax, fee, currency, showTaxes, showFees } = response.fareDetails || {};
         const adultCountNum = parseInt(adultCount) || 0;
         const childCountNum = parseInt(childCount) || 0;
         const infantCountNum = parseInt(infantCount) || 0;
@@ -279,8 +295,9 @@ function displayResults(response, displayPnrOptions) {
             const childBaseTotal = childCountNum * childFareNum;
             const infantBaseTotal = infantCountNum * infantFareNum;
             
-            const totalTaxes = totalPax * taxNum;
-            const totalFees = totalPax * feeNum;
+            // Conditionally calculate totals
+            const totalTaxes = showTaxes ? totalPax * taxNum : 0;
+            const totalFees = showFees ? totalPax * feeNum : 0;
             
             const grandTotal = adultBaseTotal + childBaseTotal + infantBaseTotal + totalTaxes + totalFees;
 
@@ -295,10 +312,11 @@ function displayResults(response, displayPnrOptions) {
                 if (infantBaseTotal > 0) {
                     fareLines.push(`Infants (${infantCountNum} x ${infantFareNum.toFixed(2)}): ${infantBaseTotal.toFixed(2)}`);
                 }
-                if (totalTaxes > 0) {
+                // Conditionally add lines to the output
+                if (showTaxes && totalTaxes > 0) {
                     fareLines.push(`Taxes (${totalPax} x ${taxNum.toFixed(2)}): ${totalTaxes.toFixed(2)}`);
                 }
-                if (totalFees > 0) {
+                if (showFees && totalFees > 0) {
                     fareLines.push(`Fees (${totalPax} x ${feeNum.toFixed(2)}): ${totalFees.toFixed(2)}`);
                 }
                 fareLines.push(`<strong>Grand Total (${currencySymbol}): ${grandTotal.toFixed(2)}</strong>`);
@@ -455,10 +473,17 @@ document.addEventListener('DOMContentLoaded', () => {
     // === UPDATED EVENT LISTENER QUERY ===
     // This now includes all the new fare inputs
     const allInputs = '.options input, .fare-options-grid input, .fare-options-grid select, .baggage-options input, #baggageAmountInput, #baggageUnitSelect';
-    [...document.querySelectorAll(allInputs)].forEach(el => {
-        const eventType = el.type === 'checkbox' || el.tagName === 'SELECT' || el.type === 'radio' ? 'change' : 'input';
+    document.querySelectorAll(allInputs).forEach(el => {
+        const eventType = el.matches('input[type="checkbox"], input[type="radio"], select') ? 'change' : 'input';
         el.addEventListener(eventType, () => {
-            if (el.type === 'checkbox' || el.id === 'currencySelect') saveOptions();
+            // Save options if it's a display preference
+            if (el.closest('.options')) {
+                saveOptions();
+            }
+            // Toggle visibility if it's a fare display checkbox
+            if (el.id === 'showTaxes' || el.id === 'showFees') {
+                toggleFareInputsVisibility();
+            }
             debouncedConvert();
         });
     });
