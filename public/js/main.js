@@ -225,12 +225,29 @@ function displayResults(response, displayPnrOptions) {
         const itineraryBlock = document.createElement('div');
         itineraryBlock.className = 'itinerary-block';
         flights.forEach((flight, i) => {
-            if (displayPnrOptions.showTransit && i > 0 && flight.transitTime) {
+            // === NEW TRANSIT LOGIC ===
+            if (displayPnrOptions.showTransit && i > 0 && flight.transitTime && flight.transitDurationMinutes) {
                 const transitDiv = document.createElement('div');
-                transitDiv.className = 'transit-item';
-                transitDiv.textContent = `------ Transit: ${flight.transitTime} at ${flights[i-1].arrival.city} (${flights[i-1].arrival.airport}) ------`;
+                let transitText = '';
+                let transitClassName = '';
+                const minutes = flight.transitDurationMinutes;
+
+                if (minutes <= 120) { // 2 hours or less
+                    transitClassName = 'transit-short';
+                    transitText = `----- short transit ${flight.transitTime} -----`;
+                } else if (minutes > 120 && minutes <= 300) { // 2 to 5 hours
+                    transitClassName = 'transit-minimum';
+                    transitText = `----- Minimum transit ${flight.transitTime} -----`;
+                } else { // More than 5 hours
+                    transitClassName = 'transit-long';
+                    transitText = `----- Long transit ${flight.transitTime} -----`;
+                }
+
+                transitDiv.className = `transit-item ${transitClassName}`;
+                transitDiv.textContent = transitText;
                 itineraryBlock.appendChild(transitDiv);
             }
+            // === End of transit login
             const flightItem = document.createElement('div');
             flightItem.className = 'flight-item';
             

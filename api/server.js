@@ -166,6 +166,7 @@ function parseGalileoEnhanced(pnrText, options) {
             if (currentFlight) flights.push(currentFlight);
             flightIndex++;
             let precedingTransitTimeForThisSegment = null;
+            let transitDurationInMinutes = null; // New variable to hold raw minutes
             const [, segmentNumStr, airlineCode, flightNumRaw, travelClass, depDateStr, depAirport, arrAirport, depTimeStr, arrTimeStr, arrDateStrOrNextDayIndicator] = flightMatch;
             const flightDetailsPart = line.substring(flightMatch[0].length).trim();
             const detailsParts = flightDetailsPart.split(/\s+/);
@@ -194,6 +195,8 @@ function parseGalileoEnhanced(pnrText, options) {
                     const hours = Math.floor(transitDuration.asHours());
                     const minutes = transitDuration.minutes();
                     precedingTransitTimeForThisSegment = `${hours}h ${minutes < 10 ? '0' : ''}${minutes}m`;
+                    // --- MODIFICATION: Store the raw minutes ---
+                    transitDurationInMinutes = Math.round(transitDuration.asMinutes());
                 }
             }
 
@@ -227,7 +230,8 @@ function parseGalileoEnhanced(pnrText, options) {
                 duration: calculateAndFormatDuration(departureMoment, arrivalMoment),
                 aircraft: aircraftTypes[aircraftCodeKey] || aircraftCodeKey || '',
                 meal: mealCode, notes: [], operatedBy: null,
-                transitTime: precedingTransitTimeForThisSegment
+                transitTime: precedingTransitTimeForThisSegment,
+                transitDurationMinutes: transitDurationInMinutes
             };
             previousArrivalMoment = arrivalMoment.clone();
         } else if (currentFlight && operatedByMatch) {
