@@ -469,7 +469,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('screenshotBtn').addEventListener('click', async () => {
         const outputEl = document.getElementById('output');
         try {
-            const canvas = await html2canvas(outputEl.querySelector('.output-container'), { backgroundColor: '#ffffff', scale: 2 });
+                const canvas = await html2canvas(outputEl.querySelector('.output-container'), {
+                    backgroundColor: '#ffffff', scale: 2,
+                    scrollX: -window.scrollX, scrollY: -window.scrollY,
+                    windowWidth: outputEl.scrollWidth, windowHeight: outputEl.scrollHeight
+            });
             canvas.toBlob(blob => navigator.clipboard.write([new ClipboardItem({'image/png': blob})]));
             showPopup('Screenshot copied to clipboard!');
         } catch (err) {
