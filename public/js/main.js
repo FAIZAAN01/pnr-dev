@@ -547,8 +547,15 @@ document.getElementById('pasteBtn')?.addEventListener('click', async () => {
 });
 
 document.getElementById('pnrInput').addEventListener('input', debouncedConvert);
-document.getElementById('convertBtn').addEventListener('click', convertPNR);
-
+// NEW: Event listener for the Clear button
+document.getElementById('clearBtn')?.addEventListener('click', () => {
+    document.getElementById('pnrInput').value = '';
+    document.getElementById('output').innerHTML = '<div class="info">Enter PNR data to begin.</div>';
+    // Also hide the screenshot/copy buttons
+    document.getElementById('screenshotBtn').style.display = 'none';
+    document.getElementById('copyTextBtn').style.display = 'none';
+    showPopup("Input cleared.");
+});
 [...document.querySelectorAll('.options input, #currencySelect, #adultInput, #fareInput, #taxInput, #feeInput')].forEach(el => {
     if (el.id === 'showItineraryLogo') return;
     el.addEventListener('change', () => {
