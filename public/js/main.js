@@ -443,13 +443,18 @@ function displayResults(response, displayPnrOptions, entryId = null) {
             if (displayPnrOptions.showClass && flight.travelClass?.name) headerText += ` - ${flight.travelClass.name}`;
             headerDiv.textContent = headerText;
             detailsContainer.appendChild(headerDiv);
+            let arrivalString = `${flight.arrival?.airport} - ${flight.arrival?.name} at ${flight.arrival?.time}`;
+            if (flight.arrival?.date) {
+                arrivalString += ` (${flight.arrival.date})`;
+            }
             [
                 createDetailRow('Departing ', `${flight.departure?.airport} - ${flight.departure?.name} at ${flight.departure?.time}`),
-                createDetailRow('Arriving    ', `${flight.arrival?.airport} - ${flight.arrival?.name} at ${flight.arrival?.time}`),
+                createDetailRow('Arriving    ', arrivalString),
                 displayPnrOptions.showOperatedBy && flight.operatedBy ? createDetailRow('Operated by', flight.operatedBy) : null,
                 displayPnrOptions.showMeal ? createDetailRow('Meal', getMealDescription(flight.meal)) : null,
                 displayPnrOptions.showNotes && flight.notes?.length ? createDetailRow('Notes', flight.notes, 'notes-detail') : null,
             ].forEach(el => { if (el) detailsContainer.appendChild(el); });
+            
             flightContentDiv.appendChild(detailsContainer);
             flightItem.appendChild(flightContentDiv);
             itineraryBlock.appendChild(flightItem);

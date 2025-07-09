@@ -176,6 +176,11 @@ function parseGalileoEnhanced(pnrText, options) {
             if (!moment.tz.zone(arrAirportInfo.timezone)) arrAirportInfo.timezone = 'UTC';
             const departureMoment = moment.tz(`${depDateStr} ${depTimeStr}`, "DDMMM HHmm", true, depAirportInfo.timezone);
             let arrivalMoment;
+            // --- DATE COMPARISON LOGIC ---
+            let arrivalDateString = null;
+            if (departureMoment.isValid() && arrivalMoment.isValid() && !departureMoment.isSame(arrivalMoment, 'day')) {
+                arrivalDateString = arrivalMoment.format('DD MMM'); // e.g., "24 Aug"
+            }
             if (arrDateStrOrNextDayIndicator) {
                 if (arrDateStrOrNextDayIndicator.startsWith('+')) {
                     const daysToAdd = parseInt(arrDateStrOrNextDayIndicator.substring(1), 10);
@@ -212,7 +217,8 @@ function parseGalileoEnhanced(pnrText, options) {
                     airport: arrAirport, 
                     city: arrAirportInfo.city, 
                     name: arrAirportInfo.name,
-                    time: formatMomentTime(arrivalMoment, options.use24HourFormat) 
+                    time: formatMomentTime(arrivalMoment, options.use24HourFormat),
+                    date: arrivalDateString // THE NEW PROPERTY
                 },
                 duration: calculateAndFormatDuration(departureMoment, arrivalMoment),
                 aircraft: aircraftTypes[aircraftCodeKey] || aircraftCodeKey || '',
