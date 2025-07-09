@@ -26,7 +26,7 @@ function debounce(func, wait) {
     };
 }
 
-// === NEW HELPER FUNCTION ===
+// === HELPER FUNCTION ===
 function toggleFareInputsVisibility() {
     const showTaxes = document.getElementById('showTaxes').checked;
     const showFees = document.getElementById('showFees').checked;
@@ -58,19 +58,25 @@ function saveOptions() {
 function loadOptions() {
     try {
         const savedOptions = JSON.parse(localStorage.getItem(OPTIONS_STORAGE_KEY) || '{}');
-        document.getElementById('showItineraryLogo').checked = savedOptions.showItineraryLogo ?? true;
-        document.getElementById('showAirline').checked = savedOptions.showAirline ?? true;
-        document.getElementById('showAircraft').checked = savedOptions.showAircraft ?? true;
-        document.getElementById('showOperatedBy').checked = savedOptions.showOperatedBy ?? true;
-        document.getElementById('showClass').checked = savedOptions.showClass ?? false;
-        document.getElementById('showMeal').checked = savedOptions.showMeal ?? false;
-        document.getElementById('showNotes').checked = savedOptions.showNotes ?? false;
-        document.getElementById('showTransit').checked = savedOptions.showTransit ?? true;
-        document.getElementById('use24HourFormat').checked = savedOptions.use24HourFormat ?? true;
-        document.getElementById('showTaxes').checked = savedOptions.showTaxes ?? true;
-        document.getElementById('showFees').checked = savedOptions.showFees ?? true;
         
-        if (savedOptions.currency) document.getElementById('currencySelect').value = savedOptions.currency;
+        // === REFACTORED: Cleaner way to set checkbox states ===
+        const checkboxOptions = {
+            showItineraryLogo: true, showAirline: true, showAircraft: true,
+            showOperatedBy: true, showClass: false, showMeal: false,
+            showNotes: false, showTransit: true, use24HourFormat: true,
+            showTaxes: true, showFees: true
+        };
+
+        for (const [id, defaultValue] of Object.entries(checkboxOptions)) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.checked = savedOptions[id] ?? defaultValue;
+            }
+        }
+        
+        if (savedOptions.currency) {
+            document.getElementById('currencySelect').value = savedOptions.currency;
+        }
 
         const customLogoData = localStorage.getItem(CUSTOM_LOGO_KEY);
         const customTextData = localStorage.getItem(CUSTOM_TEXT_KEY);
@@ -82,7 +88,11 @@ function loadOptions() {
         if (customTextData) {
             document.getElementById('customTextInput').value = customTextData;
         }
+
         toggleCustomBrandingSection();
+        // === FIX: Added missing function call to ensure UI is correct on load ===
+        toggleFareInputsVisibility(); 
+
     } catch (e) { console.error("Failed to load options:", e); }
 }
 
@@ -92,7 +102,7 @@ function toggleCustomBrandingSection() {
     );
 }
 
-// --- CORE CONVERSION LOGIC ---
+// --- CORE CONVERSION LOGIC (Unchanged) ---
 async function convertPNR() {
     const output = document.getElementById('output');
     const loadingSpinner = document.getElementById('loadingSpinner');
@@ -119,7 +129,6 @@ async function convertPNR() {
             showTransit: document.getElementById('showTransit').checked,
             use24HourFormat: document.getElementById('use24HourFormat').checked,
         },
-        // === UPDATED fareDetails OBJECT ===
         fareDetails: {
             adultCount: document.getElementById('adultCountInput').value,
             adultFare: document.getElementById('adultFareInput').value,
@@ -130,7 +139,6 @@ async function convertPNR() {
             tax: document.getElementById('taxInput').value,
             fee: document.getElementById('feeInput').value,
             currency: document.getElementById('currencySelect').value,
-            // === PASS CHECKBOX STATE TO BACKEND ===
             showTaxes: document.getElementById('showTaxes').checked,
             showFees: document.getElementById('showFees').checked,
         },
@@ -168,7 +176,7 @@ async function convertPNR() {
     }
 }
 
-// --- DISPLAY & RENDERING ---
+// --- DISPLAY & RENDERING (Unchanged) ---
 function displayResults(response, displayPnrOptions) {
     const output = document.getElementById('output');
     const screenshotBtn = document.getElementById('screenshotBtn');
@@ -193,7 +201,6 @@ function displayResults(response, displayPnrOptions) {
     const outputContainer = document.createElement('div');
     outputContainer.className = 'output-container';
 
-    // ... (Logo and Passenger header rendering remains the same)
     if (flights.length > 0 && displayPnrOptions.showItineraryLogo) {
         const logoContainer = document.createElement('div');
         logoContainer.className = 'itinerary-main-logo-container';
@@ -217,7 +224,6 @@ function displayResults(response, displayPnrOptions) {
     if (flights.length > 0) {
         const itineraryBlock = document.createElement('div');
         itineraryBlock.className = 'itinerary-block';
-        // ... (Flight item rendering loop remains the same)
         flights.forEach((flight, i) => {
             if (displayPnrOptions.showTransit && i > 0 && flight.transitTime) {
                 const transitDiv = document.createElement('div');
@@ -276,7 +282,6 @@ function displayResults(response, displayPnrOptions) {
             itineraryBlock.appendChild(flightItem);
         });
 
-         // === UPDATED FARE SUMMARY LOGIC ===
         const { adultCount, adultFare, childCount, childFare, infantCount, infantFare, tax, fee, currency, showTaxes, showFees } = response.fareDetails || {};
         const adultCountNum = parseInt(adultCount) || 0;
         const childCountNum = parseInt(childCount) || 0;
@@ -295,7 +300,6 @@ function displayResults(response, displayPnrOptions) {
             const childBaseTotal = childCountNum * childFareNum;
             const infantBaseTotal = infantCountNum * infantFareNum;
             
-            // Conditionally calculate totals
             const totalTaxes = showTaxes ? totalPax * taxNum : 0;
             const totalFees = showFees ? totalPax * feeNum : 0;
             
@@ -312,7 +316,6 @@ function displayResults(response, displayPnrOptions) {
                 if (infantBaseTotal > 0) {
                     fareLines.push(`Infants (${infantCountNum} x ${infantFareNum.toFixed(2)}): ${infantBaseTotal.toFixed(2)}`);
                 }
-                // Conditionally add lines to the output
                 if (showTaxes && totalTaxes > 0) {
                     fareLines.push(`Taxes (${totalPax} x ${taxNum.toFixed(2)}): ${totalTaxes.toFixed(2)}`);
                 }
@@ -345,7 +348,7 @@ function getMealDescription(mealCode) {
     return mealMap[mealCode] || `Code ${mealCode}`;
 }
 
-// ... (History Manager remains the same)
+// --- HISTORY MANAGER (Unchanged) ---
 const historyManager = {
     get: () => JSON.parse(localStorage.getItem(HISTORY_STORAGE_KEY) || '[]'),
     save: (history) => localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history)),
@@ -367,7 +370,7 @@ const historyManager = {
                 screenshot: screenshot
             };
             history.unshift(newEntry);
-            if (history.length > 50) history.pop(); // Limit history to 50 entries
+            if (history.length > 50) history.pop();
             this.save(history);
         } catch (err) {
             console.error('Failed to save history item:', err);
@@ -444,15 +447,13 @@ const historyManager = {
         });
     }
 };
-
-// --- EVENT LISTENERS ---
+// --- EVENT LISTENERS (Unchanged) ---
 const debouncedConvert = debounce(convertPNR, 400);
 
 document.addEventListener('DOMContentLoaded', () => {
     loadOptions();
     historyManager.init();
 
-    // Input area listeners
     document.getElementById('pnrInput').addEventListener('input', debouncedConvert);
     document.getElementById('clearBtn').addEventListener('click', () => {
         document.getElementById('pnrInput').value = '';
@@ -470,17 +471,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // === UPDATED EVENT LISTENER QUERY ===
-    // This now includes all the new fare inputs
     const allInputs = '.options input, .fare-options-grid input, .fare-options-grid select, .baggage-options input, #baggageAmountInput, #baggageUnitSelect';
     document.querySelectorAll(allInputs).forEach(el => {
         const eventType = el.matches('input[type="checkbox"], input[type="radio"], select') ? 'change' : 'input';
         el.addEventListener(eventType, () => {
-            // Save options if it's a display preference
             if (el.closest('.options')) {
                 saveOptions();
             }
-            // Toggle visibility if it's a fare display checkbox
             if (el.id === 'showTaxes' || el.id === 'showFees') {
                 toggleFareInputsVisibility();
             }
@@ -488,7 +485,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // Baggage UI toggle
     document.querySelectorAll('input[name="baggageOption"]').forEach(radio => {
         radio.addEventListener('change', () => {
             const showInputs = radio.value === 'alltheway' || radio.value === 'particular';
@@ -496,7 +492,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // ... (Branding and Output action listeners remain the same)
     document.getElementById('showItineraryLogo').addEventListener('change', () => {
         toggleCustomBrandingSection();
         saveOptions();
