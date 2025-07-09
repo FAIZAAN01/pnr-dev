@@ -377,7 +377,7 @@ function displayResults(response, displayPnrOptions, entryId = null) {
         const logoText = document.createElement('div');
         logoText.className = 'itinerary-logo-text';
         const customText = document.getElementById('customTextInput').value;
-        logoText.innerHTML = customText ? customText.replace(/\n/g, '<br>') : "KN2 Ave 26, Nyarugenge Dist, Muhima<br>Kigali Rwanda";
+        logoText.innerHTML = customText ? customText.replace(/\n/g, '<br>') : "Your Company Name<br>Contact Info";
         logoContainer.appendChild(logoText);
         outputContainer.appendChild(logoContainer);
     }
@@ -414,7 +414,7 @@ function displayResults(response, displayPnrOptions, entryId = null) {
             }
             const flightItem = document.createElement('div');
             flightItem.className = 'flight-item';
-            const createDetailRow = (label, value, customClass = '') => {
+            function createDetailRow(label, value, customClass = '') {
                 if (!value) return null;
                 const detailDiv = document.createElement('div');
                 detailDiv.className = `flight-detail ${customClass}`;
@@ -443,22 +443,27 @@ function displayResults(response, displayPnrOptions, entryId = null) {
             if (displayPnrOptions.showClass && flight.travelClass?.name) headerText += ` - ${flight.travelClass.name}`;
             headerDiv.textContent = headerText;
             detailsContainer.appendChild(headerDiv);
+
+            // --- THIS IS THE UPDATED LOGIC ---
             let arrivalString = `${flight.arrival?.airport} - ${flight.arrival?.name} at ${flight.arrival?.time}`;
             if (flight.arrival?.date) {
                 arrivalString += ` (${flight.arrival.date})`;
             }
+
             [
                 createDetailRow('Departing ', `${flight.departure?.airport} - ${flight.departure?.name} at ${flight.departure?.time}`),
-                createDetailRow('Arriving    ', arrivalString),
+                createDetailRow('Arriving    ', arrivalString),
                 displayPnrOptions.showOperatedBy && flight.operatedBy ? createDetailRow('Operated by', flight.operatedBy) : null,
                 displayPnrOptions.showMeal ? createDetailRow('Meal', getMealDescription(flight.meal)) : null,
                 displayPnrOptions.showNotes && flight.notes?.length ? createDetailRow('Notes', flight.notes, 'notes-detail') : null,
             ].forEach(el => { if (el) detailsContainer.appendChild(el); });
-            
+            // --- END OF UPDATE ---
+
             flightContentDiv.appendChild(detailsContainer);
             flightItem.appendChild(flightContentDiv);
             itineraryBlock.appendChild(flightItem);
         }
+        
         const { fare, tax, fee, adult, currency } = response.fareDetails || {};
         if (fare || tax || fee) {
             const fareValue = parseFloat(fare) || 0, taxValue = parseFloat(tax) || 0, feeValue = parseFloat(fee) || 0;
