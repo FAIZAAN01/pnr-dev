@@ -108,34 +108,34 @@
         <h3>Input PNR Data</h3>
         <textarea id="pnrInput" placeholder="Enter PNR data here..."></textarea>
         
+        <!-- === UPDATED FARE OPTIONS SECTION === -->
         <div class="fare-options-grid">
             <div class="fare-group">
                 <label>Adults</label>
                 <div class="count-fare-wrapper">
-                    <div><input id="adultCountInput" type="number" min="0" value="1" title="Number of Adults"></div>
-                    <div><input id="adultFareInput" type="number" step="any" placeholder="Fare" title="Fare per Adult"></div>
+                    <div><label for="adultCountInput" class="sr-only">Count</label><input id="adultCountInput" type="number" min="0" value="1" title="Number of Adults"></div>
+                    <div><label for="adultFareInput" class="sr-only">Fare</label><input id="adultFareInput" type="number" step="any" placeholder="Fare" title="Fare per Adult"></div>
                 </div>
             </div>
             <div class="fare-group">
                 <label>Children</label>
                 <div class="count-fare-wrapper">
-                    <div><input id="childCountInput" type="number" min="0" value="0" title="Number of Children"></div>
-                    <div><input id="childFareInput" type="number" step="any" placeholder="Fare" title="Fare per Child"></div>
+                    <div><label for="childCountInput" class="sr-only">Count</label><input id="childCountInput" type="number" min="0" value="0" title="Number of Children"></div>
+                    <div><label for="childFareInput" class="sr-only">Fare</label><input id="childFareInput" type="number" step="any" placeholder="Fare" title="Fare per Child"></div>
                 </div>
             </div>
             <div class="fare-group">
                 <label>Infants</label>
                 <div class="count-fare-wrapper">
-                    <div><input id="infantCountInput" type="number" min="0" value="0" title="Number of Infants"></div>
-                    <div><input id="infantFareInput" type="number" step="any" placeholder="Fare" title="Fare per Infant"></div>
+                    <div><label for="infantCountInput" class="sr-only">Count</label><input id="infantCountInput" type="number" min="0" value="0" title="Number of Infants"></div>
+                    <div><label for="infantFareInput" class="sr-only">Fare</label><input id="infantFareInput" type="number" step="any" placeholder="Fare" title="Fare per Infant"></div>
                 </div>
             </div>
-            <!-- === WRAPPED INPUTS WITH IDs === -->
-            <div class="fare-group" id="taxInputContainer">
+            <div class="fare-group">
                 <label>Taxes (per person)</label>
                 <input id="taxInput" type="number" step="any" placeholder="Taxes">
             </div>
-            <div class="fare-group" id="feeInputContainer">
+            <div class="fare-group">
                 <label>Fees (per person)</label>
                 <input id="feeInput" type="number" step="any" placeholder="Fees">
             </div>
@@ -144,6 +144,7 @@
                 <select id="currencySelect"><option value="USD" selected>USD $</option><option value="EUR">EUR €</option><option value="INR">INR ₹</option></select>
             </div>
         </div>
+        <!-- === END OF UPDATED SECTION === -->
 
         <div class="baggage-options">
           <label>Baggage:</label>
@@ -174,27 +175,41 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
     </button>
 
+    <!-- The rest of the HTML remains the same... -->
     <div class="sidebar">
-        <div class="options">
+      <div class="options">
             <h3>Display Options</h3>
             <label><input type="checkbox" id="showItineraryLogo" checked> Show Main Itinerary Logo</label>
-            <!-- Custom Branding Section -->
             <div id="customBrandingSection">
-                <!-- ... content is unchanged -->
+                <div class="custom-branding-input">
+                    <label for="customLogoInput">Custom Logo:</label>
+                    <input type="file" id="customLogoInput" accept="image/png, image/jpeg, image/gif">
+                    <img id="customLogoPreview" alt="Logo Preview" class="custom-logo-preview">
+                </div>
+                <div class="custom-branding-input">
+                    <label for="customTextInput">Custom Text (use Enter for new lines):</label>
+                    <textarea id="customTextInput" rows="3" placeholder="Your Company Name
+Contact Info"></textarea>
+                </div>
+                <button id="clearCustomBrandingBtn" class="clear-btn">Clear Branding</button>
             </div>
             <hr>
+            <!-- === THIS IS THE CORRECTED, COMPLETE LIST OF CHECKBOXES === -->
             <label><input type="checkbox" id="showAirline" checked> Show Airline</label>
             <label><input type="checkbox" id="showAircraft" checked> Show Aircraft</label>
-            <!-- ... other checkboxes -->
+            <label><input type="checkbox" id="showOperatedBy" checked> Show Operated By</label>
+            <label><input type="checkbox" id="showClass"> Show Class</label>
+            <label><input type="checkbox" id="showMeal"> Show Meal</label>
+            <label><input type="checkbox" id="showNotes"> Show Notes</label>
             <label><input type="checkbox" id="showTransit" checked> Show Transit Times</label>
             <label><input type="checkbox" id="use24HourFormat" checked> Use 24-Hour Time</label>
             <hr>
             <h3>Fare Display Options</h3>
-            <!-- === NEW FARE DISPLAY CHECKBOXES === -->
             <label><input type="checkbox" id="showTaxes" checked> Show Taxes</label>
             <label><input type="checkbox" id="showFees" checked> Show Fees</label>
         </div>
     </div>
+  </div>
   </div>
 
   <div id="historyModal" class="modal-overlay hidden">
