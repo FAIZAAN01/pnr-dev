@@ -133,7 +133,7 @@ function parseGalileoEnhanced(pnrText, options) {
         const flightMatch = line.match(flightSegmentRegex);
         const operatedByMatch = line.match(operatedByRegex);
         const isPassengerLine = passengerLineIdentifierRegex.test(line);
-        
+
         if (isPassengerLine) {
             const cleanedLine = line.replace(/^\s*\d+\.\s*/, '');
             const nameBlocks = cleanedLine.split(/\s+\d+\.\s*/);
@@ -196,14 +196,34 @@ function parseGalileoEnhanced(pnrText, options) {
                     precedingTransitTimeForThisSegment = `${hours}h ${minutes < 10 ? '0' : ''}${minutes}m`;
                 }
             }
+
+            // === NEW LOGIC TO CHECK FOR DATE CHANGE ===
+            let arrivalDateString = null;
+            if (departureMoment.isValid() && arrivalMoment.isValid() && !arrivalMoment.isSame(departureMoment, 'day')) {
+                // If the arrival date is not the same as the departure date, format it.
+                arrivalDateString = arrivalMoment.format('DD MMM'); // e.g., "25 Dec"
+            }
+            // === END OF NEW LOGIC ===
+            
             currentFlight = {
                 segment: parseInt(segmentNumStr, 10) || flightIndex,
                 airline: { code: airlineCode, name: airlineDatabase[airlineCode] || `Unknown Airline (${airlineCode})` },
                 flightNumber: flightNumRaw,
                 travelClass: { code: travelClass || '', name: getTravelClassName(travelClass) },
                 date: departureMoment.isValid() ? departureMoment.format('dddd, DD MMM YYYY') : '',
-                departure: { airport: depAirport, city: depAirportInfo.city, name: depAirportInfo.name, time: formatMomentTime(departureMoment, options.use24HourFormat) },
-                arrival: { airport: arrAirport, city: arrAirportInfo.city, name: arrAirportInfo.name, time: formatMomentTime(arrivalMoment, options.use24HourFormat) },
+                departure: { 
+                    airport: depAirport, 
+                    city: depAirportInfo.city, 
+                    name: depAirportInfo.name,
+                    time: formatMomentTime(departureMoment, options.use24HourFormat) 
+                },
+                arrival: { 
+                    airport: arrAirport, 
+                    city: arrAirportInfo.city, 
+                    name: arrAirportInfo.name,
+                    time: formatMomentTime(arrivalMoment, options.use24HourFormat),
+                    dateString: arrivalDateString // <-- NEW: This will be null or "DD MMM"
+                },
                 duration: calculateAndFormatDuration(departureMoment, arrivalMoment),
                 aircraft: aircraftTypes[aircraftCodeKey] || aircraftCodeKey || '',
                 meal: mealCode, notes: [], operatedBy: null,

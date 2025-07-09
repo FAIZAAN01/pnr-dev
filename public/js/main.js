@@ -245,10 +245,13 @@ function displayResults(response, displayPnrOptions) {
                     baggageText = ` (Per segment)`;
                 }
             }
+            // === NEW LOGIC TO BUILD THE ARRIVAL STRING ===
+            const arrivalDateDisplay = flight.arrival.dateString ? ` on ${flight.arrival.dateString}` : '';
+            const arrivalString = `${flight.arrival.airport} - ${flight.arrival.name} at ${flight.arrival.time}${arrivalDateDisplay}`;
             
             const detailRows = [
                 { label: 'Departing ', value: `${flight.departure.airport} - ${flight.departure.name} at ${flight.departure.time}` },
-                { label: 'Arriving \u00A0\u00A0\u00A0', value: `${flight.arrival.airport} - ${flight.arrival.name} at ${flight.arrival.time}` },
+                { label: 'Arriving \u00A0\u00A0\u00A0', value: arrivalString }, // <-- Use the new arrival string
                 { label: 'Baggage', value: (baggageText ? `${baggageDetails.amount}${baggageDetails.unit}${baggageText}` : null) },
                 { label: 'Operated by', value: (displayPnrOptions.showOperatedBy && flight.operatedBy) ? flight.operatedBy : null },
                 { label: 'Meal', value: (displayPnrOptions.showMeal && flight.meal) ? getMealDescription(flight.meal) : null },
