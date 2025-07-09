@@ -126,6 +126,7 @@ function parseGalileoEnhanced(pnrText, options) {
     const flightSegmentRegex = /^\s*(\d+)\s+([A-Z0-9]{2})\s*(\d{1,4}[A-Z]?)\s+([A-Z])\s+([0-3]\d[A-Z]{3})\s+\S*\s*([A-Z]{3})([A-Z]{3})\s+\S*\s+(\d{4})\s+(\d{4})(?:\s+([0-3]\d[A-Z]{3}|\+\d))?/;
     const operatedByRegex = /OPERATED BY\s+(.+)/i;
     const passengerLineIdentifierRegex = /^\s*\d+\.\s*[A-Z/]/;
+
     for (const line of lines) {
         if (!line) continue;
         const flightMatch = line.match(flightSegmentRegex);
@@ -175,11 +176,6 @@ function parseGalileoEnhanced(pnrText, options) {
             if (!moment.tz.zone(arrAirportInfo.timezone)) arrAirportInfo.timezone = 'UTC';
             const departureMoment = moment.tz(`${depDateStr} ${depTimeStr}`, "DDMMM HHmm", true, depAirportInfo.timezone);
             let arrivalMoment;
-            // --- DATE COMPARISON LOGIC ---
-            let arrivalDateString = null;
-            if (departureMoment.isValid() && arrivalMoment.isValid() && !departureMoment.isSame(arrivalMoment, 'day')) {
-                arrivalDateString = arrivalMoment.format('DD MMM'); // e.g., "24 Aug"
-            }
             if (arrDateStrOrNextDayIndicator) {
                 if (arrDateStrOrNextDayIndicator.startsWith('+')) {
                     const daysToAdd = parseInt(arrDateStrOrNextDayIndicator.substring(1), 10);
@@ -216,8 +212,7 @@ function parseGalileoEnhanced(pnrText, options) {
                     airport: arrAirport, 
                     city: arrAirportInfo.city, 
                     name: arrAirportInfo.name,
-                    time: formatMomentTime(arrivalMoment, options.use24HourFormat),
-                    date: arrivalDateString // THE NEW PROPERTY
+                    time: formatMomentTime(arrivalMoment, options.use24HourFormat) 
                 },
                 duration: calculateAndFormatDuration(departureMoment, arrivalMoment),
                 aircraft: aircraftTypes[aircraftCodeKey] || aircraftCodeKey || '',
