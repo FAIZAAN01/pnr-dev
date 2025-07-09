@@ -108,40 +108,41 @@
         <h3>Input PNR Data</h3>
         <textarea id="pnrInput" placeholder="Enter PNR data here..."></textarea>
         
+        <!-- === UPDATED FARE OPTIONS SECTION === -->
         <div class="fare-options-grid">
-            <div class="fare-group">
-                <label>Adults</label>
-                <div class="count-fare-wrapper">
-                    <div><input id="adultCountInput" type="number" min="0" value="1" title="Number of Adults"></div>
-                    <div><input id="adultFareInput" type="number" step="any" placeholder="Fare" title="Fare per Adult"></div>
-                </div>
+          <div class="fare-group">
+            <label>Adults</label>
+            <div class="count-fare-wrapper">
+              <div><input id="adultCountInput" type="text" inputmode="decimal" value="1" title="Number of Adults"></div>
+              <div><input id="adultFareInput" type="text" inputmode="decimal" placeholder="Fare" title="Fare per Adult"></div>
             </div>
-            <div class="fare-group">
-                <label>Children</label>
-                <div class="count-fare-wrapper">
-                    <div><input id="childCountInput" type="number" min="0" value="0" title="Number of Children"></div>
-                    <div><input id="childFareInput" type="number" step="any" placeholder="Fare" title="Fare per Child"></div>
-                </div>
+          </div>
+        <div class="fare-group">
+          <label>Children</label>
+          <div class="count-fare-wrapper">
+              <div><input id="childCountInput" type="text" inputmode="decimal" value="0" title="Number of Children"></div>
+              <div><input id="childFareInput" type="text" inputmode="decimal" placeholder="Fare" title="Fare per Child"></div>
             </div>
-            <div class="fare-group">
-                <label>Infants</label>
-                <div class="count-fare-wrapper">
-                    <div><input id="infantCountInput" type="number" min="0" value="0" title="Number of Infants"></div>
-                    <div><input id="infantFareInput" type="number" step="any" placeholder="Fare" title="Fare per Infant"></div>
-                </div>
+          </div>
+          <div class="fare-group">
+            <label>Infants</label>
+            <div class="count-fare-wrapper">
+              <div><input id="infantCountInput" type="text" inputmode="decimal" value="0" title="Number of Infants"></div>
+              <div><input id="infantFareInput" type="text" inputmode="decimal" placeholder="Fare" title="Fare per Infant"></div>
             </div>
-            <div class="fare-group" id="taxInputContainer">
-                <label>Taxes (per person)</label>
-                <input id="taxInput" type="number" step="any" placeholder="Taxes">
-            </div>
-            <div class="fare-group" id="feeInputContainer">
-                <label>Fees (per person)</label>
-                <input id="feeInput" type="number" step="any" placeholder="Fees">
-            </div>
-            <div class="fare-group">
-                <label for="currencySelect">Currency</label>
-                <select id="currencySelect"><option value="USD" selected>USD $</option><option value="EUR">EUR €</option><option value="INR">INR ₹</option></select>
-            </div>
+          </div>
+          <div class="fare-group" id="taxInputContainer">
+            <label>Taxes (per person)</label>
+            <input id="taxInput" type="text" inputmode="decimal" placeholder="Taxes">
+          </div>
+          <div class="fare-group" id="feeInputContainer">
+            <label>Fees (per person)</label>
+            <input id="feeInput" type="text" inputmode="decimal" placeholder="Fees">
+          </div>
+          <div class="fare-group">
+            <label for="currencySelect">Currency</label>
+            <select id="currencySelect"><option value="USD" selected>USD $</option><option value="EUR">EUR €</option><option value="INR">INR ₹</option></select>
+          </div>
         </div>
 
         <div class="baggage-options">
