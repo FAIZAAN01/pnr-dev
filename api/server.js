@@ -54,10 +54,9 @@ const limiter = rateLimit({
     message: { success: false, error: "Too many requests, please try again later.", result: { flights: [] } }
 });
 
-// --- UPDATED ENDPOINT ---
 app.post('/api/convert', (req, res) => {
     try {
-        const { pnrText, options, fareDetails, baggageDetails } = req.body; // <-- Added baggageDetails
+        const { pnrText, options, fareDetails, baggageDetails } = req.body;
         
         const pnrTextForProcessing = pnrText || '';
         const serverOptions = options || {};
@@ -70,7 +69,7 @@ app.post('/api/convert', (req, res) => {
             success: true,
             result,
             fareDetails,
-            baggageDetails, // <-- Echo baggageDetails back to the frontend
+            baggageDetails,
             pnrProcessingAttempted: !!pnrTextForProcessing
         };
         
@@ -115,7 +114,7 @@ function getTravelClassName(classCode) {
     return `Class ${code}`;
 }
 
-// --- Main Parser Function (Unchanged) ---
+// --- Main Parser Function (UPDATED) ---
 function parseGalileoEnhanced(pnrText, options) {
     const flights = [];
     const passengers = [];
@@ -124,12 +123,17 @@ function parseGalileoEnhanced(pnrText, options) {
     let flightIndex = 0;
     let previousArrivalMoment = null;
 
-    const flightSegmentRegex = /^\s*(\d+)\s+([A-Z0-9]{2})\s*(\d{1,4}[A-Z]?)\s+([A-Z])\s+([0-3]\d[A-Z]{3})\s+\S*\s*([A-Z]{3})([A-Z]{3})\s+\S*\s+(\d{4})\s+(\d{4})(?:\s+([0-3]\d[A-Z]{3}|\+\d))?/;
+    // --- MODIFIED REGEX ---
+    // This new regex handles both numbered lines and indented continuation lines.
+    // 1. `(?:(\d+)\s+)?` makes the segment number optional.
+    // 2. `([A-Z]{3})\s+.*?\s+([A-Z]{3})` robustly finds departure and arrival airport codes separated by other text (like terminals).
+    const flightSegmentRegex = /^\s*(?:(\d+)\s+)?([A-Z0-9]{2})\s*(\d{1,4}[A-Z]?)\s+([A-Z])\s+([0-3]\d[A-Z]{3})\s+([A-Z]{3})\s+.*?\s+([A-Z]{3})\s+.*?\s*(\d{4})\s+(\d{4})(?:\s*([0-3]\d[A-Z]{3}|\+\d))?/;
     const operatedByRegex = /OPERATED BY\s+(.+)/i;
     const passengerLineIdentifierRegex = /^\s*\d+\.\s*[A-Z/]/;
 
     for (const line of lines) {
         if (!line) continue;
+        
         const flightMatch = line.match(flightSegmentRegex);
         const operatedByMatch = line.match(operatedByRegex);
         const isPassengerLine = passengerLineIdentifierRegex.test(line);
@@ -166,8 +170,11 @@ function parseGalileoEnhanced(pnrText, options) {
             if (currentFlight) flights.push(currentFlight);
             flightIndex++;
             let precedingTransitTimeForThisSegment = null;
-            let transitDurationInMinutes = null; // New variable to hold raw minutes
+            let transitDurationInMinutes = null;
+
+            // The destructuring now accounts for the new regex structure. `segmentNumStr` can be undefined.
             const [, segmentNumStr, airlineCode, flightNumRaw, travelClass, depDateStr, depAirport, arrAirport, depTimeStr, arrTimeStr, arrDateStrOrNextDayIndicator] = flightMatch;
+            
             const flightDetailsPart = line.substring(flightMatch[0].length).trim();
             const detailsParts = flightDetailsPart.split(/\s+/);
             const aircraftCodeKey = detailsParts.find(p => p.toUpperCase() in aircraftTypes);
@@ -195,20 +202,17 @@ function parseGalileoEnhanced(pnrText, options) {
                     const hours = Math.floor(transitDuration.asHours());
                     const minutes = transitDuration.minutes();
                     precedingTransitTimeForThisSegment = `${hours}h ${minutes < 10 ? '0' : ''}${minutes}m`;
-                    // --- MODIFICATION: Store the raw minutes ---
                     transitDurationInMinutes = Math.round(transitDuration.asMinutes());
                 }
             }
 
-            // === NEW LOGIC TO CHECK FOR DATE CHANGE ===
             let arrivalDateString = null;
             if (departureMoment.isValid() && arrivalMoment.isValid() && !arrivalMoment.isSame(departureMoment, 'day')) {
-                // If the arrival date is not the same as the departure date, format it.
-                arrivalDateString = arrivalMoment.format('DD MMM'); // e.g., "25 Dec"
+                arrivalDateString = arrivalMoment.format('DD MMM');
             }
-            // === END OF NEW LOGIC ===
             
             currentFlight = {
+                // The logic `parseInt(segmentNumStr, 10) || flightIndex` handles cases where segmentNumStr is undefined (for continuation lines)
                 segment: parseInt(segmentNumStr, 10) || flightIndex,
                 airline: { code: airlineCode, name: airlineDatabase[airlineCode] || `Unknown Airline (${airlineCode})` },
                 flightNumber: flightNumRaw,
@@ -225,7 +229,7 @@ function parseGalileoEnhanced(pnrText, options) {
                     city: arrAirportInfo.city, 
                     name: arrAirportInfo.name,
                     time: formatMomentTime(arrivalMoment, options.use24HourFormat),
-                    dateString: arrivalDateString // <-- NEW: This will be null or "DD MMM"
+                    dateString: arrivalDateString
                 },
                 duration: calculateAndFormatDuration(departureMoment, arrivalMoment),
                 aircraft: aircraftTypes[aircraftCodeKey] || aircraftCodeKey || '',
