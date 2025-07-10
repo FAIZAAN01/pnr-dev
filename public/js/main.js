@@ -128,22 +128,17 @@ async function handleConvertClick() {
 
     const output = document.getElementById('output');
     const loadingSpinner = document.getElementById('loadingSpinner');
-    const screenshotBtn = document.getElementById('screenshotBtn');
-    const copyTextBtn = document.getElementById('copyTextBtn');
     
     loadingSpinner.style.display = 'block';
-    screenshotBtn.style.display = 'none';
-    copyTextBtn.style.display = 'none';
     output.innerHTML = ''; 
 
-    // Instantly clear the input text as requested
+    // Instantly clear the input text. The `pnrText` variable still holds the value for this function's scope.
     document.getElementById('pnrInput').value = '';
 
     try {
         const response = await fetch('/api/convert', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            // Only send the PNR text, options will be handled by the display function
             body: JSON.stringify({ pnrText })
         });
 
@@ -151,22 +146,20 @@ async function handleConvertClick() {
         if (!response.ok) {
             throw new Error(data.error || `Server error: ${response.status}`);
         }
-
-        // Store the successful result in our state variable
+        
         lastPnrResult = data.result; 
         
-        // Now, render the display using the new state
-        liveUpdateDisplay(true); // Pass true to indicate a PNR was just processed
+        liveUpdateDisplay(true);
 
         if (data.success && data.result?.flights?.length > 0) {
-            // Pass the original pnrText to the history manager
             historyManager.add({ ...data, pnrText });
         }
     
     } catch (error) {
         console.error('Conversion error:', error);
         output.innerHTML = `<div class="error">Failed to process request: ${error.message}</div>`;
-        lastPnrResult = null; // Clear state on error
+        lastPnrResult = null;
+        liveUpdateDisplay(false);
     } finally {
         loadingSpinner.style.display = 'none';
     }
@@ -175,19 +168,17 @@ async function handleConvertClick() {
 /**
  * Re-renders the display using stored PNR data and current UI options.
  * This function does NOT call the API.
- * @param {boolean} pnrProcessingAttempted - Indicates if a PNR was just processed.
  */
 function liveUpdateDisplay(pnrProcessingAttempted = false) {
     if (!lastPnrResult) {
         if(pnrProcessingAttempted) {
              document.getElementById('output').innerHTML = '<div class="info">No flight segments found or PNR format not recognized.</div>';
         }
-        // Ensure buttons are hidden if there's no result
         document.getElementById('screenshotBtn').style.display = 'none';
         document.getElementById('copyTextBtn').style.display = 'none';
         return;
     }
-    // Gather all current display options and fare details from the UI
+
     const displayPnrOptions = {
         showItineraryLogo: document.getElementById('showItineraryLogo').checked,
         showAirline: document.getElementById('showAirline').checked,
@@ -226,7 +217,6 @@ function liveUpdateDisplay(pnrProcessingAttempted = false) {
 
 /**
  * The master display function. It is now a "pure" rendering function.
- * It takes all the data it needs and renders the UI.
  */
 function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetails, pnrProcessingAttempted) {
     const output = document.getElementById('output');
@@ -277,16 +267,9 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
                 let transitClassName = '';
                 const minutes = flight.transitDurationMinutes;
 
-                if (minutes > 0 && minutes <= 120) {
-                    transitClassName = 'transit-short';
-                    transitText = `----- Short Transit ${flight.transitTime} -----`;
-                } else if (minutes > 120 && minutes <= 300) {
-                    transitClassName = 'transit-minimum';
-                    transitText = `----- Transit ${flight.transitTime} -----`;
-                } else {
-                    transitClassName = 'transit-long';
-                    transitText = `----- Long Transit ${flight.transitTime} -----`;
-                }
+                if (minutes > 0 && minutes <= 120) { transitClassName = 'transit-short'; transitText = `----- Short Transit ${flight.transitTime} -----`; } 
+                else if (minutes > 120 && minutes <= 300) { transitClassName = 'transit-minimum'; transitText = `----- Transit ${flight.transitTime} -----`; } 
+                else { transitClassName = 'transit-long'; transitText = `----- Long Transit ${flight.transitTime} -----`; }
 
                 transitDiv.className = `transit-item ${transitClassName}`;
                 transitDiv.textContent = transitText;
@@ -296,15 +279,12 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
             flightItem.className = 'flight-item';
             
             let detailsHtml = '';
-            const { baggageDetails } = response;
-            let baggageText = ''; // NEW, CORRECTED LOGIC
+            // const { baggageDetails } = response; // BUGGY LINE REMOVED
+            let baggageText = '';
             if (baggageDetails && baggageDetails.option !== 'none' && baggageDetails.amount) {
                 const text = `${baggageDetails.amount}${baggageDetails.unit}`;
-                if (baggageDetails.option === 'alltheway' && i === 0) {
-                    baggageText = ` (Checked through)`;
-                } else if (baggageDetails.option === 'particular') {
-                    baggageText = ` `;
-                }
+                if (baggageDetails.option === 'alltheway' && i === 0) { baggageText = ` (Checked through)`; } 
+                else if (baggageDetails.option === 'particular') { baggageText = ` `; }
             }
             
             const depTerminalDisplay = flight.departure.terminal ? ` (T${flight.departure.terminal})` : '';
@@ -329,28 +309,14 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
                 }
             });
 
-            const headerText = [
-                flight.date,
-                displayPnrOptions.showAirline ? (flight.airline.name || 'Unknown Airline') : '',
-                flight.flightNumber,
-                flight.duration,
-                displayPnrOptions.showAircraft && flight.aircraft ? flight.aircraft : '',
-                displayPnrOptions.showClass && flight.travelClass.name ? flight.travelClass.name : ''
-            ].filter(Boolean).join(' - ');
+            const headerText = [ flight.date, displayPnrOptions.showAirline ? (flight.airline.name || 'Unknown Airline') : '', flight.flightNumber, flight.duration, displayPnrOptions.showAircraft && flight.aircraft ? flight.aircraft : '', displayPnrOptions.showClass && flight.travelClass.name ? flight.travelClass.name : '' ].filter(Boolean).join(' - ');
 
-            flightItem.innerHTML = `
-                <div class="flight-content">
-                    ${displayPnrOptions.showAirline ? `<img src="/logos/${(flight.airline.code || 'xx').toLowerCase()}.png" class="airline-logo" alt="${flight.airline.name} logo" onerror="this.onerror=null; this.src='/logos/default-airline.svg';">` : ''}
-                    <div>
-                        <div class="flight-header">${headerText}</div>
-                        ${detailsHtml}
-                    </div>
-                </div>
-            `;
+            flightItem.innerHTML = `<div class="flight-content">${displayPnrOptions.showAirline ? `<img src="/logos/${(flight.airline.code || 'xx').toLowerCase()}.png" class="airline-logo" alt="${flight.airline.name} logo" onerror="this.onerror=null; this.src='/logos/default-airline.svg';">` : ''}<div><div class="flight-header">${headerText}</div>${detailsHtml}</div></div>`;
             itineraryBlock.appendChild(flightItem);
         });
 
-        const { adultCount, adultFare, childCount, childFare, infantCount, infantFare, tax, fee, currency, showTaxes, showFees } = fareDetails || {};        const adultCountNum = parseInt(adultCount) || 0;
+        const { adultCount, adultFare, childCount, childFare, infantCount, infantFare, tax, fee, currency, showTaxes, showFees } = fareDetails || {};
+        const adultCountNum = parseInt(adultCount) || 0;
         const childCountNum = parseInt(childCount) || 0;
         const infantCountNum = parseInt(infantCount) || 0;
         const totalPax = adultCountNum + childCountNum + infantCountNum;
@@ -389,14 +355,14 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
         }
         outputContainer.appendChild(itineraryBlock);
     } 
-    else if (response.pnrProcessingAttempted) {
+    else if (pnrProcessingAttempted) {
         outputContainer.innerHTML = '<div class="info">No flight segments found or PNR format not recognized.</div>';
     }
     
     if (outputContainer.hasChildNodes()) {
         output.appendChild(outputContainer);
-    } else if (!response.pnrProcessingAttempted) {
-         output.innerHTML = '<div class="info">Enter PNR data to begin.</div>';
+    } else if (!pnrProcessingAttempted) {
+         output.innerHTML = '<div class="info">Enter PNR data and click Convert to begin.</div>';
     }
 }
 
@@ -407,11 +373,7 @@ function getMealDescription(mealCode) {
 
 // --- HISTORY MANAGER ---
 const historyManager = {
-    // FIX 1: Converted arrow functions to regular functions to fix `this` context.
-    get: function() { 
-        return JSON.parse(localStorage.getItem(HISTORY_STORAGE_KEY) || '[]');
-    },
-
+    get: function() { return JSON.parse(localStorage.getItem(HISTORY_STORAGE_KEY) || '[]'); },
     save: function(history) {
         try {
             localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history));
@@ -419,16 +381,10 @@ const historyManager = {
             if (e.name === 'QuotaExceededError') {
                 console.error("Could not save history: localStorage quota exceeded. The oldest history item will be removed.");
                 history.pop(); 
-                if (history.length > 0) {
-                    // This recursive call now works because `this` is correct.
-                    this.save(history); 
-                }
-            } else {
-                console.error("Failed to save history:", e);
-            }
+                if (history.length > 0) { this.save(history); }
+            } else { console.error("Failed to save history:", e); }
         }
     },
-
     add: async function(data) {
         if (!data.success || !data.result?.flights?.length) return;
         const outputEl = document.getElementById('output').querySelector('.output-container');
@@ -439,16 +395,10 @@ const historyManager = {
             const screenshot = canvas.toDataURL('image/jpeg', 0.75);
             
             let history = this.get();
-            const currentPnrText = data.pnrText || document.getElementById('pnrInput').value;
+            const currentPnrText = data.pnrText; // pnrText is now reliably passed in data
 
-            // FIX 2: Implement "Update History" feature
-            // Check if an entry with the same PNR text already exists.
             const existingIndex = history.findIndex(item => item.pnrText === currentPnrText);
-            
-            if (existingIndex > -1) {
-                // If it exists, remove the old entry.
-                history.splice(existingIndex, 1);
-            }
+            if (existingIndex > -1) { history.splice(existingIndex, 1); }
 
             const newEntry = {
                 id: Date.now(),
@@ -459,64 +409,26 @@ const historyManager = {
                 screenshot: screenshot
             };
 
-            // Add the new or updated entry to the beginning of the list.
             history.unshift(newEntry);
 
-            if (history.length > 50) {
-                history.pop();
-            }
+            if (history.length > 50) { history.pop(); }
             this.save(history);
-        } catch (err) {
-            console.error('Failed to add history item:', err);
-        }
+        } catch (err) { console.error('Failed to add history item:', err); }
     },
-
     render: function() {
         const listEl = document.getElementById('historyList');
         const search = document.getElementById('historySearchInput').value.toLowerCase();
         const sort = document.getElementById('historySortSelect').value;
         if (!listEl) return;
-
         let history = this.get();
-
         if (sort === 'oldest') history.reverse();
-
-        if (search) {
-            history = history.filter(item => 
-                item.pax.toLowerCase().includes(search) || item.route.toLowerCase().includes(search)
-            );
-        }
-        
-        if (history.length === 0) {
-            listEl.innerHTML = '<div class="info" style="margin: 10px;">No history found.</div>';
-            return;
-        }
-
-        listEl.innerHTML = history.map(item => `
-            <div class="history-item" data-id="${item.id}">
-                <div class="history-item-info">
-                    <div class="history-item-pax">${item.pax}</div>
-                    <div class="history-item-details">
-                        <span>${item.route}</span>
-                        <span>${new Date(item.date).toLocaleString()}</span>
-                    </div>
-                </div>
-                <div class="history-item-actions">
-                    <button class="use-history-btn">Use This</button>
-                </div>
-            </div>
-        `).join('');
+        if (search) { history = history.filter(item => item.pax.toLowerCase().includes(search) || item.route.toLowerCase().includes(search)); }
+        if (history.length === 0) { listEl.innerHTML = '<div class="info" style="margin: 10px;">No history found.</div>'; return; }
+        listEl.innerHTML = history.map(item => `<div class="history-item" data-id="${item.id}"><div class="history-item-info"><div class="history-item-pax">${item.pax}</div><div class="history-item-details"><span>${item.route}</span><span>${new Date(item.date).toLocaleString()}</span></div></div><div class="history-item-actions"><button class="use-history-btn">Use This</button></div></div>`).join('');
     },
-
     init: function() {
-        document.getElementById('historyBtn')?.addEventListener('click', () => {
-            this.render();
-            document.getElementById('historyModal')?.classList.remove('hidden');
-        });
-        document.getElementById('closeHistoryBtn')?.addEventListener('click', () => {
-            document.getElementById('historyModal')?.classList.add('hidden');
-            document.getElementById('historyPreviewPanel')?.classList.add('hidden');
-        });
+        document.getElementById('historyBtn')?.addEventListener('click', () => { this.render(); document.getElementById('historyModal')?.classList.remove('hidden'); });
+        document.getElementById('closeHistoryBtn')?.addEventListener('click', () => { document.getElementById('historyModal')?.classList.add('hidden'); document.getElementById('historyPreviewPanel')?.classList.add('hidden'); });
         document.getElementById('historySearchInput')?.addEventListener('input', () => this.render());
         document.getElementById('historySortSelect')?.addEventListener('change', () => this.render());
         document.getElementById('historyList')?.addEventListener('click', (e) => {
@@ -530,17 +442,15 @@ const historyManager = {
             if (e.target.classList.contains('use-history-btn')) {
                 document.getElementById('pnrInput').value = entry.pnrText;
                 document.getElementById('historyModal').classList.add('hidden');
-                liveUpdateDisplay();
+                // --- FIX: Call the correct function ---
+                handleConvertClick(); 
             } else { 
                 const previewContent = document.getElementById('previewContent');
                 previewContent.innerHTML = `<h4>Screenshot</h4><img src="${entry.screenshot}" alt="Itinerary Screenshot"><hr><h4>Raw PNR Data</h4><pre>${entry.pnrText}</pre>`;
                 document.getElementById('historyPreviewPanel').classList.remove('hidden');
             }
         });
-        document.getElementById('closePreviewBtn')?.addEventListener('click', (e) => {
-            e.stopPropagation();
-            document.getElementById('historyPreviewPanel').classList.add('hidden');
-        });
+        document.getElementById('closePreviewBtn')?.addEventListener('click', (e) => { e.stopPropagation(); document.getElementById('historyPreviewPanel').classList.add('hidden'); });
     }
 };
 
@@ -553,97 +463,31 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('clearBtn').addEventListener('click', () => {
         document.getElementById('pnrInput').value = '';
         document.getElementById('output').innerHTML = '<div class="info">Enter PNR data and click Convert to begin.</div>';
-        lastPnrResult = null; // Clear state
-        liveUpdateDisplay(false); // Hide action buttons
+        lastPnrResult = null;
+        liveUpdateDisplay(false);
     });
     document.getElementById('pasteBtn').addEventListener('click', async () => {
         try {
             const text = await navigator.clipboard.readText();
             document.getElementById('pnrInput').value = text;
-            // Does not auto-convert anymore
-        } catch (err) {
-            showPopup('Could not paste from clipboard.');
-        }
+        } catch (err) { showPopup('Could not paste from clipboard.'); }
     });
 
     const allInputs = '.options input, .fare-options-grid input, .fare-options-grid select, .baggage-options input, #baggageAmountInput, #baggageUnitSelect';
     document.querySelectorAll(allInputs).forEach(el => {
         const eventType = el.matches('input[type="checkbox"], input[type="radio"], select') ? 'change' : 'input';
         el.addEventListener(eventType, () => {
-            if (el.closest('.options')) {
-                saveOptions();
-            }
-            if (el.id === 'showTaxes' || el.id === 'showFees') {
-                toggleFareInputsVisibility();
-            }
+            if (el.closest('.options')) { saveOptions(); }
+            if (el.id === 'showTaxes' || el.id === 'showFees') { toggleFareInputsVisibility(); }
             liveUpdateDisplay(); 
         });
     });
 
-    document.querySelectorAll('input[name="baggageOption"]').forEach(radio => {
-        radio.addEventListener('change', () => {
-            const showInputs = radio.value === 'alltheway' || radio.value === 'particular';
-            document.getElementById('allTheWayInputs').classList.toggle('visible', showInputs);
-        });
-    });
-
-    document.getElementById('customLogoInput').addEventListener('change', (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            localStorage.setItem(CUSTOM_LOGO_KEY, e.target.result);
-            document.getElementById('customLogoPreview').src = e.target.result;
-            document.getElementById('customLogoPreview').style.display = 'block';
-            showPopup('Custom logo saved!');
-            liveUpdateDisplay();
-        };
-        reader.readAsDataURL(file);
-    });
-    document.getElementById('customTextInput').addEventListener('input', debounce((event) => {
-        localStorage.setItem(CUSTOM_TEXT_KEY, event.target.value);
-        liveUpdateDisplay();
-    }, 400));
-    document.getElementById('clearCustomBrandingBtn').addEventListener('click', () => {
-        if (confirm('Are you sure you want to clear your saved logo and text?')) {
-            localStorage.removeItem(CUSTOM_LOGO_KEY);
-            localStorage.removeItem(CUSTOM_TEXT_KEY);
-            document.getElementById('customLogoInput').value = '';
-            document.getElementById('customTextInput').value = '';
-            document.getElementById('customLogoPreview').style.display = 'none';
-            showPopup('Custom branding cleared.');
-            liveUpdateDisplay();
-        }
-    });
-
-    document.getElementById('showItineraryLogo').addEventListener('change', () => {
-        toggleCustomBrandingSection();
-        saveOptions();
-        liveUpdateDisplay();
-    });
-    
-    document.getElementById('screenshotBtn').addEventListener('click', async () => {
-        const outputEl = document.getElementById('output').querySelector('.output-container');
-        if (!outputEl) {
-            showPopup('Nothing to capture.');
-            return;
-        }
-        try {
-            const canvas = await generateItineraryCanvas(outputEl);
-            canvas.toBlob(blob => {
-                navigator.clipboard.write([new ClipboardItem({'image/png': blob})]);
-                showPopup('Screenshot copied to clipboard!');
-            }, 'image/png');
-        } catch (err) {
-            console.error("Screenshot failed:", err);
-            showPopup('Could not copy screenshot.');
-        }
-    });
-    
-    document.getElementById('copyTextBtn').addEventListener('click', () => {
-        const text = document.getElementById('output').innerText;
-        navigator.clipboard.writeText(text).then(() => {
-            showPopup('Itinerary copied as text!');
-        }).catch(() => showPopup('Failed to copy text.'));
-    });
+    document.querySelectorAll('input[name="baggageOption"]').forEach(radio => { radio.addEventListener('change', () => { const showInputs = radio.value === 'alltheway' || radio.value === 'particular'; document.getElementById('allTheWayInputs').classList.toggle('visible', showInputs); }); });
+    document.getElementById('customLogoInput').addEventListener('change', (event) => { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = (e) => { localStorage.setItem(CUSTOM_LOGO_KEY, e.target.result); document.getElementById('customLogoPreview').src = e.target.result; document.getElementById('customLogoPreview').style.display = 'block'; showPopup('Custom logo saved!'); liveUpdateDisplay(); }; reader.readAsDataURL(file); });
+    document.getElementById('customTextInput').addEventListener('input', debounce((event) => { localStorage.setItem(CUSTOM_TEXT_KEY, event.target.value); liveUpdateDisplay(); }, 400));
+    document.getElementById('clearCustomBrandingBtn').addEventListener('click', () => { if (confirm('Are you sure you want to clear your saved logo and text?')) { localStorage.removeItem(CUSTOM_LOGO_KEY); localStorage.removeItem(CUSTOM_TEXT_KEY); document.getElementById('customLogoInput').value = ''; document.getElementById('customTextInput').value = ''; document.getElementById('customLogoPreview').style.display = 'none'; showPopup('Custom branding cleared.'); liveUpdateDisplay(); } });
+    document.getElementById('showItineraryLogo').addEventListener('change', () => { toggleCustomBrandingSection(); saveOptions(); liveUpdateDisplay(); });
+    document.getElementById('screenshotBtn').addEventListener('click', async () => { const outputEl = document.getElementById('output').querySelector('.output-container'); if (!outputEl) { showPopup('Nothing to capture.'); return; } try { const canvas = await generateItineraryCanvas(outputEl); canvas.toBlob(blob => { navigator.clipboard.write([new ClipboardItem({'image/png': blob})]); showPopup('Screenshot copied to clipboard!'); }, 'image/png'); } catch (err) { console.error("Screenshot failed:", err); showPopup('Could not copy screenshot.'); } });
+    document.getElementById('copyTextBtn').addEventListener('click', () => { const text = document.getElementById('output').innerText; navigator.clipboard.writeText(text).then(() => { showPopup('Itinerary copied as text!'); }).catch(() => showPopup('Failed to copy text.')); });
 });
