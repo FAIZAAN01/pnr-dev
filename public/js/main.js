@@ -544,8 +544,6 @@ const historyManager = {
     }
 };
 
-const debouncedConvert = debounce(convertPNR, 400);
-
 // --- EVENT LISTENERS & APP INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {
     loadOptions();
