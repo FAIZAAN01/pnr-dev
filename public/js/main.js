@@ -392,7 +392,7 @@ const historyManager = {
         
         try {
             const canvas = await generateItineraryCanvas(outputEl);
-            const screenshot = canvas.toDataURL('image/jpeg', 0.75);
+            const screenshot = canvas.toDataURL('image/jpeg');
             
             let history = this.get();
             const currentPnrText = data.pnrText; // pnrText is now reliably passed in data
@@ -488,6 +488,15 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('customTextInput').addEventListener('input', debounce((event) => { localStorage.setItem(CUSTOM_TEXT_KEY, event.target.value); liveUpdateDisplay(); }, 400));
     document.getElementById('clearCustomBrandingBtn').addEventListener('click', () => { if (confirm('Are you sure you want to clear your saved logo and text?')) { localStorage.removeItem(CUSTOM_LOGO_KEY); localStorage.removeItem(CUSTOM_TEXT_KEY); document.getElementById('customLogoInput').value = ''; document.getElementById('customTextInput').value = ''; document.getElementById('customLogoPreview').style.display = 'none'; showPopup('Custom branding cleared.'); liveUpdateDisplay(); } });
     document.getElementById('showItineraryLogo').addEventListener('change', () => { toggleCustomBrandingSection(); saveOptions(); liveUpdateDisplay(); });
-    document.getElementById('screenshotBtn').addEventListener('click', async () => { const outputEl = document.getElementById('output').querySelector('.output-container'); if (!outputEl) { showPopup('Nothing to capture.'); return; } try { const canvas = await generateItineraryCanvas(outputEl); canvas.toBlob(blob => { navigator.clipboard.write([new ClipboardItem({'image/png': blob})]); showPopup('Screenshot copied to clipboard!'); }, 'image/png'); } catch (err) { console.error("Screenshot failed:", err); showPopup('Could not copy screenshot.'); } });
+    document.getElementById('screenshotBtn').addEventListener('click', async () => { 
+        const outputEl = document.getElementById('output').querySelector('.output-container'); 
+        if (!outputEl) { 
+            showPopup('Nothing to capture.'); 
+            return; 
+        } try { 
+            const canvas = await generateItineraryCanvas(outputEl); 
+            canvas.toBlob(blob => { 
+                navigator.clipboard.write([new ClipboardItem({'image/png': blob})]); 
+                showPopup('Screenshot copied to clipboard!'); }, 'image/png'); } catch (err) { console.error("Screenshot failed:", err); showPopup('Could not copy screenshot.'); } });
     document.getElementById('copyTextBtn').addEventListener('click', () => { const text = document.getElementById('output').innerText; navigator.clipboard.writeText(text).then(() => { showPopup('Itinerary copied as text!'); }).catch(() => showPopup('Failed to copy text.')); });
 });
