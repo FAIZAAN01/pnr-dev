@@ -123,22 +123,38 @@ function parseGalileoEnhanced(pnrText, options) {
     let flightIndex = 0;
     let previousArrivalMoment = null;
 
-    // --- MODIFIED REGEX ---
-    // This new regex handles both numbered lines and indented continuation lines.
-    // 1. `(?:(\d+)\s+)?` makes the segment number optional.
-    // 2. `([A-Z]{3})\s+.*?\s+([A-Z]{3})` robustly finds departure and arrival airport codes separated by other text (like terminals).
-    const flightSegmentRegex = /^\s*(?:(\d+)\s+)?([A-Z0-9]{2})\s*(\d{1,4}[A-Z]?)\s+([A-Z])\s+([0-3]\d[A-Z]{3})\s+([A-Z]{3})\s+.*?\s+([A-Z]{3})\s+.*?\s*(\d{4})\s+(\d{4})(?:\s*([0-3]\d[A-Z]{3}|\+\d))?/;
+    // --- NEW: DEFINE MULTIPLE REGEX FOR DIFFERENT PNR FORMATS ---
+
+    // Regex for compact formats like: 1  ET 689 H 26AUG 2*DELADD DK1  0935 1335...
+    const flightSegmentRegexCompact = /^\s*(\d+)\s+([A-Z0-9]{2})\s*(\d{1,4}[A-Z]?)\s+([A-Z])\s+([0-3]\d[A-Z]{3})\s+\S*\s*([A-Z]{3})([A-Z]{3})\s+\S+\s+(\d{4})\s+(\d{4})(?:\s+([0-3]\d[A-Z]{3}))?/;
+    
+    // Regex for flexible formats (original, and with continuation lines)
+    const flightSegmentRegexFlexible = /^\s*(?:(\d+)\s+)?([A-Z0-9]{2})\s*(\d{1,4}[A-Z]?)\s+([A-Z])\s+([0-3]\d[A-Z]{3})\s+([A-Z]{3})\s+.*?\s+([A-Z]{3})\s+.*?\s*(\d{4})\s+(\d{4})(?:\s*([0-3]\d[A-Z]{3}|\+\d))?/;
+    
     const operatedByRegex = /OPERATED BY\s+(.+)/i;
     const passengerLineIdentifierRegex = /^\s*\d+\.\s*[A-Z/]/;
 
     for (const line of lines) {
         if (!line) continue;
         
-        const flightMatch = line.match(flightSegmentRegex);
+        // --- NEW: TRY REGEXES IN ORDER ---
+        let flightMatch = line.match(flightSegmentRegexCompact);
+        let segmentNumStr, airlineCode, flightNumRaw, travelClass, depDateStr, depAirport, arrAirport, depTimeStr, arrTimeStr, arrDateStrOrNextDayIndicator;
+
+        if (flightMatch) {
+            [, segmentNumStr, airlineCode, flightNumRaw, travelClass, depDateStr, depAirport, arrAirport, depTimeStr, arrTimeStr, arrDateStrOrNextDayIndicator] = flightMatch;
+        } else {
+            flightMatch = line.match(flightSegmentRegexFlexible);
+            if (flightMatch) {
+                [, segmentNumStr, airlineCode, flightNumRaw, travelClass, depDateStr, depAirport, arrAirport, depTimeStr, arrTimeStr, arrDateStrOrNextDayIndicator] = flightMatch;
+            }
+        }
+        
         const operatedByMatch = line.match(operatedByRegex);
         const isPassengerLine = passengerLineIdentifierRegex.test(line);
 
         if (isPassengerLine) {
+            // (Passenger parsing logic is unchanged)
             const cleanedLine = line.replace(/^\s*\d+\.\s*/, '');
             const nameBlocks = cleanedLine.split(/\s+\d+\.\s*/);
             for (const nameBlock of nameBlocks) {
@@ -171,9 +187,6 @@ function parseGalileoEnhanced(pnrText, options) {
             flightIndex++;
             let precedingTransitTimeForThisSegment = null;
             let transitDurationInMinutes = null;
-
-            // The destructuring now accounts for the new regex structure. `segmentNumStr` can be undefined.
-            const [, segmentNumStr, airlineCode, flightNumRaw, travelClass, depDateStr, depAirport, arrAirport, depTimeStr, arrTimeStr, arrDateStrOrNextDayIndicator] = flightMatch;
             
             const flightDetailsPart = line.substring(flightMatch[0].length).trim();
             const detailsParts = flightDetailsPart.split(/\s+/);
@@ -185,11 +198,13 @@ function parseGalileoEnhanced(pnrText, options) {
             if (!moment.tz.zone(arrAirportInfo.timezone)) arrAirportInfo.timezone = 'UTC';
             const departureMoment = moment.tz(`${depDateStr} ${depTimeStr}`, "DDMMM HHmm", true, depAirportInfo.timezone);
             let arrivalMoment;
+
             if (arrDateStrOrNextDayIndicator) {
                 if (arrDateStrOrNextDayIndicator.startsWith('+')) {
                     const daysToAdd = parseInt(arrDateStrOrNextDayIndicator.substring(1), 10);
                     arrivalMoment = moment.tz(`${depDateStr} ${arrTimeStr}`, "DDMMM HHmm", true, arrAirportInfo.timezone).add(daysToAdd, 'day');
                 } else {
+                    // This handles full dates like '26AUG'
                     arrivalMoment = moment.tz(`${arrDateStrOrNextDayIndicator} ${arrTimeStr}`, "DDMMM HHmm", true, arrAirportInfo.timezone);
                 }
             } else {
@@ -212,7 +227,6 @@ function parseGalileoEnhanced(pnrText, options) {
             }
             
             currentFlight = {
-                // The logic `parseInt(segmentNumStr, 10) || flightIndex` handles cases where segmentNumStr is undefined (for continuation lines)
                 segment: parseInt(segmentNumStr, 10) || flightIndex,
                 airline: { code: airlineCode, name: airlineDatabase[airlineCode] || `Unknown Airline (${airlineCode})` },
                 flightNumber: flightNumRaw,
@@ -241,6 +255,7 @@ function parseGalileoEnhanced(pnrText, options) {
         } else if (currentFlight && operatedByMatch) {
             currentFlight.operatedBy = operatedByMatch[1].trim();
         } else if (currentFlight && line.trim().length > 0) {
+            // This will correctly add lines like "SEE RTSVC" as notes.
             currentFlight.notes.push(line.trim());
         }
     }
