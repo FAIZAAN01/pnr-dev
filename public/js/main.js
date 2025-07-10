@@ -3,6 +3,8 @@ const CUSTOM_LOGO_KEY = 'pnrConverterCustomLogo';
 const CUSTOM_TEXT_KEY = 'pnrConverterCustomText';
 const HISTORY_STORAGE_KEY = 'pnrConversionHistory';
 
+let lastPnrResult = null;
+
 // --- UTILITY FUNCTIONS ---
 function showPopup(message, duration = 3000) {
     const container = document.getElementById('popupContainer');
@@ -113,8 +115,17 @@ function toggleCustomBrandingSection() {
     );
 }
 
-// --- CORE CONVERSION LOGIC (Unchanged) ---
-async function convertPNR() {
+/**
+ * Handles the "Convert" button click.
+ * This is the ONLY function that calls the server API.
+ */
+async function handleConvertClick() {
+    const pnrText = document.getElementById('pnrInput').value;
+    if (!pnrText.trim()) {
+        showPopup("Please enter PNR text to convert.");
+        return;
+    }
+
     const output = document.getElementById('output');
     const loadingSpinner = document.getElementById('loadingSpinner');
     const screenshotBtn = document.getElementById('screenshotBtn');
@@ -125,81 +136,105 @@ async function convertPNR() {
     copyTextBtn.style.display = 'none';
     output.innerHTML = ''; 
 
-    const baggageOption = document.querySelector('input[name="baggageOption"]:checked').value;
-
-    const payload = {
-        pnrText: document.getElementById('pnrInput').value,
-        options: {
-            showItineraryLogo: document.getElementById('showItineraryLogo').checked,
-            showAirline: document.getElementById('showAirline').checked,
-            showAircraft: document.getElementById('showAircraft').checked,
-            showOperatedBy: document.getElementById('showOperatedBy').checked,
-            showClass: document.getElementById('showClass').checked,
-            showMeal: document.getElementById('showMeal').checked,
-            showNotes: document.getElementById('showNotes').checked,
-            showTransit: document.getElementById('showTransit').checked,
-            use24HourFormat: document.getElementById('use24HourFormat').checked,
-        },
-        fareDetails: {
-            adultCount: document.getElementById('adultCountInput').value,
-            adultFare: document.getElementById('adultFareInput').value,
-            childCount: document.getElementById('childCountInput').value,
-            childFare: document.getElementById('childFareInput').value,
-            infantCount: document.getElementById('infantCountInput').value,
-            infantFare: document.getElementById('infantFareInput').value,
-            tax: document.getElementById('taxInput').value,
-            fee: document.getElementById('feeInput').value,
-            currency: document.getElementById('currencySelect').value,
-            showTaxes: document.getElementById('showTaxes').checked,
-            showFees: document.getElementById('showFees').checked,
-        },
-        baggageDetails: {
-            option: baggageOption,
-            amount: baggageOption !== 'none' ? document.getElementById('baggageAmountInput').value : '',
-            unit: baggageOption !== 'none' ? document.getElementById('baggageUnitSelect').value : ''
-        }
-    };
+    // Instantly clear the input text as requested
+    document.getElementById('pnrInput').value = '';
 
     try {
         const response = await fetch('/api/convert', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
+            // Only send the PNR text, options will be handled by the display function
+            body: JSON.stringify({ pnrText })
         });
 
         const data = await response.json();
         if (!response.ok) {
             throw new Error(data.error || `Server error: ${response.status}`);
         }
+
+        // Store the successful result in our state variable
+        lastPnrResult = data.result; 
         
-        if (data.pnrProcessingAttempted) {
-            displayResults(data, payload.options);
-            if (data.success && data.result?.flights?.length > 0) {
-                historyManager.add(data);
-            }
+        // Now, render the display using the new state
+        liveUpdateDisplay(true); // Pass true to indicate a PNR was just processed
+
+        if (data.success && data.result?.flights?.length > 0) {
+            // Pass the original pnrText to the history manager
+            historyManager.add({ ...data, pnrText });
         }
     
     } catch (error) {
         console.error('Conversion error:', error);
         output.innerHTML = `<div class="error">Failed to process request: ${error.message}</div>`;
+        lastPnrResult = null; // Clear state on error
     } finally {
         loadingSpinner.style.display = 'none';
     }
 }
 
-// --- DISPLAY & RENDERING (Unchanged) ---
-function displayResults(response, displayPnrOptions) {
+/**
+ * Re-renders the display using stored PNR data and current UI options.
+ * This function does NOT call the API.
+ * @param {boolean} pnrProcessingAttempted - Indicates if a PNR was just processed.
+ */
+function liveUpdateDisplay(pnrProcessingAttempted = false) {
+    if (!lastPnrResult) {
+        if(pnrProcessingAttempted) {
+             document.getElementById('output').innerHTML = '<div class="info">No flight segments found or PNR format not recognized.</div>';
+        }
+        // Ensure buttons are hidden if there's no result
+        document.getElementById('screenshotBtn').style.display = 'none';
+        document.getElementById('copyTextBtn').style.display = 'none';
+        return;
+    }
+    // Gather all current display options and fare details from the UI
+    const displayPnrOptions = {
+        showItineraryLogo: document.getElementById('showItineraryLogo').checked,
+        showAirline: document.getElementById('showAirline').checked,
+        showAircraft: document.getElementById('showAircraft').checked,
+        showOperatedBy: document.getElementById('showOperatedBy').checked,
+        showClass: document.getElementById('showClass').checked,
+        showMeal: document.getElementById('showMeal').checked,
+        showNotes: document.getElementById('showNotes').checked,
+        showTransit: document.getElementById('showTransit').checked,
+        use24HourFormat: document.getElementById('use24HourFormat').checked,
+    };
+
+    const fareDetails = {
+        adultCount: document.getElementById('adultCountInput').value,
+        adultFare: document.getElementById('adultFareInput').value,
+        childCount: document.getElementById('childCountInput').value,
+        childFare: document.getElementById('childFareInput').value,
+        infantCount: document.getElementById('infantCountInput').value,
+        infantFare: document.getElementById('infantFareInput').value,
+        tax: document.getElementById('taxInput').value,
+        fee: document.getElementById('feeInput').value,
+        currency: document.getElementById('currencySelect').value,
+        showTaxes: document.getElementById('showTaxes').checked,
+        showFees: document.getElementById('showFees').checked,
+    };
+
+    const baggageOption = document.querySelector('input[name="baggageOption"]:checked').value;
+    const baggageDetails = {
+        option: baggageOption,
+        amount: baggageOption !== 'none' ? document.getElementById('baggageAmountInput').value : '',
+        unit: baggageOption !== 'none' ? document.getElementById('baggageUnitSelect').value : ''
+    };
+    
+    displayResults(lastPnrResult, displayPnrOptions, fareDetails, baggageDetails, pnrProcessingAttempted);
+}
+
+/**
+ * The master display function. It is now a "pure" rendering function.
+ * It takes all the data it needs and renders the UI.
+ */
+function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetails, pnrProcessingAttempted) {
     const output = document.getElementById('output');
     const screenshotBtn = document.getElementById('screenshotBtn');
     const copyTextBtn = document.getElementById('copyTextBtn');
     output.innerHTML = '';
 
-    if (!response.success) {
-        output.innerHTML = `<div class="error">${response.error || 'Conversion failed.'}</div>`;
-        return;
-    }
-
-    const { flights = [], passengers = [] } = response.result || {};
+    const { flights = [], passengers = [] } = pnrResult || {};
     
     if (flights.length > 0) {
         screenshotBtn.style.display = 'inline-block';
@@ -208,7 +243,7 @@ function displayResults(response, displayPnrOptions) {
         screenshotBtn.style.display = 'none';
         copyTextBtn.style.display = 'none';
     }
-
+    
     const outputContainer = document.createElement('div');
     outputContainer.className = 'output-container';
 
@@ -262,8 +297,8 @@ function displayResults(response, displayPnrOptions) {
             
             let detailsHtml = '';
             const { baggageDetails } = response;
-            let baggageText = '';
-            if (baggageDetails.option !== 'none' && baggageDetails.amount) {
+            let baggageText = ''; // NEW, CORRECTED LOGIC
+            if (baggageDetails && baggageDetails.option !== 'none' && baggageDetails.amount) {
                 const text = `${baggageDetails.amount}${baggageDetails.unit}`;
                 if (baggageDetails.option === 'alltheway' && i === 0) {
                     baggageText = ` (Checked through)`;
@@ -275,10 +310,10 @@ function displayResults(response, displayPnrOptions) {
             const depTerminalDisplay = flight.departure.terminal ? ` (T${flight.departure.terminal})` : '';
             const arrTerminalDisplay = flight.arrival.terminal ? ` (T${flight.arrival.terminal})` : '';
             const arrivalDateDisplay = flight.arrival.dateString ? ` on ${flight.arrival.dateString}` : '';
-
+            
             const departureString = `${flight.departure.airport}${depTerminalDisplay} - ${flight.departure.name} at ${flight.departure.time}`;
             const arrivalString = `${flight.arrival.airport}${arrTerminalDisplay} - ${flight.arrival.name} at ${flight.arrival.time}${arrivalDateDisplay}`;
-            
+
             const detailRows = [
                 { label: 'Departing ', value: departureString },
                 { label: 'Arriving \u00A0\u00A0\u00A0', value: arrivalString },
@@ -315,8 +350,7 @@ function displayResults(response, displayPnrOptions) {
             itineraryBlock.appendChild(flightItem);
         });
 
-        const { adultCount, adultFare, childCount, childFare, infantCount, infantFare, tax, fee, currency, showTaxes, showFees } = response.fareDetails || {};
-        const adultCountNum = parseInt(adultCount) || 0;
+        const { adultCount, adultFare, childCount, childFare, infantCount, infantFare, tax, fee, currency, showTaxes, showFees } = fareDetails || {};        const adultCountNum = parseInt(adultCount) || 0;
         const childCountNum = parseInt(childCount) || 0;
         const infantCountNum = parseInt(infantCount) || 0;
         const totalPax = adultCountNum + childCountNum + infantCountNum;
@@ -496,7 +530,7 @@ const historyManager = {
             if (e.target.classList.contains('use-history-btn')) {
                 document.getElementById('pnrInput').value = entry.pnrText;
                 document.getElementById('historyModal').classList.add('hidden');
-                debouncedConvert();
+                liveUpdateDisplay();
             } else { 
                 const previewContent = document.getElementById('previewContent');
                 previewContent.innerHTML = `<h4>Screenshot</h4><img src="${entry.screenshot}" alt="Itinerary Screenshot"><hr><h4>Raw PNR Data</h4><pre>${entry.pnrText}</pre>`;
@@ -517,18 +551,18 @@ document.addEventListener('DOMContentLoaded', () => {
     loadOptions();
     historyManager.init();
 
-    document.getElementById('pnrInput').addEventListener('input', debouncedConvert);
+    document.getElementById('convertBtn').addEventListener('click', handleConvertClick);
     document.getElementById('clearBtn').addEventListener('click', () => {
         document.getElementById('pnrInput').value = '';
-        document.getElementById('output').innerHTML = '<div class="info">Enter PNR data to begin.</div>';
-        document.getElementById('screenshotBtn').style.display = 'none';
-        document.getElementById('copyTextBtn').style.display = 'none';
+        document.getElementById('output').innerHTML = '<div class="info">Enter PNR data and click Convert to begin.</div>';
+        lastPnrResult = null; // Clear state
+        liveUpdateDisplay(false); // Hide action buttons
     });
     document.getElementById('pasteBtn').addEventListener('click', async () => {
         try {
             const text = await navigator.clipboard.readText();
             document.getElementById('pnrInput').value = text;
-            debouncedConvert();
+            // Does not auto-convert anymore
         } catch (err) {
             showPopup('Could not paste from clipboard.');
         }
@@ -544,7 +578,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (el.id === 'showTaxes' || el.id === 'showFees') {
                 toggleFareInputsVisibility();
             }
-            debouncedConvert();
+            liveUpdateDisplay(); 
         });
     });
 
@@ -553,12 +587,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const showInputs = radio.value === 'alltheway' || radio.value === 'particular';
             document.getElementById('allTheWayInputs').classList.toggle('visible', showInputs);
         });
-    });
-
-    document.getElementById('showItineraryLogo').addEventListener('change', () => {
-        toggleCustomBrandingSection();
-        saveOptions();
-        debouncedConvert();
     });
 
     document.getElementById('customLogoInput').addEventListener('change', (event) => {
@@ -570,13 +598,13 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('customLogoPreview').src = e.target.result;
             document.getElementById('customLogoPreview').style.display = 'block';
             showPopup('Custom logo saved!');
-            debouncedConvert();
+            liveUpdateDisplay();
         };
         reader.readAsDataURL(file);
     });
     document.getElementById('customTextInput').addEventListener('input', debounce((event) => {
         localStorage.setItem(CUSTOM_TEXT_KEY, event.target.value);
-        debouncedConvert();
+        liveUpdateDisplay();
     }, 400));
     document.getElementById('clearCustomBrandingBtn').addEventListener('click', () => {
         if (confirm('Are you sure you want to clear your saved logo and text?')) {
@@ -586,8 +614,14 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('customTextInput').value = '';
             document.getElementById('customLogoPreview').style.display = 'none';
             showPopup('Custom branding cleared.');
-            debouncedConvert();
+            liveUpdateDisplay();
         }
+    });
+
+    document.getElementById('showItineraryLogo').addEventListener('change', () => {
+        toggleCustomBrandingSection();
+        saveOptions();
+        liveUpdateDisplay();
     });
     
     document.getElementById('screenshotBtn').addEventListener('click', async () => {
