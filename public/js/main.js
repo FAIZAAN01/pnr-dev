@@ -52,6 +52,7 @@ function saveOptions() {
     try {
         const optionsToSave = {
             showItineraryLogo: document.getElementById('showItineraryLogo').checked,
+            showItineraryLogoCustom: document.getElementById('showItineraryLogoCustom').checked,
             showAirline: document.getElementById('showAirline').checked,
             showAircraft: document.getElementById('showAircraft').checked,
             showOperatedBy: document.getElementById('showOperatedBy').checked,
@@ -73,8 +74,8 @@ function loadOptions() {
         const savedOptions = JSON.parse(localStorage.getItem(OPTIONS_STORAGE_KEY) || '{}');
         
         const checkboxOptions = {
-            showItineraryLogo: true, showAirline: true, showAircraft: true,
-            showOperatedBy: true, showClass: false, showMeal: false,
+            showItineraryLogo:true,showItineraryLogoCustom: false, showAirline: true,
+            showAircraft: true, showOperatedBy: true, showClass: false, showMeal: false,
             showNotes: false, showTransit: true, use24HourFormat: true,
             showTaxes: true, showFees: true
         };
@@ -109,7 +110,7 @@ function loadOptions() {
 
 function toggleCustomBrandingSection() {
     document.getElementById('customBrandingSection').classList.toggle(
-        'hidden', !document.getElementById('showItineraryLogo').checked
+        'hidden', !document.getElementById('showItineraryLogoCustom').checked
     );
 }
 
@@ -130,7 +131,7 @@ async function convertPNR() {
     const payload = {
         pnrText: document.getElementById('pnrInput').value,
         options: {
-            showItineraryLogo: document.getElementById('showItineraryLogo').checked,
+            showItineraryLogoCustom: document.getElementById('showItineraryLogoCustom').checked,
             showAirline: document.getElementById('showAirline').checked,
             showAircraft: document.getElementById('showAircraft').checked,
             showOperatedBy: document.getElementById('showOperatedBy').checked,
@@ -212,6 +213,19 @@ function displayResults(response, displayPnrOptions) {
     const outputContainer = document.createElement('div');
     outputContainer.className = 'output-container';
 
+    if (flights.length > 0 && displayPnrOptions.showItineraryLogoCustom) {
+        const logoContainer = document.createElement('div');
+        logoContainer.className = 'itinerary-main-logo-container';
+        const logoImg = document.createElement('img');
+        logoImg.className = 'itinerary-main-logo';
+        logoImg.src = localStorage.getItem(CUSTOM_LOGO_KEY) || '/simbavoyages.png';
+        logoContainer.appendChild(logoImg);
+        const logoText = document.createElement('div');
+        logoText.className = 'itinerary-logo-text';
+        logoText.innerHTML = (localStorage.getItem(CUSTOM_TEXT_KEY) || "KN2 Ave 26, Nyarugenge Dist, Muhima<BR>Kigali Rwanda").replace(/\n/g, '<br>');
+        logoContainer.appendChild(logoText);
+        outputContainer.appendChild(logoContainer);
+    }
     if (flights.length > 0 && displayPnrOptions.showItineraryLogo) {
         const logoContainer = document.createElement('div');
         logoContainer.className = 'itinerary-main-logo-container';
@@ -555,11 +569,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    document.getElementById('showItineraryLogo').addEventListener('change', () => {
+    document.getElementById('showItineraryLogoCustom').addEventListener('change', () => {
         toggleCustomBrandingSection();
         saveOptions();
         debouncedConvert();
     });
+
     document.getElementById('customLogoInput').addEventListener('change', (event) => {
         const file = event.target.files[0];
         if (!file) return;
