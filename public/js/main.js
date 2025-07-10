@@ -27,26 +27,17 @@ function debounce(func, wait) {
 }
 
 // --- NEW HELPER FUNCTION FOR HIGH-QUALITY SCREENSHOTS ---
-/**
- * Generates a high-resolution canvas of a given HTML element.
- * @param {HTMLElement} element The element to capture.
- * @returns {Promise<HTMLCanvasElement>} A promise that resolves with the canvas element.
- */
 async function generateItineraryCanvas(element) {
     if (!element) throw new Error("Element for canvas generation not found.");
     
     const options = {
-        // Render at 2x resolution for a crisp, high-quality image
         scale: 2, 
-        // Ensure a solid white background, preventing transparency issues
         backgroundColor: '#ffffff', 
-        // Improve rendering of text and vectors
         useCORS: true 
     };
     
     return await html2canvas(element, options);
 }
-
 
 function toggleFareInputsVisibility() {
     const showTaxes = document.getElementById('showTaxes').checked;
@@ -55,7 +46,7 @@ function toggleFareInputsVisibility() {
     document.getElementById('feeInputContainer').classList.toggle('hidden', !showFees);
 }
 
-// --- OPTIONS & BRANDING MANAGEMENT (Unchanged) ---
+// --- OPTIONS & BRANDING MANAGEMENT ---
 function saveOptions() {
     try {
         const optionsToSave = {
@@ -121,7 +112,7 @@ function toggleCustomBrandingSection() {
     );
 }
 
-// --- CORE CONVERSION LOGIC (Unchanged) ---
+// --- CORE CONVERSION LOGIC ---
 async function convertPNR() {
     const output = document.getElementById('output');
     const loadingSpinner = document.getElementById('loadingSpinner');
@@ -195,7 +186,7 @@ async function convertPNR() {
     }
 }
 
-// --- DISPLAY & RENDERING (Unchanged) ---
+// --- DISPLAY & RENDERING ---
 function displayResults(response, displayPnrOptions) {
     const output = document.getElementById('output');
     const screenshotBtn = document.getElementById('screenshotBtn');
@@ -284,8 +275,9 @@ function displayResults(response, displayPnrOptions) {
             const arrTerminalDisplay = flight.arrival.terminal ? ` (T${flight.arrival.terminal})` : '';
             const arrivalDateDisplay = flight.arrival.dateString ? ` on ${flight.arrival.dateString}` : '';
 
-            const departureString = `${flight.departure.airport} - ${flight.departure.name} ${depTerminalDisplay} at ${flight.departure.time}`;
-            const arrivalString = `${flight.arrival.airport} - ${flight.arrival.name} ${arrTerminalDisplay} at ${flight.arrival.time}${arrivalDateDisplay}`;
+            // --- FIXED FORMATTING ---
+            const departureString = `${flight.departure.airport}${depTerminalDisplay} - ${flight.departure.name} at ${flight.departure.time}`;
+            const arrivalString = `${flight.arrival.airport}${arrTerminalDisplay} - ${flight.arrival.name} at ${flight.arrival.time}${arrivalDateDisplay}`;
             
             const detailRows = [
                 { label: 'Departing ', value: departureString },
@@ -379,21 +371,17 @@ function getMealDescription(mealCode) {
     return mealMap[mealCode] || `Code ${mealCode}`;
 }
 
-// --- HISTORY MANAGER (UPDATED) ---
+// --- HISTORY MANAGER ---
 const historyManager = {
     get: () => JSON.parse(localStorage.getItem(HISTORY_STORAGE_KEY) || '[]'),
     save: (history) => localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history)),
-    // --- UPDATED to use the new canvas generator and PNG for best quality ---
     add: async function(data) {
         if (!data.success || !data.result?.flights?.length) return;
         const outputEl = document.getElementById('output').querySelector('.output-container');
         if (!outputEl) return;
         
         try {
-            // Use the new helper to get a high-quality canvas
             const canvas = await generateItineraryCanvas(outputEl);
-            
-            // Use image/png for lossless quality in history previews
             const screenshot = canvas.toDataURL('image/png');
             
             const history = this.get();
@@ -406,7 +394,7 @@ const historyManager = {
                 screenshot: screenshot
             };
             history.unshift(newEntry);
-            if (history.length > 50) history.pop(); // Keep history size manageable
+            if (history.length > 50) history.pop();
             this.save(history);
         } catch (err) {
             console.error('Failed to save history item:', err);
@@ -486,12 +474,13 @@ const historyManager = {
 
 const debouncedConvert = debounce(convertPNR, 400);
 
+// --- SINGLE, CORRECTED EVENT LISTENER BLOCK ---
 document.addEventListener('DOMContentLoaded', () => {
     loadOptions();
-    historyManager.init(); // History init is unchanged, we only changed the 'add' method.
+    historyManager.init();
 
-        document.getElementById('pnrInput').addEventListener('input', debouncedConvert);
-        document.getElementById('clearBtn').addEventListener('click', () => {
+    document.getElementById('pnrInput').addEventListener('input', debouncedConvert);
+    document.getElementById('clearBtn').addEventListener('click', () => {
         document.getElementById('pnrInput').value = '';
         document.getElementById('output').innerHTML = '<div class="info">Enter PNR data to begin.</div>';
         document.getElementById('screenshotBtn').style.display = 'none';
@@ -561,7 +550,7 @@ document.addEventListener('DOMContentLoaded', () => {
             debouncedConvert();
         }
     });
-    // --- UPDATED to use the new canvas generator ---
+    
     document.getElementById('screenshotBtn').addEventListener('click', async () => {
         const outputEl = document.getElementById('output').querySelector('.output-container');
         if (!outputEl) {
@@ -569,159 +558,6 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         try {
-            // Use the new helper to get a high-quality canvas
-            const canvas = await generateItineraryCanvas(outputEl);
-            
-            // The clipboard API works best with blobs
-            canvas.toBlob(blob => {
-                navigator.clipboard.write([new ClipboardItem({'image/png': blob})]);
-                showPopup('Screenshot copied to clipboard!');
-            }, 'image/png');
-
-        } catch (err) {
-            console.error("Screenshot failed:", err);
-            showPopup('Could not copy screenshot.');
-        }
-    });
-    document.getElementById('copyTextBtn').addEventListener('click', () => {
-        const text = document.getElementById('output').innerText;
-        navigator.clipboard.writeText(text).then(() => {
-            showPopup('Itinerary copied as text!');
-        }).catch(() => showPopup('Failed to copy text.'));
-    });
-});
-
-
-// Unchanged stubs for brevity
-historyManager.render = function() {
-    const listEl = document.getElementById('historyList');
-    const search = document.getElementById('historySearchInput').value.toLowerCase();
-    const sort = document.getElementById('historySortSelect').value;
-    if (!listEl) return;
-    let history = this.get();
-    if (sort === 'oldest') history.reverse();
-    if (search) {
-        history = history.filter(item => 
-            item.pax.toLowerCase().includes(search) || item.route.toLowerCase().includes(search)
-        );
-    }
-    if (history.length === 0) {
-        listEl.innerHTML = '<div class="info" style="margin: 10px;">No history found.</div>';
-        return;
-    }
-    listEl.innerHTML = history.map(item => `
-        <div class="history-item" data-id="${item.id}">
-            <div class="history-item-info">
-                <div class="history-item-pax">${item.pax}</div>
-                <div class="history-item-details">
-                    <span>${item.route}</span>
-                    <span>${new Date(item.date).toLocaleString()}</span>
-                </div>
-            </div>
-            <div class="history-item-actions">
-                <button class="use-history-btn">Use This</button>
-            </div>
-        </div>
-    `).join('');
-};
-historyManager.init = function() {
-    document.getElementById('historyBtn')?.addEventListener('click', () => {
-        this.render();
-        document.getElementById('historyModal')?.classList.remove('hidden');
-    });
-    document.getElementById('closeHistoryBtn')?.addEventListener('click', () => {
-        document.getElementById('historyModal')?.classList.add('hidden');
-        document.getElementById('historyPreviewPanel')?.classList.add('hidden');
-    });
-    document.getElementById('historySearchInput')?.addEventListener('input', () => this.render());
-    document.getElementById('historySortSelect')?.addEventListener('change', () => this.render());
-    document.getElementById('historyList')?.addEventListener('click', (e) => {
-        const itemEl = e.target.closest('.history-item');
-        if (!itemEl) return;
-        const id = Number(itemEl.dataset.id);
-        const history = this.get();
-        const entry = history.find(item => item.id === id);
-        if (!entry) return;
-
-        if (e.target.classList.contains('use-history-btn')) {
-            document.getElementById('pnrInput').value = entry.pnrText;
-            document.getElementById('historyModal').classList.add('hidden');
-            debouncedConvert();
-        } else { 
-            const previewContent = document.getElementById('previewContent');
-            previewContent.innerHTML = `<h4>Screenshot</h4><img src="${entry.screenshot}" alt="Itinerary Screenshot"><hr><h4>Raw PNR Data</h4><pre>${entry.pnrText}</pre>`;
-            document.getElementById('historyPreviewPanel').classList.remove('hidden');
-        }
-    });
-    document.getElementById('closePreviewBtn')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        document.getElementById('historyPreviewPanel').classList.add('hidden');
-    });
-};
-document.addEventListener('DOMContentLoaded', () => {
-    loadOptions();
-    historyManager.init();
-    document.getElementById('pnrInput').addEventListener('input', debouncedConvert);
-    document.getElementById('clearBtn').addEventListener('click', () => {
-        document.getElementById('pnrInput').value = '';
-        document.getElementById('output').innerHTML = '<div class="info">Enter PNR data to begin.</div>';
-        document.getElementById('screenshotBtn').style.display = 'none';
-        document.getElementById('copyTextBtn').style.display = 'none';
-    });
-    document.getElementById('pasteBtn').addEventListener('click', async () => {
-        try {
-            const text = await navigator.clipboard.readText();
-            document.getElementById('pnrInput').value = text;
-            debouncedConvert();
-        } catch (err) { showPopup('Could not paste from clipboard.'); }
-    });
-    const allInputs = '.options input, .fare-options-grid input, .fare-options-grid select, .baggage-options input, #baggageAmountInput, #baggageUnitSelect';
-    document.querySelectorAll(allInputs).forEach(el => {
-        const eventType = el.matches('input[type="checkbox"], input[type="radio"], select') ? 'change' : 'input';
-        el.addEventListener(eventType, () => {
-            if (el.closest('.options')) { saveOptions(); }
-            if (el.id === 'showTaxes' || el.id === 'showFees') { toggleFareInputsVisibility(); }
-            debouncedConvert();
-        });
-    });
-    document.querySelectorAll('input[name="baggageOption"]').forEach(radio => {
-        radio.addEventListener('change', () => {
-            const showInputs = radio.value === 'alltheway' || radio.value === 'particular';
-            document.getElementById('allTheWayInputs').classList.toggle('visible', showInputs);
-        });
-    });
-    document.getElementById('showItineraryLogo').addEventListener('change', () => {
-        toggleCustomBrandingSection(); saveOptions(); debouncedConvert();
-    });
-    document.getElementById('customLogoInput').addEventListener('change', (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            localStorage.setItem(CUSTOM_LOGO_KEY, e.target.result);
-            document.getElementById('customLogoPreview').src = e.target.result;
-            document.getElementById('customLogoPreview').style.display = 'block';
-            showPopup('Custom logo saved!'); debouncedConvert();
-        };
-        reader.readAsDataURL(file);
-    });
-    document.getElementById('customTextInput').addEventListener('input', debounce((event) => {
-        localStorage.setItem(CUSTOM_TEXT_KEY, event.target.value); debouncedConvert();
-    }, 400));
-    document.getElementById('clearCustomBrandingBtn').addEventListener('click', () => {
-        if (confirm('Are you sure you want to clear your saved logo and text?')) {
-            localStorage.removeItem(CUSTOM_LOGO_KEY);
-            localStorage.removeItem(CUSTOM_TEXT_KEY);
-            document.getElementById('customLogoInput').value = '';
-            document.getElementById('customTextInput').value = '';
-            document.getElementById('customLogoPreview').style.display = 'none';
-            showPopup('Custom branding cleared.'); debouncedConvert();
-        }
-    });
-    document.getElementById('screenshotBtn').addEventListener('click', async () => {
-        const outputEl = document.getElementById('output').querySelector('.output-container');
-        if (!outputEl) { showPopup('Nothing to capture.'); return; }
-        try {
             const canvas = await generateItineraryCanvas(outputEl);
             canvas.toBlob(blob => {
                 navigator.clipboard.write([new ClipboardItem({'image/png': blob})]);
@@ -732,6 +568,7 @@ document.addEventListener('DOMContentLoaded', () => {
             showPopup('Could not copy screenshot.');
         }
     });
+    
     document.getElementById('copyTextBtn').addEventListener('click', () => {
         const text = document.getElementById('output').innerText;
         navigator.clipboard.writeText(text).then(() => {
