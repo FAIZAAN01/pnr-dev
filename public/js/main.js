@@ -47,7 +47,7 @@ function toggleFareInputsVisibility() {
     document.getElementById('feeInputContainer').classList.toggle('hidden', !showFees);
 }
 
-// --- OPTIONS & BRANDING MANAGEMENT ---
+// --- OPTIONS & BRANDING MANAGEMENT (Unchanged) ---
 function saveOptions() {
     try {
         const optionsToSave = {
@@ -113,7 +113,7 @@ function toggleCustomBrandingSection() {
     );
 }
 
-// --- CORE CONVERSION LOGIC ---
+// --- CORE CONVERSION LOGIC (Unchanged) ---
 async function convertPNR() {
     const output = document.getElementById('output');
     const loadingSpinner = document.getElementById('loadingSpinner');
@@ -187,7 +187,7 @@ async function convertPNR() {
     }
 }
 
-// --- DISPLAY & RENDERING ---
+// --- DISPLAY & RENDERING (Unchanged) ---
 function displayResults(response, displayPnrOptions) {
     const output = document.getElementById('output');
     const screenshotBtn = document.getElementById('screenshotBtn');
@@ -373,25 +373,28 @@ function getMealDescription(mealCode) {
 
 // --- HISTORY MANAGER ---
 const historyManager = {
-    get: () => JSON.parse(localStorage.getItem(HISTORY_STORAGE_KEY) || '[]'),
-    save: (history) => {
+    // FIX 1: Converted arrow functions to regular functions to fix `this` context.
+    get: function() { 
+        return JSON.parse(localStorage.getItem(HISTORY_STORAGE_KEY) || '[]');
+    },
+
+    save: function(history) {
         try {
-            // This is the function that was failing
             localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history));
         } catch (e) {
-            // Catch the QuotaExceededError specifically
             if (e.name === 'QuotaExceededError') {
                 console.error("Could not save history: localStorage quota exceeded. The oldest history item will be removed.");
-                // Recovery strategy: remove the oldest item and try again.
-                history.pop(); // Removes the last (oldest) item
+                history.pop(); 
                 if (history.length > 0) {
-                    this.save(history); // Recursive call to save the smaller history
+                    // This recursive call now works because `this` is correct.
+                    this.save(history); 
                 }
             } else {
                 console.error("Failed to save history:", e);
             }
         }
     },
+
     add: async function(data) {
         if (!data.success || !data.result?.flights?.length) return;
         const outputEl = document.getElementById('output').querySelector('.output-container');
@@ -399,24 +402,32 @@ const historyManager = {
         
         try {
             const canvas = await generateItineraryCanvas(outputEl);
-            
-            // ====================================================================
-            // === THE ONLY CHANGE IS HERE: USE JPEG FOR HISTORY STORAGE        ===
-            // ====================================================================
-            // This creates a much smaller file for storage, preventing quota errors.
-            // 0.75 is a good balance between quality and size for previews.
             const screenshot = canvas.toDataURL('image/jpeg', 0.75);
             
-            const history = this.get();
+            let history = this.get();
+            const currentPnrText = data.pnrText || document.getElementById('pnrInput').value;
+
+            // FIX 2: Implement "Update History" feature
+            // Check if an entry with the same PNR text already exists.
+            const existingIndex = history.findIndex(item => item.pnrText === currentPnrText);
+            
+            if (existingIndex > -1) {
+                // If it exists, remove the old entry.
+                history.splice(existingIndex, 1);
+            }
+
             const newEntry = {
                 id: Date.now(),
                 pax: data.result.passengers.length ? data.result.passengers[0].split('/')[0] : 'Unknown Passenger',
                 route: `${data.result.flights[0].departure.airport} - ${data.result.flights[data.result.flights.length - 1].arrival.airport}`,
                 date: new Date().toISOString(),
-                pnrText: data.pnrText || document.getElementById('pnrInput').value,
+                pnrText: currentPnrText,
                 screenshot: screenshot
             };
+
+            // Add the new or updated entry to the beginning of the list.
             history.unshift(newEntry);
+
             if (history.length > 50) {
                 history.pop();
             }
@@ -425,17 +436,83 @@ const historyManager = {
             console.error('Failed to add history item:', err);
         }
     },
+
     render: function() {
-        // ... (render function is unchanged)
+        const listEl = document.getElementById('historyList');
+        const search = document.getElementById('historySearchInput').value.toLowerCase();
+        const sort = document.getElementById('historySortSelect').value;
+        if (!listEl) return;
+
+        let history = this.get();
+
+        if (sort === 'oldest') history.reverse();
+
+        if (search) {
+            history = history.filter(item => 
+                item.pax.toLowerCase().includes(search) || item.route.toLowerCase().includes(search)
+            );
+        }
+        
+        if (history.length === 0) {
+            listEl.innerHTML = '<div class="info" style="margin: 10px;">No history found.</div>';
+            return;
+        }
+
+        listEl.innerHTML = history.map(item => `
+            <div class="history-item" data-id="${item.id}">
+                <div class="history-item-info">
+                    <div class="history-item-pax">${item.pax}</div>
+                    <div class="history-item-details">
+                        <span>${item.route}</span>
+                        <span>${new Date(item.date).toLocaleString()}</span>
+                    </div>
+                </div>
+                <div class="history-item-actions">
+                    <button class="use-history-btn">Use This</button>
+                </div>
+            </div>
+        `).join('');
     },
+
     init: function() {
-        // ... (init function is unchanged)
+        document.getElementById('historyBtn')?.addEventListener('click', () => {
+            this.render();
+            document.getElementById('historyModal')?.classList.remove('hidden');
+        });
+        document.getElementById('closeHistoryBtn')?.addEventListener('click', () => {
+            document.getElementById('historyModal')?.classList.add('hidden');
+            document.getElementById('historyPreviewPanel')?.classList.add('hidden');
+        });
+        document.getElementById('historySearchInput')?.addEventListener('input', () => this.render());
+        document.getElementById('historySortSelect')?.addEventListener('change', () => this.render());
+        document.getElementById('historyList')?.addEventListener('click', (e) => {
+            const itemEl = e.target.closest('.history-item');
+            if (!itemEl) return;
+            const id = Number(itemEl.dataset.id);
+            const history = this.get();
+            const entry = history.find(item => item.id === id);
+            if (!entry) return;
+
+            if (e.target.classList.contains('use-history-btn')) {
+                document.getElementById('pnrInput').value = entry.pnrText;
+                document.getElementById('historyModal').classList.add('hidden');
+                debouncedConvert();
+            } else { 
+                const previewContent = document.getElementById('previewContent');
+                previewContent.innerHTML = `<h4>Screenshot</h4><img src="${entry.screenshot}" alt="Itinerary Screenshot"><hr><h4>Raw PNR Data</h4><pre>${entry.pnrText}</pre>`;
+                document.getElementById('historyPreviewPanel').classList.remove('hidden');
+            }
+        });
+        document.getElementById('closePreviewBtn')?.addEventListener('click', (e) => {
+            e.stopPropagation();
+            document.getElementById('historyPreviewPanel').classList.add('hidden');
+        });
     }
 };
 
-// --- EVENT LISTENERS & APP INITIALIZATION ---
 const debouncedConvert = debounce(convertPNR, 400);
 
+// --- EVENT LISTENERS & APP INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', () => {
     loadOptions();
     historyManager.init();
@@ -537,72 +614,3 @@ document.addEventListener('DOMContentLoaded', () => {
         }).catch(() => showPopup('Failed to copy text.'));
     });
 });
-
-
-// Note: The render and init stubs that were duplicated are removed. 
-// The real implementations are inside the historyManager object.
-historyManager.render = function() {
-    const listEl = document.getElementById('historyList');
-    const search = document.getElementById('historySearchInput').value.toLowerCase();
-    const sort = document.getElementById('historySortSelect').value;
-    if (!listEl) return;
-    let history = this.get();
-    if (sort === 'oldest') history.reverse();
-    if (search) {
-        history = history.filter(item => 
-            item.pax.toLowerCase().includes(search) || item.route.toLowerCase().includes(search)
-        );
-    }
-    if (history.length === 0) {
-        listEl.innerHTML = '<div class="info" style="margin: 10px;">No history found.</div>';
-        return;
-    }
-    listEl.innerHTML = history.map(item => `
-        <div class="history-item" data-id="${item.id}">
-            <div class="history-item-info">
-                <div class="history-item-pax">${item.pax}</div>
-                <div class="history-item-details">
-                    <span>${item.route}</span>
-                    <span>${new Date(item.date).toLocaleString()}</span>
-                </div>
-            </div>
-            <div class="history-item-actions">
-                <button class="use-history-btn">Use This</button>
-            </div>
-        </div>
-    `).join('');
-};
-historyManager.init = function() {
-    document.getElementById('historyBtn')?.addEventListener('click', () => {
-        this.render();
-        document.getElementById('historyModal')?.classList.remove('hidden');
-    });
-    document.getElementById('closeHistoryBtn')?.addEventListener('click', () => {
-        document.getElementById('historyModal')?.classList.add('hidden');
-        document.getElementById('historyPreviewPanel')?.classList.add('hidden');
-    });
-    document.getElementById('historySearchInput')?.addEventListener('input', () => this.render());
-    document.getElementById('historySortSelect')?.addEventListener('change', () => this.render());
-    document.getElementById('historyList')?.addEventListener('click', (e) => {
-        const itemEl = e.target.closest('.history-item');
-        if (!itemEl) return;
-        const id = Number(itemEl.dataset.id);
-        const history = this.get();
-        const entry = history.find(item => item.id === id);
-        if (!entry) return;
-
-        if (e.target.classList.contains('use-history-btn')) {
-            document.getElementById('pnrInput').value = entry.pnrText;
-            document.getElementById('historyModal').classList.add('hidden');
-            debouncedConvert();
-        } else { 
-            const previewContent = document.getElementById('previewContent');
-            previewContent.innerHTML = `<h4>Screenshot</h4><img src="${entry.screenshot}" alt="Itinerary Screenshot"><hr><h4>Raw PNR Data</h4><pre>${entry.pnrText}</pre>`;
-            document.getElementById('historyPreviewPanel').classList.remove('hidden');
-        }
-    });
-    document.getElementById('closePreviewBtn')?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        document.getElementById('historyPreviewPanel').classList.add('hidden');
-    });
-};
