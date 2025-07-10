@@ -184,36 +184,36 @@
     </button>
 
     <div class="sidebar">
-        <div class="options">
-            <h3>Display Options</h3>
-            <label><input type="checkbox" id="showItineraryLogo" checked> Show Main Itinerary Logo</label>
-            <div id="customBrandingSection">
-                <div class="custom-branding-input">
-                    <label for="customLogoInput">Custom Logo:</label>
-                    <input type="file" id="customLogoInput" accept="image/png, image/jpeg, image/gif">
-                    <img id="customLogoPreview" alt="Logo Preview" class="custom-logo-preview">
-                </div>
-                <div class="custom-branding-input">
-                    <label for="customTextInput">Custom Text (use Enter for new lines):</label>
-                    <textarea id="customTextInput" rows="3" placeholder="Your Company Name
+      <div class="options">
+        <h3>Display Options</h3>
+        <label><input type="checkbox" id="showItineraryLogo" checked> Show Main Itinerary Logo</label>
+        <hr>
+        <label><input type="checkbox" id="showAirline" checked> Show Airline</label>
+        <label><input type="checkbox" id="showAircraft" checked> Show Aircraft</label>
+        <label><input type="checkbox" id="showOperatedBy" checked> Show Operated By</label>
+        <label><input type="checkbox" id="showClass"> Show Class</label>
+        <label><input type="checkbox" id="showMeal"> Show Meal</label>
+        <label><input type="checkbox" id="showNotes"> Show Notes</label>
+        <label><input type="checkbox" id="showTransit" checked> Show Transit Times</label>
+        <label><input type="checkbox" id="use24HourFormat" checked> Use 24-Hour Time</label>
+        <hr>
+        <h3>Fare Display Options</h3>
+        <label><input type="checkbox" id="showTaxes" checked> Show Taxes</label>
+        <label><input type="checkbox" id="showFees" checked> Show Fees</label>
+        <div id="customBrandingSection">
+          <div class="custom-branding-input">
+            <label for="customLogoInput">Custom Logo:</label>
+            <input type="file" id="customLogoInput" accept="image/png, image/jpeg, image/gif">
+            <img id="customLogoPreview" alt="Logo Preview" class="custom-logo-preview">
+          </div>
+          <div class="custom-branding-input">
+            <label for="customTextInput">Custom Text (use Enter for new lines):</label>
+            <textarea id="customTextInput" rows="3" placeholder="Your Company Name
 Contact Info"></textarea>
-                </div>
-                <button id="clearCustomBrandingBtn" class="clear-btn">Clear Branding</button>
-            </div>
-            <hr>
-            <label><input type="checkbox" id="showAirline" checked> Show Airline</label>
-            <label><input type="checkbox" id="showAircraft" checked> Show Aircraft</label>
-            <label><input type="checkbox" id="showOperatedBy" checked> Show Operated By</label>
-            <label><input type="checkbox" id="showClass"> Show Class</label>
-            <label><input type="checkbox" id="showMeal"> Show Meal</label>
-            <label><input type="checkbox" id="showNotes"> Show Notes</label>
-            <label><input type="checkbox" id="showTransit" checked> Show Transit Times</label>
-            <label><input type="checkbox" id="use24HourFormat" checked> Use 24-Hour Time</label>
-            <hr>
-            <h3>Fare Display Options</h3>
-            <label><input type="checkbox" id="showTaxes" checked> Show Taxes</label>
-            <label><input type="checkbox" id="showFees" checked> Show Fees</label>
+          </div>
+          <button id="clearCustomBrandingBtn" class="clear-btn">Clear Branding</button>
         </div>
+      </div>
     </div>
   </div>
 
