@@ -87,7 +87,6 @@ app.post('/api/upload-logo', limiter, async (req, res) => {
     return res.status(400).json({ success: false, error: "This feature is disabled on the live deployment." });
 });
 
-// --- Helper Functions (Unchanged) ---
 function formatMomentTime(momentObj, use24 = false) {
     if (!momentObj || !momentObj.isValid()) return '';
     return momentObj.format(use24 ? 'HH:mm' : 'hh:mm A');
@@ -123,13 +122,13 @@ function parseGalileoEnhanced(pnrText, options) {
     let flightIndex = 0;
     let previousArrivalMoment = null;
 
-    // --- NEW: DEFINE MULTIPLE REGEX FOR DIFFERENT PNR FORMATS ---
-
-    // Regex for compact formats like: 1  ET 689 H 26AUG 2*DELADD DK1  0935 1335...
+    // --- UPDATED REGEX ---
+    // The `flightSegmentRegexFlexible` is now updated to capture optional terminal info.
+    // The change is: `([A-Z]{3})(?:\s+([A-Z0-9]+))?`
+    // This looks for a 3-letter airport code, followed by an optional group `(?:...)?`
+    // which contains a space `\s+` and a captured terminal `([A-Z0-9]+)`.
     const flightSegmentRegexCompact = /^\s*(\d+)\s+([A-Z0-9]{2})\s*(\d{1,4}[A-Z]?)\s+([A-Z])\s+([0-3]\d[A-Z]{3})\s+\S*\s*([A-Z]{3})([A-Z]{3})\s+\S+\s+(\d{4})\s+(\d{4})(?:\s+([0-3]\d[A-Z]{3}))?/;
-    
-    // Regex for flexible formats (original, and with continuation lines)
-    const flightSegmentRegexFlexible = /^\s*(?:(\d+)\s+)?([A-Z0-9]{2})\s*(\d{1,4}[A-Z]?)\s+([A-Z])\s+([0-3]\d[A-Z]{3})\s+([A-Z]{3})\s+.*?\s+([A-Z]{3})\s+.*?\s*(\d{4})\s+(\d{4})(?:\s*([0-3]\d[A-Z]{3}|\+\d))?/;
+    const flightSegmentRegexFlexible = /^\s*(?:(\d+)\s+)?([A-Z0-9]{2})\s*(\d{1,4}[A-Z]?)\s+([A-Z])\s+([0-3]\d[A-Z]{3})\s+([A-Z]{3})(?:\s+([A-Z0-9]+))?\s+.*?([A-Z]{3})(?:\s+([A-Z0-9]+))?\s+.*?\s*(\d{4})\s+(\d{4})(?:\s*([0-3]\d[A-Z]{3}|\+\d))?/;
     
     const operatedByRegex = /OPERATED BY\s+(.+)/i;
     const passengerLineIdentifierRegex = /^\s*\d+\.\s*[A-Z/]/;
@@ -137,16 +136,19 @@ function parseGalileoEnhanced(pnrText, options) {
     for (const line of lines) {
         if (!line) continue;
         
-        // --- NEW: TRY REGEXES IN ORDER ---
         let flightMatch = line.match(flightSegmentRegexCompact);
-        let segmentNumStr, airlineCode, flightNumRaw, travelClass, depDateStr, depAirport, arrAirport, depTimeStr, arrTimeStr, arrDateStrOrNextDayIndicator;
+        let segmentNumStr, airlineCode, flightNumRaw, travelClass, depDateStr, depAirport, arrAirport, depTimeStr, arrTimeStr, arrDateStrOrNextDayIndicator, depTerminal, arrTerminal;
 
         if (flightMatch) {
+            // Compact format doesn't have terminals separated, so they will be null.
             [, segmentNumStr, airlineCode, flightNumRaw, travelClass, depDateStr, depAirport, arrAirport, depTimeStr, arrTimeStr, arrDateStrOrNextDayIndicator] = flightMatch;
+            depTerminal = null;
+            arrTerminal = null;
         } else {
             flightMatch = line.match(flightSegmentRegexFlexible);
             if (flightMatch) {
-                [, segmentNumStr, airlineCode, flightNumRaw, travelClass, depDateStr, depAirport, arrAirport, depTimeStr, arrTimeStr, arrDateStrOrNextDayIndicator] = flightMatch;
+                // --- UPDATED DESTRUCTURING to get new terminal fields ---
+                [, segmentNumStr, airlineCode, flightNumRaw, travelClass, depDateStr, depAirport, depTerminal, arrAirport, arrTerminal, depTimeStr, arrTimeStr, arrDateStrOrNextDayIndicator] = flightMatch;
             }
         }
         
@@ -204,7 +206,6 @@ function parseGalileoEnhanced(pnrText, options) {
                     const daysToAdd = parseInt(arrDateStrOrNextDayIndicator.substring(1), 10);
                     arrivalMoment = moment.tz(`${depDateStr} ${arrTimeStr}`, "DDMMM HHmm", true, arrAirportInfo.timezone).add(daysToAdd, 'day');
                 } else {
-                    // This handles full dates like '26AUG'
                     arrivalMoment = moment.tz(`${arrDateStrOrNextDayIndicator} ${arrTimeStr}`, "DDMMM HHmm", true, arrAirportInfo.timezone);
                 }
             } else {
@@ -236,14 +237,18 @@ function parseGalileoEnhanced(pnrText, options) {
                     airport: depAirport, 
                     city: depAirportInfo.city, 
                     name: depAirportInfo.name,
-                    time: formatMomentTime(departureMoment, options.use24HourFormat) 
+                    time: formatMomentTime(departureMoment, options.use24HourFormat),
+                    // --- NEW: Add terminal data to response object ---
+                    terminal: depTerminal || null
                 },
                 arrival: { 
                     airport: arrAirport, 
                     city: arrAirportInfo.city, 
                     name: arrAirportInfo.name,
                     time: formatMomentTime(arrivalMoment, options.use24HourFormat),
-                    dateString: arrivalDateString
+                    dateString: arrivalDateString,
+                     // --- NEW: Add terminal data to response object ---
+                    terminal: arrTerminal || null
                 },
                 duration: calculateAndFormatDuration(departureMoment, arrivalMoment),
                 aircraft: aircraftTypes[aircraftCodeKey] || aircraftCodeKey || '',
@@ -255,7 +260,6 @@ function parseGalileoEnhanced(pnrText, options) {
         } else if (currentFlight && operatedByMatch) {
             currentFlight.operatedBy = operatedByMatch[1].trim();
         } else if (currentFlight && line.trim().length > 0) {
-            // This will correctly add lines like "SEE RTSVC" as notes.
             currentFlight.notes.push(line.trim());
         }
     }

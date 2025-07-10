@@ -26,7 +26,6 @@ function debounce(func, wait) {
     };
 }
 
-// === HELPER FUNCTION ===
 function toggleFareInputsVisibility() {
     const showTaxes = document.getElementById('showTaxes').checked;
     const showFees = document.getElementById('showFees').checked;
@@ -59,7 +58,6 @@ function loadOptions() {
     try {
         const savedOptions = JSON.parse(localStorage.getItem(OPTIONS_STORAGE_KEY) || '{}');
         
-        // === REFACTORED: Cleaner way to set checkbox states ===
         const checkboxOptions = {
             showItineraryLogo: true, showAirline: true, showAircraft: true,
             showOperatedBy: true, showClass: false, showMeal: false,
@@ -90,7 +88,6 @@ function loadOptions() {
         }
 
         toggleCustomBrandingSection();
-        // === FIX: Added missing function call to ensure UI is correct on load ===
         toggleFareInputsVisibility(); 
 
     } catch (e) { console.error("Failed to load options:", e); }
@@ -102,7 +99,7 @@ function toggleCustomBrandingSection() {
     );
 }
 
-// --- CORE CONVERSION LOGIC (Unchanged) ---
+// --- CORE CONVERSION LOGIC ---
 async function convertPNR() {
     const output = document.getElementById('output');
     const loadingSpinner = document.getElementById('loadingSpinner');
@@ -176,7 +173,7 @@ async function convertPNR() {
     }
 }
 
-// --- DISPLAY & RENDERING (Unchanged) ---
+// --- DISPLAY & RENDERING (UPDATED) ---
 function displayResults(response, displayPnrOptions) {
     const output = document.getElementById('output');
     const screenshotBtn = document.getElementById('screenshotBtn');
@@ -225,20 +222,19 @@ function displayResults(response, displayPnrOptions) {
         const itineraryBlock = document.createElement('div');
         itineraryBlock.className = 'itinerary-block';
         flights.forEach((flight, i) => {
-            // === NEW TRANSIT LOGIC ===
             if (displayPnrOptions.showTransit && i > 0 && flight.transitTime && flight.transitDurationMinutes) {
                 const transitDiv = document.createElement('div');
                 let transitText = '';
                 let transitClassName = '';
                 const minutes = flight.transitDurationMinutes;
 
-                if (minutes > 0 && minutes <= 120) { // 2 hours or less
+                if (minutes > 0 && minutes <= 120) {
                     transitClassName = 'transit-short';
                     transitText = `----- Short Transit ${flight.transitTime} -----`;
-                } else if (minutes > 120 && minutes <= 300) { // 2 to 5 hours
+                } else if (minutes > 120 && minutes <= 300) {
                     transitClassName = 'transit-minimum';
                     transitText = `----- Transit ${flight.transitTime} -----`;
-                } else { // More than 5 hours
+                } else {
                     transitClassName = 'transit-long';
                     transitText = `----- Long Transit ${flight.transitTime} -----`;
                 }
@@ -247,7 +243,6 @@ function displayResults(response, displayPnrOptions) {
                 transitDiv.textContent = transitText;
                 itineraryBlock.appendChild(transitDiv);
             }
-            // === End of transit login
             const flightItem = document.createElement('div');
             flightItem.className = 'flight-item';
             
@@ -262,13 +257,18 @@ function displayResults(response, displayPnrOptions) {
                     baggageText = ` `;
                 }
             }
-            // === NEW LOGIC TO BUILD THE ARRIVAL STRING ===
+            
+            // --- UPDATED: Conditionally add terminal info to display strings ---
+            const depTerminalDisplay = flight.departure.terminal ? ` (T${flight.departure.terminal})` : '';
+            const arrTerminalDisplay = flight.arrival.terminal ? ` (T${flight.arrival.terminal})` : '';
             const arrivalDateDisplay = flight.arrival.dateString ? ` on ${flight.arrival.dateString}` : '';
-            const arrivalString = `${flight.arrival.airport} - ${flight.arrival.name} at ${flight.arrival.time}${arrivalDateDisplay}`;
+
+            const departureString = `${flight.departure.airport}${depTerminalDisplay} - ${flight.departure.name} at ${flight.departure.time}`;
+            const arrivalString = `${flight.arrival.airport}${arrTerminalDisplay} - ${flight.arrival.name} at ${flight.arrival.time}${arrivalDateDisplay}`;
             
             const detailRows = [
-                { label: 'Departing ', value: `${flight.departure.airport} - ${flight.departure.name} at ${flight.departure.time}` },
-                { label: 'Arriving \u00A0\u00A0\u00A0', value: arrivalString }, // <-- Use the new arrival string
+                { label: 'Departing ', value: departureString },
+                { label: 'Arriving \u00A0\u00A0\u00A0', value: arrivalString },
                 { label: 'Baggage \u00A0\u00A0\u00A0', value: (baggageText ? `${baggageDetails.amount}${baggageDetails.unit}${baggageText}` : null) },
                 { label: 'Operated by', value: (displayPnrOptions.showOperatedBy && flight.operatedBy) ? flight.operatedBy : null },
                 { label: 'Meal', value: (displayPnrOptions.showMeal && flight.meal) ? getMealDescription(flight.meal) : null },
@@ -302,6 +302,7 @@ function displayResults(response, displayPnrOptions) {
             itineraryBlock.appendChild(flightItem);
         });
 
+        // Fare Summary Logic (Unchanged)
         const { adultCount, adultFare, childCount, childFare, infantCount, infantFare, tax, fee, currency, showTaxes, showFees } = response.fareDetails || {};
         const adultCountNum = parseInt(adultCount) || 0;
         const childCountNum = parseInt(childCount) || 0;
@@ -327,21 +328,11 @@ function displayResults(response, displayPnrOptions) {
 
             if (grandTotal > 0) {
                 let fareLines = [];
-                if (adultBaseTotal > 0) {
-                    fareLines.push(`Adults (${adultCountNum} x ${adultFareNum.toFixed(2)}): ${adultBaseTotal.toFixed(2)}`);
-                }
-                if (childBaseTotal > 0) {
-                    fareLines.push(`Children (${childCountNum} x ${childFareNum.toFixed(2)}): ${childBaseTotal.toFixed(2)}`);
-                }
-                if (infantBaseTotal > 0) {
-                    fareLines.push(`Infants (${infantCountNum} x ${infantFareNum.toFixed(2)}): ${infantBaseTotal.toFixed(2)}`);
-                }
-                if (showTaxes && totalTaxes > 0) {
-                    fareLines.push(`Taxes (${totalPax} x ${taxNum.toFixed(2)}): ${totalTaxes.toFixed(2)}`);
-                }
-                if (showFees && totalFees > 0) {
-                    fareLines.push(`Fees (${totalPax} x ${feeNum.toFixed(2)}): ${totalFees.toFixed(2)}`);
-                }
+                if (adultBaseTotal > 0) fareLines.push(`Adults (${adultCountNum} x ${adultFareNum.toFixed(2)}): ${adultBaseTotal.toFixed(2)}`);
+                if (childBaseTotal > 0) fareLines.push(`Children (${childCountNum} x ${childFareNum.toFixed(2)}): ${childBaseTotal.toFixed(2)}`);
+                if (infantBaseTotal > 0) fareLines.push(`Infants (${infantCountNum} x ${infantFareNum.toFixed(2)}): ${infantBaseTotal.toFixed(2)}`);
+                if (showTaxes && totalTaxes > 0) fareLines.push(`Taxes (${totalPax} x ${taxNum.toFixed(2)}): ${totalTaxes.toFixed(2)}`);
+                if (showFees && totalFees > 0) fareLines.push(`Fees (${totalPax} x ${feeNum.toFixed(2)}): ${totalFees.toFixed(2)}`);
                 fareLines.push(`<strong>Grand Total (${currencySymbol}): ${grandTotal.toFixed(2)}</strong>`);
 
                 const fareDiv = document.createElement('div');
@@ -368,7 +359,7 @@ function getMealDescription(mealCode) {
     return mealMap[mealCode] || `Code ${mealCode}`;
 }
 
-// --- HISTORY MANAGER (Unchanged) ---
+// --- HISTORY MANAGER & EVENT LISTENERS (Unchanged) ---
 const historyManager = {
     get: () => JSON.parse(localStorage.getItem(HISTORY_STORAGE_KEY) || '[]'),
     save: (history) => localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history)),
@@ -455,7 +446,7 @@ const historyManager = {
                 document.getElementById('pnrInput').value = entry.pnrText;
                 document.getElementById('historyModal').classList.add('hidden');
                 debouncedConvert();
-            } else { // Clicked on the info part to preview
+            } else { 
                 const previewContent = document.getElementById('previewContent');
                 previewContent.innerHTML = `<h4>Screenshot</h4><img src="${entry.screenshot}" alt="Itinerary Screenshot"><hr><h4>Raw PNR Data</h4><pre>${entry.pnrText}</pre>`;
                 document.getElementById('historyPreviewPanel').classList.remove('hidden');
@@ -467,7 +458,7 @@ const historyManager = {
         });
     }
 };
-// --- EVENT LISTENERS (Unchanged) ---
+
 const debouncedConvert = debounce(convertPNR, 400);
 
 document.addEventListener('DOMContentLoaded', () => {
