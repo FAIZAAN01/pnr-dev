@@ -284,8 +284,8 @@ function displayResults(response, displayPnrOptions) {
             const arrTerminalDisplay = flight.arrival.terminal ? ` (T${flight.arrival.terminal})` : '';
             const arrivalDateDisplay = flight.arrival.dateString ? ` on ${flight.arrival.dateString}` : '';
 
-            const departureString = `${flight.departure.airport}${depTerminalDisplay} - ${flight.departure.name} at ${flight.departure.time}`;
-            const arrivalString = `${flight.arrival.airport}${arrTerminalDisplay} - ${flight.arrival.name} at ${flight.arrival.time}${arrivalDateDisplay}`;
+            const departureString = `${flight.departure.airport} - ${flight.departure.name} ${depTerminalDisplay} at ${flight.departure.time}`;
+            const arrivalString = `${flight.arrival.airport} - ${flight.arrival.name} ${arrTerminalDisplay} at ${flight.arrival.time}${arrivalDateDisplay}`;
             
             const detailRows = [
                 { label: 'Departing ', value: departureString },
