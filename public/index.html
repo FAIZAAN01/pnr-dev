@@ -94,7 +94,21 @@
             filter: brightness(0.95);
         }
         .input-area button, .output-area button { margin-right: 10px; }
-        
+
+        #adultCountInput,
+        #childCountInput,
+        #infantCountInput{
+          width: 50px;
+          text-align: center;
+        }
+        #currencySelect {
+            width: 100px;
+            padding: 8px;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
         /* Button Color Theme */
         #convertBtn { background-color: var(--primary-blue); font-size: 16px; margin: 0; border-radius: 0px 5px 5px 0px; }
         #convertBtn:hover { background-color: var(--primary-blue-hover); }
@@ -108,12 +122,12 @@
         #screenshotBtn:hover, #copyTextBtn:hover, .use-history-btn:hover { background: var(--secondary-dark-hover); }
         
         /* Fare & Baggage (Unchanged structure) */
-        .fare-options-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-top: 15px; }
+        .fare-options-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 25px; margin-top: 15px; }
         .fare-group { display: flex; flex-direction: column; gap: 5px; }
         .fare-group.hidden { display: none; }
         .fare-group label { font-size: 14px; font-weight: 500; color: var(--text-light); }
         .fare-group input, .fare-group select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 100%; box-sizing: border-box; }
-        .fare-group .count-fare-wrapper { display: flex; gap: 8px; }
+        .fare-group .count-fare-wrapper { display: flex; }
         .fare-group .count-fare-wrapper > div { flex: 1; }
         .baggage-options { margin-top: 20px; display: flex; align-items: center; flex-wrap: wrap; gap: 10px 20px; }
         #allTheWayInputs { display: none; align-items: center; gap: 10px; }
@@ -155,7 +169,7 @@
                max-width:80vw;
                box-shadow:-5px 0 15px rgba(0,0,0,.2);
                transform:translateX(100%);
-               transition:transform .3s ease-in-out}
+               transition:transform .7s ease-in-out}
           .sidebar.is-open{transform:translateX(0)}}
     </style>
 </head>
