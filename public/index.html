@@ -6,176 +6,169 @@
     <title>PNR Converter</title>
     <link rel="shortcut icon" href="pass.png" type="image/x-icon">
     <style>
-        /* CSS is identical to the previous step, including the grid styles. No changes needed here. */
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; padding: 20px; background-color: #f4f7f9; color: #333; }
-        h1, h2, h3 { color: #2c3e50; }
+        :root {
+            --primary-blue: #3498db;
+            --primary-blue-hover: #2980b9;
+            --secondary-dark: #34495e;
+            --secondary-dark-hover: #2c3e50;
+            --danger-red: #e74c3c;
+            --danger-red-hover: #c0392b;
+            --success-green: #27ae60;
+            --success-green-hover: #229954;
+            --history-purple: #8e44ad;
+            --history-purple-hover: #7d3c98;
+            --light-bg: #f4f7f9;
+            --card-bg: #ffffff;
+            --text-dark: #2c3e50;
+            --text-light: #5f6c7b;
+            --border-color: #e0e6ec;
+        }
+
+        /* --- BASE STYLES --- */
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; margin: 0; padding: 20px; background-color: var(--light-bg); color: var(--text-dark); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+        h1, h2, h3 { color: var(--text-dark); }
         h1 { text-align: center; margin-bottom: 30px; }
-        hr { border: 0; border-top: 1px solid #e0e0e0; margin: 20px 0; }
-        button { padding: 10px 18px; color: white; border: none; border-radius: 5px; cursor: pointer; font-weight: 500; font-size: 14px; margin-top: 15px; transition: all 0.2s; }
-        button:hover { opacity: 0.85; transform: translateY(-1px); }
-        .input-area button, .output-area button { margin-right: 10px; }
+        hr { border: 0; border-top: 1px solid var(--border-color); margin: 25px 0; }
         .container { display: flex; gap: 30px; align-items: flex-start; max-width: 1400px; margin: 0 auto; }
         .main-content { flex: 1; display: flex; flex-direction: column; gap: 30px; min-width: 0; }
-        .sidebar { flex-basis: 320px; flex-shrink: 0; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); position: sticky; top: 20px; max-height: calc(100vh - 40px); overflow-y: auto; }
-        .input-area, .output-area { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); }
-        textarea#pnrInput { width: 100%; height: 120px; padding: 12px; border: 1px solid #dcdcdc; border-radius: 5px; font-family: Menlo, Monaco, Consolas, "Courier New", monospace; resize: vertical; box-sizing: border-box; }
-        #clearBtn { background-color: #e74c3c; }
-        #pasteBtn { background: #27ae60; }
-        #historyBtn { background: #8e44ad; }
-        #screenshotBtn { background: #f39c12; }
-        #copyTextBtn { background: #34495e; }
+        
+        /* --- "LIVING" INTERFACE: INTERACTIVE CARDS --- */
+        .input-area, .output-area, .sidebar { 
+            background: var(--card-bg); 
+            padding: 25px; 
+            border-radius: 12px; 
+            border: 1px solid var(--border-color);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .input-area:hover, .output-area:hover, .sidebar:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+        }
+        
+        /* --- Input Area --- */
+        textarea#pnrInput { 
+            width: 100%; 
+            height: 120px; 
+            padding: 15px; 
+            border: 1px solid var(--border-color); 
+            border-radius: 5px 0px 0px 5px; 
+            font-family: Menlo, Monaco, Consolas, "Courier New", monospace; 
+            resize: vertical; 
+            box-sizing: border-box; 
+            font-size: 14px;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        textarea#pnrInput:focus {
+            outline: none;
+            border-color: var(--primary-blue);
+            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+        }
+        #inputControls { 
+            display: flex; 
+            margin: 0; 
+        }
+        /* --- ENHANCED BUTTONS --- */
+        button { 
+            padding: 10px 18px; 
+            color: white; 
+            border: none; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-weight: 600; 
+            font-size: 14px; 
+            margin-top: 15px;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        button:hover { 
+            opacity: 1; 
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+        }
+        button:active {
+            transform: translateY(0);
+            filter: brightness(0.95);
+        }
+        .input-area button, .output-area button { margin-right: 10px; }
+        
+        /* Button Color Theme */
+        #convertBtn { background-color: var(--primary-blue); font-size: 16px; margin: 0; border-radius: 0px 5px 5px 0px; }
+        #convertBtn:hover { background-color: var(--primary-blue-hover); }
+        #pasteBtn { background-color: var(--success-green); }
+        #pasteBtn:hover { background-color: var(--success-green-hover); }
+        #clearBtn, .clear-btn { background-color: var(--danger-red); }
+        #clearBtn:hover, .clear-btn:hover { background-color: var(--danger-red-hover); }
+        #historyBtn { background-color: var(--history-purple); }
+        #historyBtn:hover { background-color: var(--history-purple-hover); }
+        #screenshotBtn, #copyTextBtn, .use-history-btn { background: var(--secondary-dark); }
+        #screenshotBtn:hover, #copyTextBtn:hover, .use-history-btn:hover { background: var(--secondary-dark-hover); }
+        
+        /* Fare & Baggage (Unchanged structure) */
         .fare-options-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-top: 15px; }
         .fare-group { display: flex; flex-direction: column; gap: 5px; }
-        .fare-group.hidden { display: none; } /* NEW: Helper class to hide inputs */
-        .fare-group label { font-size: 14px; font-weight: 500; color: #555; }
+        .fare-group.hidden { display: none; }
+        .fare-group label { font-size: 14px; font-weight: 500; color: var(--text-light); }
         .fare-group input, .fare-group select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: 100%; box-sizing: border-box; }
         .fare-group .count-fare-wrapper { display: flex; gap: 8px; }
         .fare-group .count-fare-wrapper > div { flex: 1; }
-        .baggage-options { margin-top: 20px; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
+        .baggage-options { margin-top: 20px; display: flex; align-items: center; flex-wrap: wrap; gap: 10px 20px; }
         #allTheWayInputs { display: none; align-items: center; gap: 10px; }
         #allTheWayInputs.visible { display: flex; }
-        #output { width: fit-content; min-width: 300px; max-width: 100%; overflow-x: auto;}
-        .output-container { border: 1px solid #e0e0e0; background: white; box-sizing: border-box; }
-        .itinerary-main-logo-container { display: flex; justify-content: space-between; align-items: center; padding: 5px 10px; border-bottom: 1px solid #eee; }
-        .itinerary-main-logo { max-width: 150px; max-height: 40px; object-fit: contain; }
-        .itinerary-logo-text { font-size: 0.8em; color: #555; text-align: right; line-height: 1.3; white-space: pre-line; }
-        .itinerary-header { padding: 15px; border-bottom: 1px solid #eee; }
-        .itinerary-header p { margin: 0; font-size: 14px; }
-        .flight-item { padding: 7px 15px 1px 15px; border-bottom: 1px dashed #ccc; }
-        .flight-item:last-child { border-bottom: none; }
-        .transit-item { font-style: italic; text-align: center; padding: 8px 0; margin-top: -1px; background: white; }
-        /* === NEW CSS CLASSES FOR TRANSIT TIME === */
-        .transit-item.transit-short {
-            color: #e74c3c; /* Red */
-            font-weight: 500;
-        }
-        .transit-item.transit-minimum {
-            color: #27ae60; /* Green */
-        }
-        .transit-item.transit-long {
-            color: #f39c12; /* Orange */
-        }
-        .airline-logo { width: 50px; height: 50px; object-fit: contain; border-radius: 5px; }
-        .flight-header { font-weight: 600; font-size: 14px; margin-bottom: 10px; }
-        .flight-detail { font-size: 13px; color: #34495e; margin-bottom: 5px; }
-        .flight-detail.notes-detail { white-space: pre-wrap; word-break: break-word; }
-        .flight-detail strong { color: #555; margin-right: 5px; }
-        .flight-content { display: flex; gap: 15px; align-items: flex-start; }
-        .fare-summary { font-weight: 500; margin: -1px 0px 5px 10px; padding-top: 15px; border-top: 1px solid #e0e0e0; font-size: 14px; white-space: pre-line; }
-        .fare-summary strong { font-size: 1.1em; }
-        .sidebar h3 { margin-top: 0; }
-        .options label { display: block; margin: 10px 0; cursor: pointer; font-size: 15px; }
-        #customBrandingSection { margin-top: 20px; padding-top: 20px; border-top: 1px solid #e0e0e0; }
-        #customBrandingSection.hidden { display: none; }
-        .custom-branding-input { margin-bottom: 15px; }
-        .custom-branding-input label { font-weight: 500; margin-bottom: 8px; display: block; }
-        .custom-branding-input input[type="file"], .custom-branding-input textarea { width: 100%; box-sizing: border-box; padding: 8px; border-radius: 4px; border: 1px solid #ccc; }
-        .custom-logo-preview { max-height: 40px; max-width: 150px; margin-top: 8px; display: none; border: 1px solid #ddd; padding: 3px; border-radius: 4px; }
-        .clear-btn { background-color: #c0392b; padding: 6px 12px; font-size: 0.9em; margin-top: 0; }
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.6); display: flex; justify-content: center; align-items: center; z-index: 2000; opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s; }
-        .modal-overlay:not(.hidden) { opacity: 1; visibility: visible; }
-        .modal-content { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 5px 20px rgba(0,0,0,0.3); width: 90%; max-width: 600px; max-height: 80vh; display: flex; flex-direction: column; transform: scale(0.95); transition: transform 0.3s; position: relative; overflow: hidden; }
-        .modal-overlay:not(.hidden) .modal-content { transform: scale(1); }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 15px; margin-bottom: 15px; }
-        .modal-header .close-btn { background: none; border: none; font-size: 2.5rem; line-height: 1; color: #888; cursor: pointer; padding: 0; margin: 0; }
-        .history-controls { display: flex; gap: 10px; margin-bottom: 15px; }
-        #historySearchInput, #historySortSelect { padding: 8px; border: 1px solid #ccc; border-radius: 4px; flex-grow: 1; }
-        .history-list { overflow-y: auto; flex-grow: 1; }
-        .history-item { display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #f0f0f0; transition: background-color 0.2s; }
-        .history-item:hover { background-color: #f8f9fa; }
-        .history-item-info { cursor: pointer; flex-grow: 1; }
-        .history-item-pax { font-weight: bold; color: #34495e; margin-bottom: 5px; }
-        .history-item-details { font-size: 0.9em; color: #7f8c8d; }
-        .history-item-actions button { background-color: #3498db; margin-top: 0; }
-        #historyPreviewPanel { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: white; display: flex; flex-direction: column; transition: transform 0.3s ease; transform: translateX(100%); z-index: 10; }
-        #historyPreviewPanel:not(.hidden) { transform: translateX(0); }
-        .preview-header { display: flex; justify-content: space-between; align-items: center; padding: 15px 25px; border-bottom: 1px solid #eee; flex-shrink: 0; }
-        .preview-content { padding: 20px; overflow: auto; flex-grow: 1; }
-        .preview-content img { max-width: 100%; height: auto; display: block; margin: 0 auto; border: 1px solid #ddd; }
-        .preview-content pre { white-space: pre-wrap; word-wrap: break-word; background: #f4f4f4; padding: 15px; border-radius: 4px; }
-        .loading-spinner { display: none; width: 40px; height: 40px; margin: 20px auto; border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        .info { color: #3498db; padding: 15px; background-color: #e3f2fd; border: 1px solid #bbdefb; border-radius: 4px; }
-        .error { color: #e74c3c; padding: 15px; background-color: #fdecea; border: 1px solid #ef9a9a; border-radius: 4px; }
-        .popup-notification-container { position: fixed; top: 20px; right: 20px; z-index: 2050; display: flex; flex-direction: column; gap: 10px; }
-        .popup-notification { background-color: #2c3e50; color: white; padding: 12px 20px; border-radius: 6px; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); opacity: 0; transform: translateX(100%); transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55); }
-        .popup-notification.show { opacity: 1; transform: translateX(0); }
-        .mobile-menu-button { display: none; }
-        @media (max-width: 900px) {
-            body { padding: 10px; }
-            .container { flex-direction: column; gap: 20px; }
-            .mobile-menu-button { display: flex; align-items: center; justify-content: center; position: fixed; top: 10px; right: 10px; z-index: 1010; background: #fff; color: #2c3e50; border: 1px solid #ddd; border-radius: 50%; width: 50px; height: 50px; padding: 0; margin: 0; box-shadow: 0 2px 10px rgba(0,0,0,0.15); }
-            .sidebar { position: fixed; top: 0; right: 0; height: 100%; z-index: 1020; width: 300px; max-width: 80vw; box-shadow: -5px 0 15px rgba(0,0,0,0.2); transform: translateX(100%); transition: transform 0.3s ease-in-out; }
-            .sidebar.is-open { transform: translateX(0); }
-        }
+
+        /* Output Area Styling */
+        #output { width: fit-content; min-width: 300px; max-width: 100%; overflow-x: auto; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .output-container, .info, .error { animation: fadeIn 0.5s ease-out forwards; }
+        .info { color: var(--primary-blue); padding: 15px; background-color: #f0f7ff; border: 1px solid var(--primary-blue-hover); border-radius: 8px; }
+        .error { color: var(--danger-red); padding: 15px; background-color: #fdecea; border: 1px solid #ef9a9a; border-radius: 8px; }
+        
+        /* Minified Itinerary, Sidebar, Modal, and Responsive Styles (Unchanged) */
+        .output-container{border:1px solid var(--border-color);background:var(--card-bg);box-sizing:border-box}.itinerary-main-logo-container{display:flex;justify-content:space-between;align-items:center;padding:5px 10px;border-bottom:1px solid #eee}.itinerary-main-logo{max-width:150px;max-height:40px;object-fit:contain}.itinerary-logo-text{font-size:.8em;color:var(--text-light);text-align:right;line-height:1.3;white-space:pre-line}.itinerary-header{padding:15px;border-bottom:1px solid #eee}.itinerary-header p{margin:0;font-size:14px}.flight-item{padding:7px 15px 1px;border-bottom:1px dashed #ccc}.flight-item:last-child{border-bottom:none}.transit-item{font-style:italic;text-align:center;padding:8px 0;margin-top:-1px;background:#fff}.transit-item.transit-short{color:var(--danger-red);font-weight:500}.transit-item.transit-minimum{color:#27ae60}.transit-item.transit-long{color:#f39c12}.airline-logo{width:50px;height:50px;object-fit:contain;border-radius:5px}.flight-header{font-weight:600;font-size:14px;margin-bottom:10px}.flight-detail{font-size:13px;color:var(--secondary-dark);margin-bottom:5px}.flight-detail.notes-detail{white-space:pre-wrap;word-break:break-word}.flight-detail strong{color:var(--text-light);margin-right:5px}.flight-content{display:flex;gap:15px;align-items:flex-start}.fare-summary{font-weight:500;margin:-1px 0 5px 10px;padding-top:15px;border-top:1px solid var(--border-color);font-size:14px;white-space:pre-line}.fare-summary strong{font-size:1.1em}.sidebar{position:sticky;top:20px;max-height:calc(100vh - 40px);overflow-y:auto}.sidebar h3{margin-top:0}.options label{display:block;margin:10px 0;cursor:pointer;font-size:15px}#customBrandingSection{margin-top:20px;padding-top:20px;border-top:1px solid var(--border-color)}#customBrandingSection.hidden{display:none}.custom-branding-input{margin-bottom:15px}.custom-branding-input label{font-weight:500;margin-bottom:8px;display:block}.custom-branding-input input[type=file],.custom-branding-input textarea{width:100%;box-sizing:border-box;padding:8px;border-radius:4px;border:1px solid #ccc}.custom-logo-preview{max-height:40px;max-width:150px;margin-top:8px;display:none;border:1px solid #ddd;padding:3px;border-radius:4px}.modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background-color:rgba(0,0,0,.6);display:flex;justify-content:center;align-items:center;z-index:2000;opacity:0;visibility:hidden;transition:opacity .3s,visibility .3s}.modal-overlay:not(.hidden){opacity:1;visibility:visible}.modal-content{background:#fff;padding:25px;border-radius:8px;box-shadow:0 5px 20px rgba(0,0,0,.3);width:90%;max-width:600px;max-height:80vh;display:flex;flex-direction:column;transform:scale(.95);transition:transform .3s;position:relative;overflow:hidden}.modal-overlay:not(.hidden) .modal-content{transform:scale(1)}.modal-header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #eee;padding-bottom:15px;margin-bottom:15px}.modal-header .close-btn{background:0 0;border:none;font-size:2.5rem;line-height:1;color:#888;cursor:pointer;padding:0;margin:0}.history-controls{display:flex;gap:10px;margin-bottom:15px}#historySearchInput,#historySortSelect{padding:8px;border:1px solid #ccc;border-radius:4px;flex-grow:1}.history-list{overflow-y:auto;flex-grow:1}.history-item{display:flex;justify-content:space-between;align-items:center;padding:15px;border-bottom:1px solid #f0f0f0;transition:background-color .2s,transform .2s}.history-item:hover{background-color:#f8f9fa;transform:translateX(5px)}.history-item-info{cursor:pointer;flex-grow:1}.history-item-pax{font-weight:700;color:var(--secondary-dark);margin-bottom:5px}.history-item-details{font-size:.9em;color:#7f8c8d}#historyPreviewPanel{position:absolute;top:0;left:0;width:100%;height:100%;background:#fff;display:flex;flex-direction:column;transition:transform .3s ease;transform:translateX(100%);z-index:10}#historyPreviewPanel:not(.hidden){transform:translateX(0)}.preview-header{display:flex;justify-content:space-between;align-items:center;padding:15px 25px;border-bottom:1px solid #eee;flex-shrink:0}.preview-content{padding:20px;overflow:auto;flex-grow:1}.preview-content img{max-width:100%;height:auto;display:block;margin:0 auto;border:1px solid #ddd}.preview-content pre{white-space:pre-wrap;word-wrap:break-word;background:#f4f4f4;padding:15px;border-radius:4px}.popup-notification-container{position:fixed;top:20px;right:20px;z-index:2050;display:flex;flex-direction:column;gap:10px}.popup-notification{background-color:var(--secondary-dark);color:#fff;padding:12px 20px;border-radius:6px;box-shadow:0 4px 12px rgba(0,0,0,.15);opacity:0;transform:translateX(100%);transition:all .5s cubic-bezier(.68,-.55,.27,1.55)}.popup-notification.show{opacity:1;transform:translateX(0)}.loading-spinner{display:none;width:40px;height:40px;margin:20px auto;border:4px solid #f3f3f3;border-top:4px solid var(--primary-blue);border-radius:50%;animation:spin 1s linear infinite}@keyframes spin{0%{transform:rotate(0)}100%{transform:rotate(360deg)}}.mobile-menu-button{display:none}@media (max-width:900px){body{padding:10px}.container{flex-direction:column;gap:20px}.mobile-menu-button{display:flex;align-items:center;justify-content:center;position:fixed;top:10px;right:10px;z-index:1010;background:#fff;color:var(--text-dark);border:1px solid #ddd;border-radius:50%;width:50px;height:50px;padding:0;margin:0;box-shadow:0 2px 10px rgba(0,0,0,.15)}.sidebar{position:fixed;top:0;right:0;height:100%;z-index:1020;width:300px;max-width:80vw;box-shadow:-5px 0 15px rgba(0,0,0,.2);transform:translateX(100%);transition:transform .3s ease-in-out}.sidebar.is-open{transform:translateX(0)}}
     </style>
 </head>
 <body>  
   <div class="container">
     <div class="main-content">
-      <div class="input-area">
+      <div class="input-area card">
         <h3>Input PNR Data</h3>
-        <textarea id="pnrInput" placeholder="Enter PNR data here..."></textarea>
+        <div id="inputControls">
+          <textarea id="pnrInput" placeholder="Enter PNR data here..."></textarea>
+          <button id="convertBtn">Convert PNR</button>
+        </div>
+        <button id="pasteBtn">Paste</button>
+        <button id="clearBtn">Clear</button>
+        <button id="historyBtn">📜 History</button>
         
-        <!-- === UPDATED FARE OPTIONS SECTION === -->
         <div class="fare-options-grid">
-          <div class="fare-group">
-            <label>ADLT</label>
-            <div class="count-fare-wrapper">
-              <div><input id="adultCountInput" type="text" inputmode="decimal" value="1" title="Number of Adults"></div>
-              <div><input id="adultFareInput" type="text" inputmode="decimal" placeholder="Fare" title="Fare per Adult"></div>
-            </div>
-          </div>
-        <div class="fare-group">
-          <label>CHLD</label>
-          <div class="count-fare-wrapper">
-              <div><input id="childCountInput" type="text" inputmode="decimal" value="0" title="Number of Children"></div>
-              <div><input id="childFareInput" type="text" inputmode="decimal" placeholder="Fare" title="Fare per Child"></div>
-            </div>
-          </div>
-          <div class="fare-group">
-            <label>INFT</label>
-            <div class="count-fare-wrapper">
-              <div><input id="infantCountInput" type="text" inputmode="decimal" value="0" title="Number of Infants"></div>
-              <div><input id="infantFareInput" type="text" inputmode="decimal" placeholder="Fare" title="Fare per Infant"></div>
-            </div>
-          </div>
-          <div class="fare-group" id="taxInputContainer">
-            <label>Taxes (per person)</label>
-            <input id="taxInput" type="text" inputmode="decimal" placeholder="Taxes">
-          </div>
-          <div class="fare-group" id="feeInputContainer">
-            <label>Fees (per person)</label>
-            <input id="feeInput" type="text" inputmode="decimal" placeholder="Fees">
-          </div>
-          <div class="fare-group">
-            <label for="currencySelect">Currency</label>
-            <select id="currencySelect"><option value="USD" selected>USD $</option><option value="EUR">EUR €</option><option value="INR">INR ₹</option></select>
-          </div>
+          <div class="fare-group"><label>ADLT</label><div class="count-fare-wrapper"><div><input id="adultCountInput" type="text" inputmode="decimal" value="1" title="Number of Adults"></div><div><input id="adultFareInput" type="text" inputmode="decimal" placeholder="Fare" title="Fare"></div></div></div>
+          <div class="fare-group"><label>CHLD</label><div class="count-fare-wrapper"><div><input id="childCountInput" type="text" inputmode="decimal" value="0" title="Number of Children"></div><div><input id="childFareInput" type="text" inputmode="decimal" placeholder="Fare" title="Fare"></div></div></div>
+          <div class="fare-group"><label>INFT</label><div class="count-fare-wrapper"><div><input id="infantCountInput" type="text" inputmode="decimal" value="0" title="Number of Infants"></div><div><input id="infantFareInput" type="text" inputmode="decimal" placeholder="Fare"></div></div></div>
+          <div class="fare-group" id="taxInputContainer"><label>Taxes (per person)</label><input id="taxInput" type="text" inputmode="decimal" placeholder="Taxes"></div>
+          <div class="fare-group" id="feeInputContainer"><label>Fees (per person)</label><input id="feeInput" type="text" inputmode="decimal" placeholder="Fees"></div>
+          <div class="fare-group"><label for="currencySelect">Currency</label><select id="currencySelect"><option value="USD" selected>USD $</option><option value="EUR">EUR €</option><option value="INR">INR ₹</option></select></div>
         </div>
 
         <div class="baggage-options">
           <label>Baggage:</label>
           <input type="radio" id="baggageNone" name="baggageOption" value="none" checked> <label for="baggageNone">None</label>
-          <input type="radio" id="baggageAllTheWay" name="baggageOption" value="alltheway"> <label for="baggageAllTheWay">All the way</label>
           <input type="radio" id="baggageParticular" name="baggageOption" value="particular"> <label for="baggageParticular">Per segment</label>
           <div id="allTheWayInputs">
               <input id="baggageAmountInput" type="number" min="1" placeholder="e.g., 23" style="width: 60px;">
               <select id="baggageUnitSelect"><option value="kg">kg</option><option value="pcs">pcs</option></select>
           </div>
         </div>
-        <button id="convertBtn" class="action-btn primary-btn">Convert PNR</button>
-        <button id="pasteBtn" class="action-btn">Paste</button>
-        <button id="clearBtn" class="action-btn">Clear</button>
-        <button id="historyBtn">📜 History</button>
         <div class="loading-spinner" id="loadingSpinner"></div>
       </div>
-      <div class="output-area">
+      <div class="output-area card">
         <h3>Converted Itinerary</h3>
         <button id="screenshotBtn" style="display:none;">📷 Copy Screenshot</button>
         <button id="copyTextBtn" style="display:none;">📋 Copy Text</button>
         <div id="output" contenteditable="true">
-          <div class="info">Enter PNR data to begin.</div>
+          <div class="info">Enter PNR data and click Convert to begin.</div>
         </div>
       </div>
     </div>
@@ -184,7 +177,7 @@
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
     </button>
 
-    <div class="sidebar">
+    <div class="sidebar card">
       <div class="options">
         <h3>Display Options</h3>
         <label><input type="checkbox" id="showAirline" checked> Show Airline</label>
@@ -267,7 +260,7 @@ Contact Info"></textarea>
                   overlay.style.display = sidebar.classList.contains('is-open') ? 'block' : 'none';
               });
               document.addEventListener('click', (event) => {
-                  if (sidebar.classList.contains('is-open') && !sidebar.contains(event.target)) {
+                  if (sidebar.classList.contains('is-open') && !sidebar.contains(event.target) && !mobileMenuBtn.contains(event.target)) {
                       closeSidebar();
                   }
               });
