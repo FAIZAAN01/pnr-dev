@@ -111,7 +111,6 @@ function getTravelClassName(classCode) {
     return `Class ${code}`;
 }
 
-// --- Main Parser Function (UPDATED) ---
 function parseGalileoEnhanced(pnrText, options) {
     const flights = [];
     const passengers = [];
@@ -162,9 +161,7 @@ function parseGalileoEnhanced(pnrText, options) {
                 const words = givenNamesAndTitleRaw.split(/\s+/);
                 const lastWord = words[words.length - 1].toUpperCase();
                 let title = '';
-                if (titles.includes(lastWord)) {
-                    title = words.pop();
-                }
+                if (titles.includes(lastWord)) title = words.pop();
                 const givenNames = words.join(' '); 
                 if (lastName && givenNames) {
                     let formattedName = `${lastName.toUpperCase()}/${givenNames.toUpperCase()}`;
@@ -174,7 +171,6 @@ function parseGalileoEnhanced(pnrText, options) {
             }
         }
         else if (flightMatch) {
-            // === FIX #1: MOVED ALL FLIGHT LOGIC INSIDE THIS BLOCK ===
             if (currentFlight) flights.push(currentFlight);
             flightIndex++;
             let precedingTransitTimeForThisSegment = null;
@@ -204,13 +200,17 @@ function parseGalileoEnhanced(pnrText, options) {
                 arrivalMoment = moment.tz(`${depDateStr} ${arrTimeStr}`, "DDMMM HHmm", true, arrAirportInfo.timezone);
                 if (departureMoment.isValid() && arrivalMoment.isValid() && arrivalMoment.isBefore(departureMoment)) arrivalMoment.add(1, 'day');
             }
+
             if (previousArrivalMoment && previousArrivalMoment.isValid() && departureMoment && departureMoment.isValid()) {
                 const transitDuration = moment.duration(departureMoment.diff(previousArrivalMoment));
-                if (transitDuration.asMinutes() > 0) {
+                
+                // === THE FIX: Only calculate transit if it's within a reasonable range (e.g., >30 mins and <24 hours) ===
+                const totalMinutes = transitDuration.asMinutes();
+                if (totalMinutes > 30 && totalMinutes < 1440) { // 1440 minutes = 24 hours
                     const hours = Math.floor(transitDuration.asHours());
                     const minutes = transitDuration.minutes();
                     precedingTransitTimeForThisSegment = `${hours}h ${minutes < 10 ? '0' : ''}${minutes}m`;
-                    transitDurationInMinutes = Math.round(transitDuration.asMinutes());
+                    transitDurationInMinutes = Math.round(totalMinutes);
                     formattedNextDepartureTime = formatMomentTime(departureMoment, use24hTransit);
                 }
             }
@@ -238,8 +238,8 @@ function parseGalileoEnhanced(pnrText, options) {
                     terminal: arrTerminal || null
                 },
                 duration: calculateAndFormatDuration(departureMoment, arrivalMoment),
-                aircraft: aircraftTypes[aircraftCodeKey] || aircraftCodeKey || '', // Add aircraft
-                meal: mealCode, // Add meal
+                aircraft: aircraftTypes[aircraftCodeKey] || aircraftCodeKey || '',
+                meal: mealCode,
                 notes: [], 
                 operatedBy: null,
                 transitTime: precedingTransitTimeForThisSegment,
@@ -247,7 +247,6 @@ function parseGalileoEnhanced(pnrText, options) {
                 formattedNextDepartureTime: formattedNextDepartureTime
             };
             previousArrivalMoment = arrivalMoment.clone();
-            // === END OF FIX #1 ===
         } else if (currentFlight && operatedByMatch) {
             currentFlight.operatedBy = operatedByMatch[1].trim();
         } else if (currentFlight && line.trim().length > 0) {
