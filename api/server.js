@@ -95,7 +95,9 @@ function calculateAndFormatDuration(depMoment, arrMoment) {
     if (durationMinutes < 0) return 'Invalid duration';
     const hours = Math.floor(durationMinutes / 60);
     const minutes = durationMinutes % 60;
-    return `${hours}h ${minutes < 10 ? '0' : ''}${minutes}m`;
+    const paddedHours = String(hours).padStart(2, '0');
+    const paddedMinutes = String(minutes).padStart(2, '0');
+    precedingTransitTimeForThisSegment = `${paddedHours}h ${paddedMinutes}m`;
 }
 function getTravelClassName(classCode) {
     if (!classCode) return 'Unknown';
