@@ -28,6 +28,16 @@ function debounce(func, wait) {
     };
 }
 
+/**
+ * Reverses a given string.
+ * @param {string} str The string to reverse.
+ * @returns {string} The reversed string.
+ */
+function reverseString(str) {
+    if (!str) return '';
+    return str.split('').reverse().join('');
+}
+
 // --- HELPER FUNCTION FOR HIGH-QUALITY SCREENSHOTS ---
 async function generateItineraryCanvas(element) {
     if (!element) throw new Error("Element for canvas generation not found.");
@@ -270,29 +280,43 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
     if (flights.length > 0) {
         const itineraryBlock = document.createElement('div');
         itineraryBlock.className = 'itinerary-block';
-        flights.forEach((flight, i) => {
-            if (displayPnrOptions.showTransit && i > 0 && flight.transitTime && flight.transitDurationMinutes) {
+            // Find this part of the displayResults function...
+            flights.forEach((flight, i) => {
+                if (displayPnrOptions.showTransit && i > 0 && flight.transitTime && flight.transitDurationMinutes) {
                 const transitDiv = document.createElement('div');
                 let transitText = '';
                 let transitClassName = '';
                 const minutes = flight.transitDurationMinutes;
-                const transitSymbol = displayPnrOptions.transitSymbol || '-----';
 
-                 if (minutes > 0 && minutes <= 120) { 
-                transitClassName = 'transit-short'; 
-                transitText = `${transitSymbol} Short Transit ${flight.transitTime} at ${flights[i - 1].arrival?.city || ''} (${flights[i - 1].arrival?.airport || ''}) ${transitSymbol}`; 
-            } else if (minutes > 120 && minutes <= 300) { 
-                transitClassName = 'transit-minimum'; 
-                transitText = `${transitSymbol} Transit ${flight.transitTime} at ${flights[i - 1].arrival?.city || ''} (${flights[i - 1].arrival?.airport || ''}) ${transitSymbol}`; 
-            } else { 
-                transitClassName = 'transit-long'; 
-                transitText = `${transitSymbol} Long Transit ${flight.transitTime} at ${flights[i - 1].arrival?.city || ''} (${flights[i - 1].arrival?.airport || ''}) ${transitSymbol}`; 
-            }
-        
+                // --- START OF MODIFIED BLOCK ---
+                const rawSymbol = displayPnrOptions.transitSymbol || '-----'; // Get the raw user input
+
+                // Process the separators to preserve spaces for HTML rendering
+                const startSeparator = rawSymbol.replace(/ /g, ' '); 
+                const endSeparator = reverseString(rawSymbol).replace(/ /g, ' '); // Reverse it first, then preserve spaces
+
+                const transitLabel = `Transit ${flight.transitTime} at ${flights[i - 1].arrival?.city || ''} (${flights[i - 1].arrival?.airport || ''})`;
+                const shortTransitLabel = `Short Transit ${flight.transitTime} at ${flights[i - 1].arrival?.city || ''} (${flights[i - 1].arrival?.airport || ''})`;
+                const longTransitLabel = `Long Transit ${flight.transitTime} at ${flights[i - 1].arrival?.city || ''} (${flights[i - 1].arrival?.airport || ''})`;
+
+                if (minutes > 0 && minutes <= 120) { 
+                    transitClassName = 'transit-short'; 
+                    transitText = `${startSeparator} ${shortTransitLabel} ${endSeparator}`; 
+                } else if (minutes > 120 && minutes <= 300) { 
+                    transitClassName = 'transit-minimum'; 
+                    transitText = `${startSeparator} ${transitLabel} ${endSeparator}`; 
+                } else { 
+                    transitClassName = 'transit-long'; 
+                    transitText = `${startSeparator} ${longTransitLabel} ${endSeparator}`; 
+                }
+                
                 transitDiv.className = `transit-item ${transitClassName}`;
-                transitDiv.textContent = transitText;
+                // Use .innerHTML to ensure   is rendered as a space
+                transitDiv.innerHTML = transitText; 
                 itineraryBlock.appendChild(transitDiv);
+                // --- END OF MODIFIED BLOCK ---
             }
+            // ... rest of the forEach loop
             const flightItem = document.createElement('div');
             flightItem.className = 'flight-item';
             
