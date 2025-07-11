@@ -346,8 +346,8 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
                 { label: 'Arriving \u00A0\u00A0\u00A0', value: arrivalString },
                 { label: 'Baggage \u00A0\u00A0', value: baggageText || null },
                 { label: 'Operated by', value: (displayPnrOptions.showOperatedBy && flight.operatedBy) ? flight.operatedBy : null },
-                { label: 'Meal', value: (displayPnrOptions.showMeal && flight.meal) ? getMealDescription(flight.meal) : null },
-                { label: 'Notes', value: (displayPnrOptions.showNotes && flight.notes?.length) ? flight.notes.join('; ') : null, isNote: true }
+                { label: 'Meal \u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0', value: (displayPnrOptions.showMeal && flight.meal) ? getMealDescription(flight.meal) : null },
+                { label: 'Notes \u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0', value: (displayPnrOptions.showNotes && flight.notes?.length) ? flight.notes.join('; ') : null, isNote: true }
             ];
 
             detailRows.forEach(({label, value, isNote}) => {
