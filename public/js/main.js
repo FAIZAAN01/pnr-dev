@@ -61,6 +61,7 @@ function saveOptions() {
             showMeal: document.getElementById('showMeal').checked,
             showNotes: document.getElementById('showNotes').checked,
             showTransit: document.getElementById('showTransit').checked,
+            transitSymbol: document.getElementById('transitSymbolInput').value,
             use24HourFormat: document.getElementById('use24HourFormat').checked,
             currency: document.getElementById('currencySelect').value,
             showTaxes: document.getElementById('showTaxes').checked,
@@ -92,6 +93,8 @@ function loadOptions() {
             document.getElementById('currencySelect').value = savedOptions.currency;
         }
 
+        document.getElementById('transitSymbolInput').value = savedOptions.transitSymbol ?? '-----';
+
         const customLogoData = localStorage.getItem(CUSTOM_LOGO_KEY);
         const customTextData = localStorage.getItem(CUSTOM_TEXT_KEY);
         const logoPreview = document.getElementById('customLogoPreview');
@@ -105,8 +108,14 @@ function loadOptions() {
 
         toggleCustomBrandingSection();
         toggleFareInputsVisibility(); 
+        toggleTransitSymbolInputVisibility();
 
     } catch (e) { console.error("Failed to load options:", e); }
+}
+
+function toggleTransitSymbolInputVisibility() {
+    const showTransit = document.getElementById('showTransit').checked;
+    document.getElementById('transitSymbolContainer').classList.toggle('hidden', !showTransit);
 }
 
 function toggleCustomBrandingSection() {
@@ -188,6 +197,7 @@ function liveUpdateDisplay(pnrProcessingAttempted = false) {
         showMeal: document.getElementById('showMeal').checked,
         showNotes: document.getElementById('showNotes').checked,
         showTransit: document.getElementById('showTransit').checked,
+        transitSymbol:document.getElementById('transitSymbolInput').value || '-----',
         use24HourFormat: document.getElementById('use24HourFormat').checked,
     };
 
@@ -266,11 +276,19 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
                 let transitText = '';
                 let transitClassName = '';
                 const minutes = flight.transitDurationMinutes;
+                const transitSymbol = displayPnrOptions.transitSymbol || '-----';
 
-                if (minutes > 0 && minutes <= 120) { transitClassName = 'transit-short'; transitText = `::: :  :   Short Transit Time: ${flight.transitTime} at ${flights[i - 1].arrival?.city || ''} (${flights[i - 1].arrival?.airport || ''})   :  : :::`; } 
-                else if (minutes > 120 && minutes <= 300) { transitClassName = 'transit-minimum'; transitText = `::: :  :   Transit Time: ${flight.transitTime} at ${flights[i - 1].arrival?.city || ''} (${flights[i - 1].arrival?.airport || ''})   :  : ::: `; } 
-                else { transitClassName = 'transit-long'; transitText = `::: :  :   Long Transit Time: ${flight.transitTime} at ${flights[i - 1].arrival?.city || ''} (${flights[i - 1].arrival?.airport || ''})   :  : :::`; }
-
+                 if (minutes > 0 && minutes <= 120) { 
+                transitClassName = 'transit-short'; 
+                transitText = `${transitSymbol} Short Transit ${flight.transitTime} at ${flights[i - 1].arrival?.city || ''} (${flights[i - 1].arrival?.airport || ''}) ${transitSymbol}`; 
+            } else if (minutes > 120 && minutes <= 300) { 
+                transitClassName = 'transit-minimum'; 
+                transitText = `${transitSymbol} Transit ${flight.transitTime} at ${flights[i - 1].arrival?.city || ''} (${flights[i - 1].arrival?.airport || ''}) ${transitSymbol}`; 
+            } else { 
+                transitClassName = 'transit-long'; 
+                transitText = `${transitSymbol} Long Transit ${flight.transitTime} at ${flights[i - 1].arrival?.city || ''} (${flights[i - 1].arrival?.airport || ''}) ${transitSymbol}`; 
+            }
+        
                 transitDiv.className = `transit-item ${transitClassName}`;
                 transitDiv.textContent = transitText;
                 itineraryBlock.appendChild(transitDiv);
@@ -479,6 +497,7 @@ document.addEventListener('DOMContentLoaded', () => {
         el.addEventListener(eventType, () => {
             if (el.closest('.options')) { saveOptions(); }
             if (el.id === 'showTaxes' || el.id === 'showFees') { toggleFareInputsVisibility(); }
+            if (el.id === 'showTransit') { toggleTransitSymbolInputVisibility(); } // <-- ADD THIS LINE
             liveUpdateDisplay(); 
         });
     });

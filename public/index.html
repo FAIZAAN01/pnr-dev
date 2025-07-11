@@ -227,10 +227,43 @@
           border-top:1px solid var(--border-color);
           font-size:14px;white-space:pre-line
         }
-            .fare-summary strong{font-size:1.1em}.sidebar{position:sticky;top:20px;max-height:calc(100vh - 40px);overflow-y:auto}.sidebar h3{margin-top:0}.options label{display:block;margin:10px 0;cursor:pointer;
-                font-size:15px}#customBrandingSection{margin-top:20px;padding-top:20px;border-top:1px solid var(--border-color)}#customBrandingSection.hidden{display:none}.custom-branding-input{margin-bottom:15px}.custom-branding-input label{
-                  font-weight:500;margin-bottom:8px;display:block}.custom-branding-input input[type=file],.custom-branding-input textarea{width:100%;box-sizing:border-box;padding:8px;border-radius:4px;border:1px solid #ccc}.custom-logo-preview{
-                    max-height:40px;max-width:150px;margin-top:8px;display:none;border:1px solid #ddd;padding:3px;border-radius:4px}.modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background-color:rgba(0,0,0,.6);display:flex;
+            .fare-summary strong{
+              font-size:1.1em
+            }
+            .sidebar{
+              position:sticky;
+              top:20px;
+              max-height:calc(100vh - 40px);
+              overflow-y:auto
+            }
+            .sidebar h3{
+              margin-top:0
+            }
+            .options label{
+              display:block;
+              margin:10px 0;
+              cursor:pointer;
+              font-size:15px
+            }
+            #customBrandingSection{
+              margin-top:20px;
+              padding-top:20px;
+              border-top:1px solid var(--border-color)
+            }
+            #customBrandingSection.hidden{
+              display:none
+            }
+            .custom-branding-input{
+              margin-bottom:15px
+            }
+            .custom-branding-input label{
+              font-weight:500;
+              margin-bottom:8px;display:block
+            }
+            .custom-branding-input input[type=file],.custom-branding-input textarea{
+              width:100%;box-sizing:border-box;padding:8px;border-radius:4px;border:1px solid #ccc}.custom-logo-preview{
+              max-height:40px;
+              max-width:150px;margin-top:8px;display:none;border:1px solid #ddd;padding:3px;border-radius:4px}.modal-overlay{position:fixed;top:0;left:0;width:100%;height:100%;background-color:rgba(0,0,0,.6);display:flex;
                       justify-content:center;align-items:center;z-index:2000;opacity:0;visibility:hidden;transition:opacity .3s,visibility .3s}.modal-overlay:not(.hidden){opacity:1;visibility:visible}.modal-content{background:#fff;padding:25px;border-radius:
                         8px;box-shadow:0 5px 20px rgba(0,0,0,.3);width:90%;max-width:600px;max-height:80vh;display:flex;flex-direction:column;transform:scale(.95);transition:transform .3s;position:relative;overflow:hidden}
                         .modal-overlay:not(.hidden) .modal-content{transform:scale(1)}.modal-header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #eee;padding-bottom:15px;margin-bottom:15px}
@@ -240,6 +273,22 @@
             gap:10px;
             margin-bottom:15px
           }
+
+          .custom-transit-input {
+              margin-left: 25px;
+              margin-top: 8px;
+              display: flex;
+              align-items: center;
+              gap: 8px;
+          }
+          .custom-transit-input.hidden {
+              display: none;
+          }
+          .custom-transit-input label {
+              margin: 0; /* Override default label margin */
+              font-size: 14px;
+          }
+
           #historySearchInput,#historySortSelect{
             padding:8px;
             border:1px solid #ccc;
@@ -364,6 +413,10 @@
         <label><input type="checkbox" id="showMeal"> Show Meal</label>
         <label><input type="checkbox" id="showNotes"> Show Notes</label>
         <label><input type="checkbox" id="showTransit" checked> Show Transit Times</label>
+        <div id="transitSymbolContainer" class="custom-transit-input">
+            <label for="transitSymbolInput">Separator:</label>
+            <input type="text" id="transitSymbolInput" placeholder="-----" style="width: 120px; padding: 5px;">
+        </div>
         <label><input type="checkbox" id="use24HourFormat" checked> Use 24-Hour Time</label>
         <hr>
         <h3>Fare Display Options</h3>
