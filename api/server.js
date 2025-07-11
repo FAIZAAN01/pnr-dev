@@ -56,7 +56,7 @@ const limiter = rateLimit({
 
 app.post('/api/convert', (req, res) => {
     try {
-        const { pnrText, options } = req.body; // Removed unused fare/baggage details
+        const { pnrText, options } = req.body;
         
         const pnrTextForProcessing = pnrText || '';
         const serverOptions = options || {};
@@ -123,7 +123,6 @@ function parseGalileoEnhanced(pnrText, options) {
     const use24hSegment = options.segmentTimeFormat === '24h';
     const use24hTransit = options.transitTimeFormat === '24h';
 
-    // --- FIX #1: RESTORED THE COMPACT REGEX DEFINITION ---
     const flightSegmentRegexCompact = /^\s*(\d+)\s+([A-Z0-9]{2})\s*(\d{1,4}[A-Z]?)\s+([A-Z])\s+([0-3]\d[A-Z]{3})\s+\S*\s*([A-Z]{3})([A-Z]{3})\s+\S+\s+(\d{4})\s+(\d{4})(?:\s+([0-3]\d[A-Z]{3}))?/;
     const flightSegmentRegexFlexible = /^\s*(?:(\d+)\s+)?([A-Z0-9]{2})\s*(\d{1,4}[A-Z]?)\s+([A-Z])\s+([0-3]\d[A-Z]{3})\s+([A-Z]{3})(?:\s+([A-Z0-9]+))?\s+.*?([A-Z]{3})(?:\s+([A-Z0-9]+))?\s+.*?\s*(\d{4})\s+(\d{4})(?:\s*([0-3]\d[A-Z]{3}|\+\d))?/;
     
@@ -169,25 +168,19 @@ function parseGalileoEnhanced(pnrText, options) {
                 const givenNames = words.join(' '); 
                 if (lastName && givenNames) {
                     let formattedName = `${lastName.toUpperCase()}/${givenNames.toUpperCase()}`;
-                    if (title) {
-                        formattedName += ` ${title}`;
-                    }
-                    if (!passengers.includes(formattedName)) {
-                        passengers.push(formattedName);
-                    }
+                    if (title) formattedName += ` ${title}`;
+                    if (!passengers.includes(formattedName)) passengers.push(formattedName);
                 }
             }
         }
         else if (flightMatch) {
+            // === FIX #1: MOVED ALL FLIGHT LOGIC INSIDE THIS BLOCK ===
             if (currentFlight) flights.push(currentFlight);
             flightIndex++;
             let precedingTransitTimeForThisSegment = null;
             let transitDurationInMinutes = null;
             let formattedNextDepartureTime = null;
-            
-            // --- FIX #2: REMOVED THE REDUNDANT DESTRUCTURING ---
-            // The variables are already available from the outer scope.
-            
+
             const flightDetailsPart = line.substring(flightMatch[0].length).trim();
             const detailsParts = flightDetailsPart.split(/\s+/);
             const aircraftCodeKey = detailsParts.find(p => p.toUpperCase() in aircraftTypes);
@@ -231,7 +224,7 @@ function parseGalileoEnhanced(pnrText, options) {
                 segment: parseInt(segmentNumStr, 10) || flightIndex,
                 airline: { code: airlineCode, name: airlineDatabase[airlineCode] || `Unknown Airline (${airlineCode})` },
                 flightNumber: flightNumRaw,
-                travelClass: { code: travelClass, name: getTravelClassName(travelClass) },
+                travelClass: { code: travelClass || '', name: getTravelClassName(travelClass) },
                 date: departureMoment.isValid() ? departureMoment.format('dddd, DD MMM YYYY') : '',
                 departure: { 
                     airport: depAirport, city: depAirportInfo.city, name: depAirportInfo.name,
@@ -245,13 +238,16 @@ function parseGalileoEnhanced(pnrText, options) {
                     terminal: arrTerminal || null
                 },
                 duration: calculateAndFormatDuration(departureMoment, arrivalMoment),
-                aircraft: aircraftTypes[aircraftCodeKey] || aircraftCodeKey || '',
-                meal: mealCode, notes: [], operatedBy: null,
+                aircraft: aircraftTypes[aircraftCodeKey] || aircraftCodeKey || '', // Add aircraft
+                meal: mealCode, // Add meal
+                notes: [], 
+                operatedBy: null,
                 transitTime: precedingTransitTimeForThisSegment,
                 transitDurationMinutes: transitDurationInMinutes,
                 formattedNextDepartureTime: formattedNextDepartureTime
             };
             previousArrivalMoment = arrivalMoment.clone();
+            // === END OF FIX #1 ===
         } else if (currentFlight && operatedByMatch) {
             currentFlight.operatedBy = operatedByMatch[1].trim();
         } else if (currentFlight && line.trim().length > 0) {

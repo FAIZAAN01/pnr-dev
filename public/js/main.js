@@ -296,7 +296,7 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
                 const minutes = flight.transitDurationMinutes;
                 const rawSymbol = displayPnrOptions.transitSymbol || '-----';
                 
-                // BEST PRACTICE FIX: Use ' ' entity for reliability.
+                // === BEST PRACTICE FIX: Use ' ' instead of ' ' ===
                 const startSeparator = rawSymbol.replace(/ /g, ' '); 
                 const endSeparator = reverseString(rawSymbol).replace(/ /g, ' ');
                 
@@ -419,7 +419,6 @@ function getMealDescription(mealCode) {
     return mealMap[mealCode] || `Code ${mealCode}`;
 }
 
-// History Manager is correct and unchanged
 const historyManager = {
     get: function() { return JSON.parse(localStorage.getItem(HISTORY_STORAGE_KEY) || '[]'); },
     save: function(history) {
