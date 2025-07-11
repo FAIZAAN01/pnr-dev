@@ -140,16 +140,26 @@ function toggleCustomBrandingSection() {
  */
 async function handleConvertClick() {
     const pnrText = document.getElementById('pnrInput').value;
-    if (!pnrText.trim()) {
+    // Keep this check for empty PNR
+    if (!pnrText.trim() && !lastPnrResult) { 
         showPopup("Please enter PNR text to convert.");
         return;
     }
 
     const output = document.getElementById('output');
     const loadingSpinner = document.getElementById('loadingSpinner');
-    
+
     loadingSpinner.style.display = 'block';
-    output.innerHTML = ''; 
+    if (pnrText.trim()) {
+        output.innerHTML = ''; 
+    }
+
+        // GATHER ALL OPTIONS
+    const options = {
+        use24HourFormat: document.getElementById('use24HourFormat').checked,
+        // Add any other options the server might need in the future
+        showMeal: document.getElementById('showMeal').checked,
+    };
 
     // Instantly clear the input text. The `pnrText` variable still holds the value for this function's scope.
     document.getElementById('pnrInput').value = '';
@@ -342,8 +352,8 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
                 { label: 'Arriving \u00A0\u00A0\u00A0', value: arrivalString },
                 { label: 'Baggage \u00A0\u00A0', value: (baggageText ? `${baggageDetails.amount}${baggageDetails.unit}${baggageText}` : null) },
                 { label: 'Operated by', value: (displayPnrOptions.showOperatedBy && flight.operatedBy) ? flight.operatedBy : null },
-                { label: 'Meal', value: (displayPnrOptions.showMeal && flight.meal) ? getMealDescription(flight.meal) : null },
-                { label: 'Notes', value: (displayPnrOptions.showNotes && flight.notes?.length) ? flight.notes.join('; ') : null, isNote: true }
+                { label: 'Meal \u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0', value: (displayPnrOptions.showMeal && flight.meal) ? getMealDescription(flight.meal) : null },
+                { label: 'Notes\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0', value: (displayPnrOptions.showNotes && flight.notes?.length) ? flight.notes.join('; ') : null, isNote: true }
             ];
 
             detailRows.forEach(({label, value, isNote}) => {
