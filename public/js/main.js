@@ -305,13 +305,13 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
 
                 let transitLabel, transitClassName;
                 if (minutes <= 120) {
-                    transitLabel = `Short Transit ${flight.transitTime} ${transitLocationInfo} ${nextDepartureInfo}`;
+                    transitLabel = `Short Transit Time ${flight.transitTime} ${transitLocationInfo} ${nextDepartureInfo}`;
                     transitClassName = 'transit-short';
                 } else if (minutes > 300) {
-                    transitLabel = `Long Transit ${flight.transitTime} ${transitLocationInfo} ${nextDepartureInfo}`;
+                    transitLabel = `Long Transit Time ${flight.transitTime} ${transitLocationInfo} ${nextDepartureInfo}`;
                     transitClassName = 'transit-long';
                 } else {
-                    transitLabel = `Transit ${flight.transitTime} ${transitLocationInfo} ${nextDepartureInfo}`;
+                    transitLabel = `Transit Time ${flight.transitTime} ${transitLocationInfo} ${nextDepartureInfo}`;
                     transitClassName = 'transit-minimum';
                 }
                 
