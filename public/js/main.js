@@ -238,6 +238,9 @@ function liveUpdateDisplay(pnrProcessingAttempted = false) {
 /**
  * The master display function. It is now a "pure" rendering function.
  */
+/**
+ * The master display function. It is now a "pure" rendering function.
+ */
 function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetails, pnrProcessingAttempted) {
     const output = document.getElementById('output');
     const screenshotBtn = document.getElementById('screenshotBtn');
@@ -280,24 +283,25 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
     if (flights.length > 0) {
         const itineraryBlock = document.createElement('div');
         itineraryBlock.className = 'itinerary-block';
-            // Find this part of the displayResults function...
-            flights.forEach((flight, i) => {
-                if (displayPnrOptions.showTransit && i > 0 && flight.transitTime && flight.transitDurationMinutes) {
+        
+        flights.forEach((flight, i) => {
+            // Render the transit information BEFORE the current flight segment
+            if (displayPnrOptions.showTransit && i > 0 && flight.transitTime && flight.transitDurationMinutes) {
                 const transitDiv = document.createElement('div');
                 let transitText = '';
                 let transitClassName = '';
                 const minutes = flight.transitDurationMinutes;
+                const rawSymbol = displayPnrOptions.transitSymbol || '-----';
 
-                // --- START OF MODIFIED BLOCK ---
-                const rawSymbol = displayPnrOptions.transitSymbol || '-----'; // Get the raw user input
-
-                // Process the separators to preserve spaces for HTML rendering
+                // --- FIX: Use ' ' instead of the invisible ' ' character ---
                 const startSeparator = rawSymbol.replace(/ /g, ' '); 
-                const endSeparator = reverseString(rawSymbol).replace(/ /g, ' '); // Reverse it first, then preserve spaces
+                const endSeparator = reverseString(rawSymbol).replace(/ /g, ' ');
 
-                const transitLabel = `Transit ${flight.transitTime} at ${flights[i - 1].arrival?.city || ''} (${flights[i - 1].arrival?.airport || ''})`;
-                const shortTransitLabel = `Short Transit ${flight.transitTime} at ${flights[i - 1].arrival?.city || ''} (${flights[i - 1].arrival?.airport || ''})`;
-                const longTransitLabel = `Long Transit ${flight.transitTime} at ${flights[i - 1].arrival?.city || ''} (${flights[i - 1].arrival?.airport || ''})`;
+                // Your excellent enhanced transit labels
+                const transitLocationInfo = `at ${flights[i - 1].arrival?.city || ''} (${flights[i - 1].arrival?.airport || ''})`;
+                const transitLabel = `Transit ${flight.transitTime} ${transitLocationInfo}`;
+                const shortTransitLabel = `Short Transit ${flight.transitTime} ${transitLocationInfo}`;
+                const longTransitLabel = `Long Transit ${flight.transitTime} ${transitLocationInfo}`;
 
                 if (minutes > 0 && minutes <= 120) { 
                     transitClassName = 'transit-short'; 
@@ -311,20 +315,17 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
                 }
                 
                 transitDiv.className = `transit-item ${transitClassName}`;
-                // Use .innerHTML to ensure   is rendered as a space
                 transitDiv.innerHTML = transitText; 
                 itineraryBlock.appendChild(transitDiv);
-                // --- END OF MODIFIED BLOCK ---
             }
-            // ... rest of the forEach loop
+            
+            // Now, render the actual flight item
             const flightItem = document.createElement('div');
             flightItem.className = 'flight-item';
             
             let detailsHtml = '';
-            // const { baggageDetails } = response; // BUGGY LINE REMOVED
             let baggageText = '';
             if (baggageDetails && baggageDetails.option !== 'none' && baggageDetails.amount) {
-                const text = `${baggageDetails.amount}${baggageDetails.unit}`;
                 if (baggageDetails.option === 'alltheway' && i === 0) { baggageText = ` (Checked through)`; } 
                 else if (baggageDetails.option === 'particular') { baggageText = ` `; }
             }
@@ -357,6 +358,7 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
             itineraryBlock.appendChild(flightItem);
         });
 
+        // Fare summary logic...
         const { adultCount, adultFare, childCount, childFare, infantCount, infantFare, tax, fee, currency, showTaxes, showFees } = fareDetails || {};
         const adultCountNum = parseInt(adultCount) || 0;
         const childCountNum = parseInt(childCount) || 0;
