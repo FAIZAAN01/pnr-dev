@@ -394,9 +394,9 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
 
             if (grandTotal > 0) {
                 let fareLines = [];
-                if (adultBaseTotal > 0) fareLines.push(`ADLT (${adultCountNum} x ${adultFareNum.toFixed(2)}): ${adultBaseTotal.toFixed(2)}`);
-                if (childBaseTotal > 0) fareLines.push(`CHLD (${childCountNum} x ${childFareNum.toFixed(2)}): ${childBaseTotal.toFixed(2)}`);
-                if (infantBaseTotal > 0) fareLines.push(`INFT (${infantCountNum} x ${infantFareNum.toFixed(2)}): ${infantBaseTotal.toFixed(2)}`);
+                if (adultBaseTotal > 0) fareLines.push(`Adult Fare (${adultCountNum} x ${adultFareNum.toFixed(2)}): ${adultBaseTotal.toFixed(2)}`);
+                if (childBaseTotal > 0) fareLines.push(`Child Fare (${childCountNum} x ${childFareNum.toFixed(2)}): ${childBaseTotal.toFixed(2)}`);
+                if (infantBaseTotal > 0) fareLines.push(`Infant Fare (${infantCountNum} x ${infantFareNum.toFixed(2)}): ${infantBaseTotal.toFixed(2)}`);
                 if (showTaxes && totalTaxes > 0) fareLines.push(`Tax (${totalPax} x ${taxNum.toFixed(2)}): ${totalTaxes.toFixed(2)}`);
                 if (showFees && totalFees > 0) fareLines.push(`Fees (${totalPax} x ${feeNum.toFixed(2)}): ${totalFees.toFixed(2)}`);
                 fareLines.push(`<strong>Grand Total (${currencySymbol}): ${grandTotal.toFixed(2)}</strong>`);
