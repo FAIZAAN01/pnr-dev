@@ -56,7 +56,7 @@ const limiter = rateLimit({
 
 app.post('/api/convert', (req, res) => {
     try {
-        const { pnrText, options, fareDetails, baggageDetails } = req.body;
+        const { pnrText, options } = req.body; // Removed unused fare/baggage details
         
         const pnrTextForProcessing = pnrText || '';
         const serverOptions = options || {};
@@ -68,8 +68,6 @@ app.post('/api/convert', (req, res) => {
         const responsePayload = {
             success: true,
             result,
-            fareDetails,
-            baggageDetails,
             pnrProcessingAttempted: !!pnrTextForProcessing
         };
         
@@ -122,11 +120,10 @@ function parseGalileoEnhanced(pnrText, options) {
     let flightIndex = 0;
     let previousArrivalMoment = null;
 
-    // --- UPDATED REGEX ---
-    // The `flightSegmentRegexFlexible` is now updated to capture optional terminal info.
-    // The change is: `([A-Z]{3})(?:\s+([A-Z0-9]+))?`
-    // This looks for a 3-letter airport code, followed by an optional group `(?:...)?`
-    // which contains a space `\s+` and a captured terminal `([A-Z0-9]+)`.
+    const use24hSegment = options.segmentTimeFormat === '24h';
+    const use24hTransit = options.transitTimeFormat === '24h';
+
+    // --- FIX #1: RESTORED THE COMPACT REGEX DEFINITION ---
     const flightSegmentRegexCompact = /^\s*(\d+)\s+([A-Z0-9]{2})\s*(\d{1,4}[A-Z]?)\s+([A-Z])\s+([0-3]\d[A-Z]{3})\s+\S*\s*([A-Z]{3})([A-Z]{3})\s+\S+\s+(\d{4})\s+(\d{4})(?:\s+([0-3]\d[A-Z]{3}))?/;
     const flightSegmentRegexFlexible = /^\s*(?:(\d+)\s+)?([A-Z0-9]{2})\s*(\d{1,4}[A-Z]?)\s+([A-Z])\s+([0-3]\d[A-Z]{3})\s+([A-Z]{3})(?:\s+([A-Z0-9]+))?\s+.*?([A-Z]{3})(?:\s+([A-Z0-9]+))?\s+.*?\s*(\d{4})\s+(\d{4})(?:\s*([0-3]\d[A-Z]{3}|\+\d))?/;
     
@@ -140,14 +137,12 @@ function parseGalileoEnhanced(pnrText, options) {
         let segmentNumStr, airlineCode, flightNumRaw, travelClass, depDateStr, depAirport, arrAirport, depTimeStr, arrTimeStr, arrDateStrOrNextDayIndicator, depTerminal, arrTerminal;
 
         if (flightMatch) {
-            // Compact format doesn't have terminals separated, so they will be null.
             [, segmentNumStr, airlineCode, flightNumRaw, travelClass, depDateStr, depAirport, arrAirport, depTimeStr, arrTimeStr, arrDateStrOrNextDayIndicator] = flightMatch;
             depTerminal = null;
             arrTerminal = null;
         } else {
             flightMatch = line.match(flightSegmentRegexFlexible);
             if (flightMatch) {
-                // --- UPDATED DESTRUCTURING to get new terminal fields ---
                 [, segmentNumStr, airlineCode, flightNumRaw, travelClass, depDateStr, depAirport, depTerminal, arrAirport, arrTerminal, depTimeStr, arrTimeStr, arrDateStrOrNextDayIndicator] = flightMatch;
             }
         }
@@ -156,7 +151,6 @@ function parseGalileoEnhanced(pnrText, options) {
         const isPassengerLine = passengerLineIdentifierRegex.test(line);
 
         if (isPassengerLine) {
-            // (Passenger parsing logic is unchanged)
             const cleanedLine = line.replace(/^\s*\d+\.\s*/, '');
             const nameBlocks = cleanedLine.split(/\s+\d+\.\s*/);
             for (const nameBlock of nameBlocks) {
@@ -189,11 +183,16 @@ function parseGalileoEnhanced(pnrText, options) {
             flightIndex++;
             let precedingTransitTimeForThisSegment = null;
             let transitDurationInMinutes = null;
+            let formattedNextDepartureTime = null;
+            
+            // --- FIX #2: REMOVED THE REDUNDANT DESTRUCTURING ---
+            // The variables are already available from the outer scope.
             
             const flightDetailsPart = line.substring(flightMatch[0].length).trim();
             const detailsParts = flightDetailsPart.split(/\s+/);
             const aircraftCodeKey = detailsParts.find(p => p.toUpperCase() in aircraftTypes);
             const mealCode = detailsParts.find(p => p.length === 1 && /[BLDSMFHCVKOPRWYNG]/.test(p.toUpperCase()));
+            
             const depAirportInfo = airportDatabase[depAirport] || { city: `Unknown`, name: `Airport (${depAirport})`, timezone: 'UTC' };
             const arrAirportInfo = airportDatabase[arrAirport] || { city: `Unknown`, name: `Airport (${arrAirport})`, timezone: 'UTC' };
             if (!moment.tz.zone(depAirportInfo.timezone)) depAirportInfo.timezone = 'UTC';
@@ -214,11 +213,12 @@ function parseGalileoEnhanced(pnrText, options) {
             }
             if (previousArrivalMoment && previousArrivalMoment.isValid() && departureMoment && departureMoment.isValid()) {
                 const transitDuration = moment.duration(departureMoment.diff(previousArrivalMoment));
-                if (transitDuration.asMinutes() > 50 && transitDuration.asHours() <= 23) {
+                if (transitDuration.asMinutes() > 0) {
                     const hours = Math.floor(transitDuration.asHours());
                     const minutes = transitDuration.minutes();
                     precedingTransitTimeForThisSegment = `${hours}h ${minutes < 10 ? '0' : ''}${minutes}m`;
                     transitDurationInMinutes = Math.round(transitDuration.asMinutes());
+                    formattedNextDepartureTime = formatMomentTime(departureMoment, use24hTransit);
                 }
             }
 
@@ -231,30 +231,25 @@ function parseGalileoEnhanced(pnrText, options) {
                 segment: parseInt(segmentNumStr, 10) || flightIndex,
                 airline: { code: airlineCode, name: airlineDatabase[airlineCode] || `Unknown Airline (${airlineCode})` },
                 flightNumber: flightNumRaw,
-                travelClass: { code: travelClass || '', name: getTravelClassName(travelClass) },
+                travelClass: { code: travelClass, name: getTravelClassName(travelClass) },
                 date: departureMoment.isValid() ? departureMoment.format('dddd, DD MMM YYYY') : '',
                 departure: { 
-                    airport: depAirport, 
-                    city: depAirportInfo.city, 
-                    name: depAirportInfo.name,
-                    time: formatMomentTime(departureMoment, options.use24HourFormat),
-                    // --- NEW: Add terminal data to response object ---
+                    airport: depAirport, city: depAirportInfo.city, name: depAirportInfo.name,
+                    time: formatMomentTime(departureMoment, use24hSegment),
                     terminal: depTerminal || null
                 },
                 arrival: { 
-                    airport: arrAirport, 
-                    city: arrAirportInfo.city, 
-                    name: arrAirportInfo.name,
-                    time: formatMomentTime(arrivalMoment, options.use24HourFormat),
+                    airport: arrAirport, city: arrAirportInfo.city, name: arrAirportInfo.name,
+                    time: formatMomentTime(arrivalMoment, use24hSegment),
                     dateString: arrivalDateString,
-                     // --- NEW: Add terminal data to response object ---
                     terminal: arrTerminal || null
                 },
                 duration: calculateAndFormatDuration(departureMoment, arrivalMoment),
                 aircraft: aircraftTypes[aircraftCodeKey] || aircraftCodeKey || '',
                 meal: mealCode, notes: [], operatedBy: null,
                 transitTime: precedingTransitTimeForThisSegment,
-                transitDurationMinutes: transitDurationInMinutes
+                transitDurationMinutes: transitDurationInMinutes,
+                formattedNextDepartureTime: formattedNextDepartureTime
             };
             previousArrivalMoment = arrivalMoment.clone();
         } else if (currentFlight && operatedByMatch) {
