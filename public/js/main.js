@@ -267,9 +267,9 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
                 let transitClassName = '';
                 const minutes = flight.transitDurationMinutes;
 
-                if (minutes > 0 && minutes <= 120) { transitClassName = 'transit-short'; transitText = `----- Short Transit ${flight.transitTime} -----`; } 
-                else if (minutes > 120 && minutes <= 300) { transitClassName = 'transit-minimum'; transitText = `----- Transit ${flight.transitTime} -----`; } 
-                else { transitClassName = 'transit-long'; transitText = `----- Long Transit ${flight.transitTime} -----`; }
+                if (minutes > 0 && minutes <= 120) { transitClassName = 'transit-short'; transitText = `~~x~~ Short Transit Time: ${flight.transitTime} at ${flights[i - 1].arrival?.city || ''} (${flights[i - 1].arrival?.airport || ''}) ~~x~~`; } 
+                else if (minutes > 120 && minutes <= 300) { transitClassName = 'transit-minimum'; transitText = `~~x~~ Transit Time: ${flight.transitTime} at ${flights[i - 1].arrival?.city || ''} (${flights[i - 1].arrival?.airport || ''}) ~~x~~`; } 
+                else { transitClassName = 'transit-long'; transitText = `~~x~~ Long Transit Time: ${flight.transitTime} at ${flights[i - 1].arrival?.city || ''} (${flights[i - 1].arrival?.airport || ''}) ~~x~~`; }
 
                 transitDiv.className = `transit-item ${transitClassName}`;
                 transitDiv.textContent = transitText;
