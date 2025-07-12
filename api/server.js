@@ -125,7 +125,7 @@ function parseGalileoEnhanced(pnrText, options) {
     const use24hTransit = options.transitTimeFormat === '24h';
 
     const flightSegmentRegexCompact = /^\s*(\d+)\s+([A-Z0-9]{2})\s*(\d{1,4}[A-Z]?)\s+([A-Z])\s+([0-3]\d[A-Z]{3})\s+\S*\s*([A-Z]{3})([A-Z]{3})\s+\S+\s+(\d{4})\s+(\d{4})(?:\s+([0-3]\d[A-Z]{3}))?/;
-    const flightSegmentRegexFlexible = /^(?<segmentNumber>\d+)?\s*(?<airline>[A-Z0-9]{2})\s*(?<flightNumber>\d{1,4}[A-Z]?)\s+(?<class>[A-Z])\s+(?<date>\d{1,2}[A-Z]{3})\s+(?<departureAirport>[A-Z]{3})\s*(?<departureTerminal>\d)?\s+(?<arrivalAirport>[A-Z]{3})\s*(?<arrivalTerminal>\d)?\s+(?<departureTime>\d{4})\s+(?<arrivalTime>\d{4})(?<nextDay>\+?\d)?\s+.*?\s+(?:E\d\/)?(?<aircraft>[A-Z0-9]{3,4})$/;
+    const flightSegmentRegexFlexible = /^\s*(?:(\d+)\s+)?([A-Z0-9]{2})\s*(\d{1,4}[A-Z]?)\s+([A-Z])\s+([0-3]\d[A-Z]{3})\s+([A-Z]{3})(?:\s+([A-Z0-9]+))?\s+.*?([A-Z]{3})(?:\s+([A-Z0-9]+))?\s+.*?\s*(\d{4})\s+(\d{4})(?:\s*([0-3]\d[A-Z]{3}|\+\d))?/;
     
     const operatedByRegex = /OPERATED BY\s+(.+)/i;
     const passengerLineIdentifierRegex = /^\s*\d+\.\s*[A-Z/]/;
