@@ -113,6 +113,8 @@ function getTravelClassName(classCode) {
     return `Class ${code}`;
 }
 
+// PASTE THIS ENTIRE FUNCTION OVER YOUR OLD ONE
+
 function parseGalileoEnhanced(pnrText, options) {
     const flights = [];
     const passengers = [];
@@ -181,7 +183,24 @@ function parseGalileoEnhanced(pnrText, options) {
 
             const flightDetailsPart = line.substring(flightMatch[0].length).trim();
             const detailsParts = flightDetailsPart.split(/\s+/);
-            const aircraftCodeKey = detailsParts.find(p => p.toUpperCase() in aircraftTypes);
+            
+            // --- START OF THE FIX ---
+            let aircraftCodeKey = null;
+            // We loop through the leftover parts of the line to find the aircraft code.
+            for (let part of detailsParts) {
+                let potentialCode = part.toUpperCase();
+                // If the part contains a slash (like "E0/7M8"), we isolate the part after the slash.
+                if (potentialCode.includes('/')) {
+                    potentialCode = potentialCode.split('/').pop();
+                }
+                // Now we check if this corrected code ("7M8") is a valid aircraft type.
+                if (potentialCode in aircraftTypes) {
+                    aircraftCodeKey = potentialCode; // We found it!
+                    break; // Stop searching.
+                }
+            }
+            // --- END OF THE FIX ---
+
             const mealCode = detailsParts.find(p => p.length === 1 && /[BLDSMFHCVKOPRWYNG]/.test(p.toUpperCase()));
             
             const depAirportInfo = airportDatabase[depAirport] || { city: `Unknown`, name: `Airport (${depAirport})`, timezone: 'UTC' };
@@ -205,10 +224,8 @@ function parseGalileoEnhanced(pnrText, options) {
 
             if (previousArrivalMoment && previousArrivalMoment.isValid() && departureMoment && departureMoment.isValid()) {
                 const transitDuration = moment.duration(departureMoment.diff(previousArrivalMoment));
-                
-                // === THE FIX: Only calculate transit if it's within a reasonable range (e.g., >30 mins and <24 hours) ===
                 const totalMinutes = transitDuration.asMinutes();
-                if (totalMinutes > 30 && totalMinutes < 1440) { // 1440 minutes = 24 hours
+                if (totalMinutes > 30 && totalMinutes < 1440) {
                     const hours = Math.floor(transitDuration.asHours());
                     const minutes = transitDuration.minutes();
                     precedingTransitTimeForThisSegment = `${hours < 10 ? '0' : ''}${hours}h ${minutes < 10 ? '0' : ''}${minutes}m`;
@@ -240,6 +257,7 @@ function parseGalileoEnhanced(pnrText, options) {
                     terminal: arrTerminal || null
                 },
                 duration: calculateAndFormatDuration(departureMoment, arrivalMoment),
+                // This line now correctly uses the found aircraftCodeKey
                 aircraft: aircraftTypes[aircraftCodeKey] || aircraftCodeKey || '',
                 meal: mealCode,
                 notes: [], 
