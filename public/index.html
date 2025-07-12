@@ -328,6 +328,8 @@
           <input type="radio" id="baggageNone" name="baggageOption" value="none" checked> <label for="baggageNone">None</label>
           <input type="radio" id="baggageParticular" name="baggageOption" value="particular"> <label for="baggageParticular">Per segment</label>
           <!-- The Refactored Toggle Switch HTML -->
+        <input id="baggageAmountInput" type="number" min="1" placeholder="e.g., 23" style="width: 60px; height: 25px;">
+
             <div class="c-unit-toggle">
                 <!-- The ID is now 'unit-selector-checkbox' -->
                 <input type="checkbox" id="unit-selector-checkbox" class="c-unit-toggle__input" />
@@ -335,8 +337,8 @@
                 <!-- The 'for' attribute must match the input's ID -->
                 <label class="c-unit-toggle__label" for="unit-selector-checkbox">
                     <span class="c-unit-toggle__options">
-                        <span>kg</span>
-                        <span>pcs</span>
+                        <span>kg </span>
+                        <span> pcs</span>
                     </span>
                 </label>
             </div>
