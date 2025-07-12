@@ -211,7 +211,7 @@ function parseGalileoEnhanced(pnrText, options) {
                 if (totalMinutes > 30 && totalMinutes < 1440) { // 1440 minutes = 24 hours
                     const hours = Math.floor(transitDuration.asHours());
                     const minutes = transitDuration.minutes();
-                    precedingTransitTimeForThisSegment = `${hours}h ${minutes < 10 ? '0' : ''}${minutes}m`;
+                    precedingTransitTimeForThisSegment = `${hours < 10 ? '0' : ''}h ${minutes < 10 ? '0' : ''}${minutes}m`;
                     transitDurationInMinutes = Math.round(totalMinutes);
                     formattedNextDepartureTime = formatMomentTime(departureMoment, use24hTransit);
                 }
