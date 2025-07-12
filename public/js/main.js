@@ -39,6 +39,14 @@ async function generateItineraryCanvas(element) {
     return await html2canvas(element, options);
 }
 
+// --- ADDED: Helper function to get the unit from the new toggle ---
+function getSelectedUnit() {
+    const unitToggle = document.getElementById('unit-selector-checkbox');
+    // If the toggle checkbox exists and is checked, return 'pcs'. Otherwise, default to 'kg'.
+    return unitToggle?.checked ? 'pcs' : 'kg';
+}
+
+
 // --- UI HELPER FUNCTIONS ---
 function toggleFareInputsVisibility() {
     const showTaxes = document.getElementById('showTaxes').checked;
@@ -83,6 +91,8 @@ function saveOptions() {
             currency: document.getElementById('currencySelect').value,
             showTaxes: document.getElementById('showTaxes').checked,
             showFees: document.getElementById('showFees').checked,
+            // --- ADDED: Save the state of the new toggle switch ---
+            baggageUnit: getSelectedUnit(),
         };
         localStorage.setItem(OPTIONS_STORAGE_KEY, JSON.stringify(optionsToSave));
     } catch (e) { console.error("Failed to save options:", e); }
@@ -119,6 +129,11 @@ function loadOptions() {
         if (savedOptions.currency) {
             document.getElementById('currencySelect').value = savedOptions.currency;
         }
+        
+        // --- ADDED: Load the saved state for the new toggle switch ---
+        if (savedOptions.baggageUnit) {
+            document.getElementById('unit-selector-checkbox').checked = savedOptions.baggageUnit === 'pcs';
+        }
 
         document.getElementById('transitSymbolInput').value = savedOptions.transitSymbol ?? '-----';
 
@@ -143,6 +158,7 @@ function loadOptions() {
 
 // --- CORE APP LOGIC ---
 async function handleConvertClick() {
+    // ... (This function remains unchanged)
     const pnrText = document.getElementById('pnrInput').value;
     if (!pnrText.trim() && !lastPnrResult) { 
         showPopup("Please enter PNR text to convert.");
@@ -241,43 +257,17 @@ function liveUpdateDisplay(pnrProcessingAttempted = false) {
     const baggageDetails = {
         option: baggageOption,
         amount: (baggageOption === 'alltheway' || baggageOption === 'particular') ? document.getElementById('baggageAmountInput').value : '',
-        unit: (baggageOption === 'alltheway' || baggageOption === 'particular') ? document.getElementById('baggageUnitSelect').value : ''
+        // --- MODIFIED: Use the new helper function instead of the old dropdown ---
+        unit: (baggageOption === 'alltheway' || baggageOption === 'particular') ? getSelectedUnit() : ''
     };
     
     displayResults(lastPnrResult, displayPnrOptions, fareDetails, baggageDetails, pnrProcessingAttempted);
 }
 
-// --- Updated JavaScript to work with the new ID ---
-
-// 1. Get the toggle element using its new ID
-const unitSelector = document.getElementById('unit-selector-checkbox');
-
-// This function can be used by any part of your application
-// that needs to know the current unit.
-function getSelectedUnit() {
-    // If the checkbox is checked, the unit is 'pcs'. Otherwise, it's 'kg'.
-    const selectedValue = unitSelector.checked ? 'pcs' : 'kg';
-    return selectedValue;
-}
-
-// 2. Add an event listener to handle changes
-unitSelector.addEventListener('change', function() {
-    const currentUnit = getSelectedUnit();
-    
-    // You can now use the currentUnit variable in your website's logic
-    console.log('The selected unit has changed to:', currentUnit);
-    
-    // Example: update a display element on your page
-    // const displayElement = document.getElementById('some-display-area');
-    // if (displayElement) {
-    //     displayElement.textContent = `Unit: ${currentUnit}`;
-    // }
-});
-
-// Optional: Log the initial value when the page loads
-console.log('Initial unit is:', getSelectedUnit());
+// --- REMOVED THE SEPARATE, UNUSED TOGGLE SWITCH CODE THAT WAS HERE ---
 
 function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetails, pnrProcessingAttempted) {
+    // ... (This function remains unchanged)
     const output = document.getElementById('output');
     const screenshotBtn = document.getElementById('screenshotBtn');
     const copyTextBtn = document.getElementById('copyTextBtn');
@@ -326,11 +316,9 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
                 const minutes = flight.transitDurationMinutes;
                 const rawSymbol = displayPnrOptions.transitSymbol || '-----';
                 
-                // === BEST PRACTICE FIX: Use ' ' instead of ' ' ===
                 const startSeparator = rawSymbol.replace(/ /g, ' '); 
                 const endSeparator = reverseString(rawSymbol).replace(/ /g, ' ');
                 
-                // const nextDepartureInfo = flight.formattedNextDepartureTime ? `(Next flight at ${flight.formattedNextDepartureTime})` : '';
                 const transitLocationInfo = `at ${flights[i - 1].arrival?.city || ''} (${flights[i - 1].arrival?.airport || ''})`;
 
                 let transitLabel, transitClassName;
@@ -445,132 +433,20 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
 
 
 function getMealDescription(mealCode) {
+    // ... (This function remains unchanged)
     const mealMap = { 
-        B: 'BREAKFAST',
-        K: 'CONTINENTAL BREAKFAST',
-        L: 'LUNCH',
-        D: 'DINNER',
-        S: 'SNACK OR BRUNCH',
-        O: 'COLD MEAL',
-        H: 'HOT MEAL',
-        M: 'MEAL (NON-SPECIFIC)',
-        R: 'REFRESHMENT',
-        C: 'ALCOHOLIC BEVERAGES COMPLIMENTARY',
-        F: 'FOOD FOR PURCHASE',
-        P: 'ALCOHOLIC BEVERAGES FOR PURCHASE',
-        Y: 'DUTY FREE SALES AVAILABLE',
-        N: 'NO MEAL SERVICE',
-        G: 'Food And Beverage For Purchase',
-        V: 'REFRESHMENTS FOR PURCHASE',
-        G: 'FOOD AND BEVERAGES FOR PURCHASE',
-        'AVML':   'VEGETARIAN HINDU MEAL',
-        'BBML':   'BABY MEAL',
-        'BLML':   'BLAND MEAL',
-        'CHML':   'CHILD MEAL',
-        'CNML':   'CHICKEN MEAL (LY SPECIFIC)',
-        'DBML':   'DIABETIC MEAL',
-        'FPML':   'FRUIT PLATTER',
-        'FSML':   'FISH MEAL',
-        'GFML':   'GLUTEN INTOLERANT MEAL',
-        'HNML':   'HINDU (NON VEGETARIAN) MEAL',
-        'IVML':   'INDIAN VEGETARIAN MEAL',
-        'JPML':   'JAPANESE MEAL',
-        'KSML':   'KOSHER MEAL',
-        'LCML':   'LOW CALORIE MEAL',
-        'LFML':   'LOW FAT MEAL',
-        'LSML':   'LOW SALT MEAL',
-        'MOML':   'MUSLIM MEAL',
-        'NFML':   'NO FISH MEAL (LH SPECIFIC)',
-        'NLML':   'NON-LACTOSE MEAL',
-        'OBML':   'JAPANESE OBENTO MEAL (UA SPECIFIC)',
-        'RVML':   'VEGETARIAN RAW MEAL',
-        'SFML':   'SEA FOOD MEAL',
-        'SPML':   'SPECIAL MEAL, SPECIFY FOOD',
-        'VGML':   'VEGETARIAN VEGAN MEAL',
-        'VJML':   'VEGETARIAN JAIN MEAL',
-        'VLML':   'VEGETARIAN LACTO-OVO MEAL',
-        'VOML':   'VEGETARIAN ORIENTAL MEAL'
+        B: 'BREAKFAST', K: 'CONTINENTAL BREAKFAST', L: 'LUNCH', D: 'DINNER', S: 'SNACK OR BRUNCH', O: 'COLD MEAL', H: 'HOT MEAL', M: 'MEAL (NON-SPECIFIC)', R: 'REFRESHMENT', C: 'ALCOHOLIC BEVERAGES COMPLIMENTARY', F: 'FOOD FOR PURCHASE', P: 'ALCOHOLIC BEVERAGES FOR PURCHASE', Y: 'DUTY FREE SALES AVAILABLE', N: 'NO MEAL SERVICE', G: 'Food And Beverage For Purchase', V: 'REFRESHMENTS FOR PURCHASE', G: 'FOOD AND BEVERAGES FOR PURCHASE', 'AVML': 'VEGETARIAN HINDU MEAL', 'BBML': 'BABY MEAL', 'BLML': 'BLAND MEAL', 'CHML': 'CHILD MEAL', 'CNML': 'CHICKEN MEAL (LY SPECIFIC)', 'DBML': 'DIABETIC MEAL', 'FPML': 'FRUIT PLATTER', 'FSML': 'FISH MEAL', 'GFML': 'GLUTEN INTOLERANT MEAL', 'HNML': 'HINDU (NON VEGETARIAN) MEAL', 'IVML': 'INDIAN VEGETARIAN MEAL', 'JPML': 'JAPANESE MEAL', 'KSML': 'KOSHER MEAL', 'LCML': 'LOW CALORIE MEAL', 'LFML': 'LOW FAT MEAL', 'LSML': 'LOW SALT MEAL', 'MOML': 'MUSLIM MEAL', 'NFML': 'NO FISH MEAL (LH SPECIFIC)', 'NLML': 'NON-LACTOSE MEAL', 'OBML': 'JAPANESE OBENTO MEAL (UA SPECIFIC)', 'RVML': 'VEGETARIAN RAW MEAL', 'SFML': 'SEA FOOD MEAL', 'SPML': 'SPECIAL MEAL, SPECIFY FOOD', 'VGML': 'VEGETARIAN VEGAN MEAL', 'VJML': 'VEGETARIAN JAIN MEAL', 'VLML': 'VEGETARIAN LACTO-OVO MEAL', 'VOML': 'VEGETARIAN ORIENTAL MEAL'
     };
     return mealMap[mealCode] || `Code ${mealCode}`;
 }
 
 const historyManager = {
+    // ... (This object remains unchanged)
     get: function() { return JSON.parse(localStorage.getItem(HISTORY_STORAGE_KEY) || '[]'); },
-    save: function(history) {
-        try {
-            localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history));
-        } catch (e) {
-            if (e.name === 'QuotaExceededError') {
-                console.error("Could not save history: localStorage quota exceeded. The oldest history item will be removed.");
-                history.pop(); 
-                if (history.length > 0) { this.save(history); }
-            } else { console.error("Failed to save history:", e); }
-        }
-    },
-    add: async function(data) {
-        if (!data.success || !data.result?.flights?.length) return;
-        const outputEl = document.getElementById('output').querySelector('.output-container');
-        if (!outputEl) return;
-        
-        try {
-            const canvas = await generateItineraryCanvas(outputEl);
-            const screenshot = canvas.toDataURL('image/jpeg');
-            
-            let history = this.get();
-            const currentPnrText = data.pnrText;
-
-            const existingIndex = history.findIndex(item => item.pnrText === currentPnrText);
-            if (existingIndex > -1) { history.splice(existingIndex, 1); }
-
-            const newEntry = {
-                id: Date.now(),
-                pax: data.result.passengers.length ? data.result.passengers[0].split('/')[0] : 'Unknown Passenger',
-                route: `${data.result.flights[0].departure.airport} - ${data.result.flights[data.result.flights.length - 1].arrival.airport}`,
-                date: new Date().toISOString(),
-                pnrText: currentPnrText,
-                screenshot: screenshot
-            };
-
-            history.unshift(newEntry);
-            if (history.length > 50) { history.pop(); }
-            this.save(history);
-        } catch (err) { console.error('Failed to add history item:', err); }
-    },
-    render: function() {
-        const listEl = document.getElementById('historyList');
-        const search = document.getElementById('historySearchInput').value.toLowerCase();
-        const sort = document.getElementById('historySortSelect').value;
-        if (!listEl) return;
-        let history = this.get();
-        if (sort === 'oldest') history.reverse();
-        if (search) { history = history.filter(item => item.pax.toLowerCase().includes(search) || item.route.toLowerCase().includes(search)); }
-        if (history.length === 0) { listEl.innerHTML = '<div class="info" style="margin: 10px;">No history found.</div>'; return; }
-        listEl.innerHTML = history.map(item => `<div class="history-item" data-id="${item.id}"><div class="history-item-info"><div class="history-item-pax">${item.pax}</div><div class="history-item-details"><span>${item.route}</span><span>${new Date(item.date).toLocaleString()}</span></div></div><div class="history-item-actions"><button class="use-history-btn">Use This</button></div></div>`).join('');
-    },
-    init: function() {
-        document.getElementById('historyBtn')?.addEventListener('click', () => { this.render(); document.getElementById('historyModal')?.classList.remove('hidden'); });
-        document.getElementById('closeHistoryBtn')?.addEventListener('click', () => { document.getElementById('historyModal')?.classList.add('hidden'); document.getElementById('historyPreviewPanel')?.classList.add('hidden'); });
-        document.getElementById('historySearchInput')?.addEventListener('input', () => this.render());
-        document.getElementById('historySortSelect')?.addEventListener('change', () => this.render());
-        document.getElementById('historyList')?.addEventListener('click', (e) => {
-            const itemEl = e.target.closest('.history-item');
-            if (!itemEl) return;
-            const id = Number(itemEl.dataset.id);
-            const entry = this.get().find(item => item.id === id);
-            if (!entry) return;
-
-            if (e.target.classList.contains('use-history-btn')) {
-                document.getElementById('pnrInput').value = entry.pnrText;
-                document.getElementById('historyModal').classList.add('hidden');
-                handleConvertClick(); 
-            } else { 
-                const previewContent = document.getElementById('previewContent');
-                previewContent.innerHTML = `<h4>Screenshot</h4><img src="${entry.screenshot}" alt="Itinerary Screenshot"><hr><h4>Raw PNR Data</h4><pre>${entry.pnrText}</pre>`;
-                document.getElementById('historyPreviewPanel').classList.remove('hidden');
-            }
-        });
-        document.getElementById('closePreviewBtn')?.addEventListener('click', (e) => { e.stopPropagation(); document.getElementById('historyPreviewPanel').classList.add('hidden'); });
-    }
+    save: function(history) { try { localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history)); } catch (e) { if (e.name === 'QuotaExceededError') { console.error("Could not save history: localStorage quota exceeded. The oldest history item will be removed."); history.pop(); if (history.length > 0) { this.save(history); } } else { console.error("Failed to save history:", e); } } },
+    add: async function(data) { if (!data.success || !data.result?.flights?.length) return; const outputEl = document.getElementById('output').querySelector('.output-container'); if (!outputEl) return; try { const canvas = await generateItineraryCanvas(outputEl); const screenshot = canvas.toDataURL('image/jpeg'); let history = this.get(); const currentPnrText = data.pnrText; const existingIndex = history.findIndex(item => item.pnrText === currentPnrText); if (existingIndex > -1) { history.splice(existingIndex, 1); } const newEntry = { id: Date.now(), pax: data.result.passengers.length ? data.result.passengers[0].split('/')[0] : 'Unknown Passenger', route: `${data.result.flights[0].departure.airport} - ${data.result.flights[data.result.flights.length - 1].arrival.airport}`, date: new Date().toISOString(), pnrText: currentPnrText, screenshot: screenshot }; history.unshift(newEntry); if (history.length > 50) { history.pop(); } this.save(history); } catch (err) { console.error('Failed to add history item:', err); } },
+    render: function() { const listEl = document.getElementById('historyList'); const search = document.getElementById('historySearchInput').value.toLowerCase(); const sort = document.getElementById('historySortSelect').value; if (!listEl) return; let history = this.get(); if (sort === 'oldest') history.reverse(); if (search) { history = history.filter(item => item.pax.toLowerCase().includes(search) || item.route.toLowerCase().includes(search)); } if (history.length === 0) { listEl.innerHTML = '<div class="info" style="margin: 10px;">No history found.</div>'; return; } listEl.innerHTML = history.map(item => `<div class="history-item" data-id="${item.id}"><div class="history-item-info"><div class="history-item-pax">${item.pax}</div><div class="history-item-details"><span>${item.route}</span><span>${new Date(item.date).toLocaleString()}</span></div></div><div class="history-item-actions"><button class="use-history-btn">Use This</button></div></div>`).join(''); },
+    init: function() { document.getElementById('historyBtn')?.addEventListener('click', () => { this.render(); document.getElementById('historyModal')?.classList.remove('hidden'); }); document.getElementById('closeHistoryBtn')?.addEventListener('click', () => { document.getElementById('historyModal')?.classList.add('hidden'); document.getElementById('historyPreviewPanel')?.classList.add('hidden'); }); document.getElementById('historySearchInput')?.addEventListener('input', () => this.render()); document.getElementById('historySortSelect')?.addEventListener('change', () => this.render()); document.getElementById('historyList')?.addEventListener('click', (e) => { const itemEl = e.target.closest('.history-item'); if (!itemEl) return; const id = Number(itemEl.dataset.id); const entry = this.get().find(item => item.id === id); if (!entry) return; if (e.target.classList.contains('use-history-btn')) { document.getElementById('pnrInput').value = entry.pnrText; document.getElementById('historyModal').classList.add('hidden'); handleConvertClick(); } else { const previewContent = document.getElementById('previewContent'); previewContent.innerHTML = `<h4>Screenshot</h4><img src="${entry.screenshot}" alt="Itinerary Screenshot"><hr><h4>Raw PNR Data</h4><pre>${entry.pnrText}</pre>`; document.getElementById('historyPreviewPanel').classList.remove('hidden'); } }); document.getElementById('closePreviewBtn')?.addEventListener('click', (e) => { e.stopPropagation(); document.getElementById('historyPreviewPanel').classList.add('hidden'); }); }
 };
 
 // --- EVENT LISTENERS & APP INITIALIZATION ---
@@ -603,7 +479,8 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     document.getElementById('autoConvertToggle').addEventListener('change', saveOptions);
 
-    const allTheRest = '.options input, .fare-options-grid input, .fare-options-grid select, .baggage-options input, #baggageAmountInput, #baggageUnitSelect';
+    // --- MODIFIED: Removed #baggageUnitSelect from the general listener ---
+    const allTheRest = '.options input, .fare-options-grid input, .fare-options-grid select, .baggage-options input, #baggageAmountInput';
     document.querySelectorAll(allTheRest).forEach(el => {
         const eventType = el.matches('input[type="checkbox"], input[type="radio"], select') ? 'change' : 'input';
         el.addEventListener(eventType, () => {
@@ -619,6 +496,12 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+    
+    // --- ADDED: Specific event listener for our new toggle switch ---
+    document.getElementById('unit-selector-checkbox').addEventListener('change', () => {
+        saveOptions();
+        liveUpdateDisplay();
+    });
 
     document.querySelectorAll('input[name="baggageOption"]').forEach(radio => { 
         radio.addEventListener('change', () => { 
@@ -631,15 +514,6 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('customTextInput').addEventListener('input', debounce((event) => { localStorage.setItem(CUSTOM_TEXT_KEY, event.target.value); liveUpdateDisplay(); }, 400));
     document.getElementById('clearCustomBrandingBtn').addEventListener('click', () => { if (confirm('Are you sure you want to clear your saved logo and text?')) { localStorage.removeItem(CUSTOM_LOGO_KEY); localStorage.removeItem(CUSTOM_TEXT_KEY); document.getElementById('customLogoInput').value = ''; document.getElementById('customTextInput').value = ''; document.getElementById('customLogoPreview').style.display = 'none'; showPopup('Custom branding cleared.'); liveUpdateDisplay(); } });
     document.getElementById('showItineraryLogo').addEventListener('change', () => { toggleCustomBrandingSection(); saveOptions(); liveUpdateDisplay(); });
-    document.getElementById('screenshotBtn').addEventListener('click', async () => { 
-        const outputEl = document.getElementById('output').querySelector('.output-container'); 
-        if (!outputEl) { 
-            showPopup('Nothing to capture.'); 
-            return; 
-        } try { 
-            const canvas = await generateItineraryCanvas(outputEl); 
-            canvas.toBlob(blob => { 
-                navigator.clipboard.write([new ClipboardItem({'image/png': blob})]); 
-                showPopup('Screenshot copied to clipboard!'); }, 'image/png'); } catch (err) { console.error("Screenshot failed:", err); showPopup('Could not copy screenshot.'); } });
+    document.getElementById('screenshotBtn').addEventListener('click', async () => { const outputEl = document.getElementById('output').querySelector('.output-container'); if (!outputEl) { showPopup('Nothing to capture.'); return; } try { const canvas = await generateItineraryCanvas(outputEl); canvas.toBlob(blob => { navigator.clipboard.write([new ClipboardItem({'image/png': blob})]); showPopup('Screenshot copied to clipboard!'); }, 'image/png'); } catch (err) { console.error("Screenshot failed:", err); showPopup('Could not copy screenshot.'); } });
     document.getElementById('copyTextBtn').addEventListener('click', () => { const text = document.getElementById('output').innerText; navigator.clipboard.writeText(text).then(() => { showPopup('Itinerary copied as text!'); }).catch(() => showPopup('Failed to copy text.')); });
 });
