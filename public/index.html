@@ -153,8 +153,8 @@
         .c-unit-toggle {
             position: relative;
             display: inline-block;
-            width: 80px;
-            height: 40px;
+            width: 48px;
+            height: 24px;
         }
 
         /* The actual checkbox input, which we hide */
@@ -181,10 +181,10 @@
         .c-unit-toggle__label::before {
             position: absolute;
             content: "";
-            height: 32px;
-            width: 32px;
+            height: 19px;
+            width: 20px;
+            top: 3px;
             left: 4px;
-            bottom: 4px;
             background-color: white;
             border-radius: 50%;
             transition: transform 0.3s;
@@ -195,11 +195,11 @@
             display: flex;
             justify-content: space-around;
             align-items: center;
-            height: 100%;
-            padding: 0 10px;
+            height: 105%;
+            padding: 0 6px;
             color: white;
             font-weight: bold;
-            font-size: 14px;
+            font-size: 10px;
         }
 
         /* --- Logic for the checked state --- */
@@ -211,7 +211,7 @@
 
         /* When the input is checked, move the white circle */
         .c-unit-toggle__input:checked + .c-unit-toggle__label::before {
-            transform: translateX(40px);
+            transform: translateX(21px);
         }
 
         /* Button Color Theme */
@@ -328,7 +328,7 @@
           <input type="radio" id="baggageNone" name="baggageOption" value="none" checked> <label for="baggageNone">None</label>
           <input type="radio" id="baggageParticular" name="baggageOption" value="particular"> <label for="baggageParticular">Per segment</label>
           <!-- The Refactored Toggle Switch HTML -->
-        <input id="baggageAmountInput" type="number" min="1" placeholder="e.g., 23" style="width: 60px; height: 25px;">
+        <input id="baggageAmountInput" type="number" min="1" value="23" style="width: 60px; height: 20px;">
 
             <div class="c-unit-toggle">
                 <!-- The ID is now 'unit-selector-checkbox' -->
@@ -337,8 +337,8 @@
                 <!-- The 'for' attribute must match the input's ID -->
                 <label class="c-unit-toggle__label" for="unit-selector-checkbox">
                     <span class="c-unit-toggle__options">
-                        <span>kg </span>
-                        <span> pcs</span>
+                        <span style="padding-right: 4px; padding-left:-5px">PC</span>
+                        <span> KG</span>
                     </span>
                 </label>
             </div>
