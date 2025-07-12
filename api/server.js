@@ -113,8 +113,6 @@ function getTravelClassName(classCode) {
     return `Class ${code}`;
 }
 
-// PASTE THIS ENTIRE FUNCTION OVER YOUR OLD ONE
-
 function parseGalileoEnhanced(pnrText, options) {
     const flights = [];
     const passengers = [];
@@ -126,9 +124,8 @@ function parseGalileoEnhanced(pnrText, options) {
     const use24hSegment = options.segmentTimeFormat === '24h';
     const use24hTransit = options.transitTimeFormat === '24h';
 
-    // --- REPLACED --- We now use a single, more powerful regex for all flight lines.
-    // It captures all previous details AND the aircraft code at the end.
-    const flightSegmentRegex = /^\s*(?:\d+\s+)?([A-Z0-9]{2})\s*(\d{1,4}[A-Z]?)\s+([A-Z])\s+([0-3]\d[A-Z]{3})\s+([A-Z]{3})(?:\s+([A-Z0-9]+))?\s+.*?([A-Z]{3})(?:\s+([A-Z0-9]+))?\s+.*?\s*(\d{4})\s+(\d{4})(?:\s*([0-3]\d[A-Z]{3}|\+\d))?\s+.*?\s+(?:E\d\/)?([A-Z0-9]{3,4})\s*$/;
+    const flightSegmentRegexCompact = /^\s*(\d+)\s+([A-Z0-9]{2})\s*(\d{1,4}[A-Z]?)\s+([A-Z])\s+([0-3]\d[A-Z]{3})\s+\S*\s*([A-Z]{3})([A-Z]{3})\s+\S+\s+(\d{4})\s+(\d{4})(?:\s+([0-3]\d[A-Z]{3}))?/;
+    const flightSegmentRegexFlexible = /^(?<segmentNumber>\d+)?\s*(?<airline>[A-Z0-9]{2})\s*(?<flightNumber>\d{1,4}[A-Z]?)\s+(?<class>[A-Z])\s+(?<date>\d{1,2}[A-Z]{3})\s+(?<departureAirport>[A-Z]{3})\s*(?<departureTerminal>\d)?\s+(?<arrivalAirport>[A-Z]{3})\s*(?<arrivalTerminal>\d)?\s+(?<departureTime>\d{4})\s+(?<arrivalTime>\d{4})(?<nextDay>\+?\d)?\s+.*?\s+(?:E\d\/)?(?<aircraft>[A-Z0-9]{3,4})$/;
     
     const operatedByRegex = /OPERATED BY\s+(.+)/i;
     const passengerLineIdentifierRegex = /^\s*\d+\.\s*[A-Z/]/;
@@ -136,8 +133,19 @@ function parseGalileoEnhanced(pnrText, options) {
     for (const line of lines) {
         if (!line) continue;
         
-        // --- MODIFIED --- We only need to match against our one new regex.
-        let flightMatch = line.match(flightSegmentRegex);
+        let flightMatch = line.match(flightSegmentRegexCompact);
+        let segmentNumStr, airlineCode, flightNumRaw, travelClass, depDateStr, depAirport, arrAirport, depTimeStr, arrTimeStr, arrDateStrOrNextDayIndicator, depTerminal, arrTerminal;
+
+        if (flightMatch) {
+            [, segmentNumStr, airlineCode, flightNumRaw, travelClass, depDateStr, depAirport, arrAirport, depTimeStr, arrTimeStr, arrDateStrOrNextDayIndicator] = flightMatch;
+            depTerminal = null;
+            arrTerminal = null;
+        } else {
+            flightMatch = line.match(flightSegmentRegexFlexible);
+            if (flightMatch) {
+                [, segmentNumStr, airlineCode, flightNumRaw, travelClass, depDateStr, depAirport, depTerminal, arrAirport, arrTerminal, depTimeStr, arrTimeStr, arrDateStrOrNextDayIndicator] = flightMatch;
+            }
+        }
         
         const operatedByMatch = line.match(operatedByRegex);
         const isPassengerLine = passengerLineIdentifierRegex.test(line);
@@ -165,24 +173,17 @@ function parseGalileoEnhanced(pnrText, options) {
             }
         }
         else if (flightMatch) {
-            // --- ADDED --- New destructuring to get all parts, including the aircraft code.
-            const [, airlineCode, flightNumRaw, travelClass, depDateStr, depAirport, depTerminal, arrAirport, arrTerminal, depTimeStr, arrTimeStr, arrDateStrOrNextDayIndicator, aircraftCode] = flightMatch;
-
             if (currentFlight) flights.push(currentFlight);
             flightIndex++;
             let precedingTransitTimeForThisSegment = null;
             let transitDurationInMinutes = null;
             let formattedNextDepartureTime = null;
 
-            // --- DELETED --- The old, faulty logic for finding aircraft and meal is no longer needed.
-            // const flightDetailsPart = line.substring(flightMatch[0].length).trim();
-            // const detailsParts = flightDetailsPart.split(/\s+/);
-            // const aircraftCodeKey = ...
+            const flightDetailsPart = line.substring(flightMatch[0].length).trim();
+            const detailsParts = flightDetailsPart.split(/\s+/);
+            const aircraftCodeKey = detailsParts.find(p => p.toUpperCase() in aircraftTypes);
+            const mealCode = detailsParts.find(p => p.length === 1 && /[BLDSMFHCVKOPRWYNG]/.test(p.toUpperCase()));
             
-            // --- ADDED --- A simpler way to find the meal code from the original line if needed.
-            const mealCodeMatch = line.match(/\s+([BLDSMFHCVKOPRWYNG])\s+/);
-            const mealCode = mealCodeMatch ? mealCodeMatch[1] : null;
-
             const depAirportInfo = airportDatabase[depAirport] || { city: `Unknown`, name: `Airport (${depAirport})`, timezone: 'UTC' };
             const arrAirportInfo = airportDatabase[arrAirport] || { city: `Unknown`, name: `Airport (${arrAirport})`, timezone: 'UTC' };
             if (!moment.tz.zone(depAirportInfo.timezone)) depAirportInfo.timezone = 'UTC';
@@ -204,8 +205,10 @@ function parseGalileoEnhanced(pnrText, options) {
 
             if (previousArrivalMoment && previousArrivalMoment.isValid() && departureMoment && departureMoment.isValid()) {
                 const transitDuration = moment.duration(departureMoment.diff(previousArrivalMoment));
+                
+                // === THE FIX: Only calculate transit if it's within a reasonable range (e.g., >30 mins and <24 hours) ===
                 const totalMinutes = transitDuration.asMinutes();
-                if (totalMinutes > 30 && totalMinutes < 1440) {
+                if (totalMinutes > 30 && totalMinutes < 1440) { // 1440 minutes = 24 hours
                     const hours = Math.floor(transitDuration.asHours());
                     const minutes = transitDuration.minutes();
                     precedingTransitTimeForThisSegment = `${hours < 10 ? '0' : ''}${hours}h ${minutes < 10 ? '0' : ''}${minutes}m`;
@@ -220,7 +223,7 @@ function parseGalileoEnhanced(pnrText, options) {
             }
             
             currentFlight = {
-                segment: flightIndex, // Simplified segment logic
+                segment: parseInt(segmentNumStr, 10) || flightIndex,
                 airline: { code: airlineCode, name: airlineDatabase[airlineCode] || `Unknown Airline (${airlineCode})` },
                 flightNumber: flightNumRaw,
                 travelClass: { code: travelClass || '', name: getTravelClassName(travelClass) },
@@ -237,8 +240,7 @@ function parseGalileoEnhanced(pnrText, options) {
                     terminal: arrTerminal || null
                 },
                 duration: calculateAndFormatDuration(departureMoment, arrivalMoment),
-                // --- MODIFIED --- Use the aircraftCode directly from our new regex match.
-                aircraft: aircraftTypes[aircraftCode] || aircraftCode || '',
+                aircraft: aircraftTypes[aircraftCodeKey] || aircraftCodeKey || '',
                 meal: mealCode,
                 notes: [], 
                 operatedBy: null,
@@ -250,14 +252,11 @@ function parseGalileoEnhanced(pnrText, options) {
         } else if (currentFlight && operatedByMatch) {
             currentFlight.operatedBy = operatedByMatch[1].trim();
         } else if (currentFlight && line.trim().length > 0) {
-            // Avoid adding the original flight line as a note
-            if (!line.match(flightSegmentRegex)) {
-                currentFlight.notes.push(line.trim());
-            }
+            currentFlight.notes.push(line.trim());
         }
     }
     if (currentFlight) flights.push(currentFlight);
     return { flights, passengers };
-};
+}
 
 module.exports = app;
