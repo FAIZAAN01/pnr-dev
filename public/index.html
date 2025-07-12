@@ -147,6 +147,73 @@
             transform: translateX(-100%);
         }
 
+        /* --- Generic Unit Toggle Component Styles --- */
+
+        /* The main component container */
+        .c-unit-toggle {
+            position: relative;
+            display: inline-block;
+            width: 80px;
+            height: 40px;
+        }
+
+        /* The actual checkbox input, which we hide */
+        .c-unit-toggle__input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        /* The visible label that acts as the switch track */
+        .c-unit-toggle__label {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #007bff; /* State 1: 'kg' */
+            border-radius: 40px;
+            transition: background-color 0.3s;
+        }
+
+        /* The moving circle, created using a pseudo-element */
+        .c-unit-toggle__label::before {
+            position: absolute;
+            content: "";
+            height: 32px;
+            width: 32px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+
+        /* The container for the text options (kg/pcs) */
+        .c-unit-toggle__options {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            height: 100%;
+            padding: 0 10px;
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+        }
+
+        /* --- Logic for the checked state --- */
+
+        /* When the input is checked, change the label's background */
+        .c-unit-toggle__input:checked + .c-unit-toggle__label {
+            background-color: #28a745; /* State 2: 'pcs' */
+        }
+
+        /* When the input is checked, move the white circle */
+        .c-unit-toggle__input:checked + .c-unit-toggle__label::before {
+            transform: translateX(40px);
+        }
+
         /* Button Color Theme */
         #convertBtn { background-color: var(--primary-blue); font-size: 16px; margin: 0; border-radius: 0px 5px 5px 0px; }
         #convertBtn:hover { background-color: var(--primary-blue-hover); }
@@ -259,12 +326,20 @@
         <div class="baggage-options">
           <label>Baggage:</label>
           <input type="radio" id="baggageNone" name="baggageOption" value="none" checked> <label for="baggageNone">None</label>
-          <input type="radio" id="baggageAllTheWay" name="baggageOption" value="alltheway"> <label for="baggageAllTheWay">All the way</label>
           <input type="radio" id="baggageParticular" name="baggageOption" value="particular"> <label for="baggageParticular">Per segment</label>
-          <div id="allTheWayInputs">
-              <input id="baggageAmountInput" type="number" min="1" placeholder="e.g., 23" style="width: 60px;">
-              <select id="baggageUnitSelect"><option value="kg">kg</option><option value="pcs">pcs</option></select>
-          </div>
+          <!-- The Refactored Toggle Switch HTML -->
+            <div class="c-unit-toggle">
+                <!-- The ID is now 'unit-selector-checkbox' -->
+                <input type="checkbox" id="unit-selector-checkbox" class="c-unit-toggle__input" />
+
+                <!-- The 'for' attribute must match the input's ID -->
+                <label class="c-unit-toggle__label" for="unit-selector-checkbox">
+                    <span class="c-unit-toggle__options">
+                        <span>kg</span>
+                        <span>pcs</span>
+                    </span>
+                </label>
+            </div>
         </div>
         <div class="loading-spinner" id="loadingSpinner"></div>
       </div>

@@ -247,6 +247,36 @@ function liveUpdateDisplay(pnrProcessingAttempted = false) {
     displayResults(lastPnrResult, displayPnrOptions, fareDetails, baggageDetails, pnrProcessingAttempted);
 }
 
+// --- Updated JavaScript to work with the new ID ---
+
+// 1. Get the toggle element using its new ID
+const unitSelector = document.getElementById('unit-selector-checkbox');
+
+// This function can be used by any part of your application
+// that needs to know the current unit.
+function getSelectedUnit() {
+    // If the checkbox is checked, the unit is 'pcs'. Otherwise, it's 'kg'.
+    const selectedValue = unitSelector.checked ? 'pcs' : 'kg';
+    return selectedValue;
+}
+
+// 2. Add an event listener to handle changes
+unitSelector.addEventListener('change', function() {
+    const currentUnit = getSelectedUnit();
+    
+    // You can now use the currentUnit variable in your website's logic
+    console.log('The selected unit has changed to:', currentUnit);
+    
+    // Example: update a display element on your page
+    // const displayElement = document.getElementById('some-display-area');
+    // if (displayElement) {
+    //     displayElement.textContent = `Unit: ${currentUnit}`;
+    // }
+});
+
+// Optional: Log the initial value when the page loads
+console.log('Initial unit is:', getSelectedUnit());
+
 function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetails, pnrProcessingAttempted) {
     const output = document.getElementById('output');
     const screenshotBtn = document.getElementById('screenshotBtn');
