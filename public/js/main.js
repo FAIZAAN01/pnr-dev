@@ -296,7 +296,6 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
                 const minutes = flight.transitDurationMinutes;
                 const rawSymbol = displayPnrOptions.transitSymbol || '-----';
                 
-                // === BEST PRACTICE FIX: Use ' ' instead of ' ' ===
                 const startSeparator = rawSymbol.replace(/ /g, ' '); 
                 const endSeparator = reverseString(rawSymbol).replace(/ /g, ' ');
                 
@@ -305,13 +304,13 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
 
                 let transitLabel, transitClassName;
                 if (minutes <= 120) {
-                    transitLabel = `Short Transit Time ${flight.transitTime} ${transitLocationInfo} ${nextDepartureInfo}`;
+                    transitLabel = `Short Transit ${flight.transitTime} ${transitLocationInfo} ${nextDepartureInfo}`;
                     transitClassName = 'transit-short';
                 } else if (minutes > 300) {
-                    transitLabel = `Long Transit Time ${flight.transitTime} ${transitLocationInfo} ${nextDepartureInfo}`;
+                    transitLabel = `Long Transit ${flight.transitTime} ${transitLocationInfo} ${nextDepartureInfo}`;
                     transitClassName = 'transit-long';
                 } else {
-                    transitLabel = `Transit Time ${flight.transitTime} ${transitLocationInfo} ${nextDepartureInfo}`;
+                    transitLabel = `Transit ${flight.transitTime} ${transitLocationInfo} ${nextDepartureInfo}`;
                     transitClassName = 'transit-minimum';
                 }
                 
@@ -346,8 +345,8 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
                 { label: 'Arriving \u00A0\u00A0\u00A0', value: arrivalString },
                 { label: 'Baggage \u00A0\u00A0', value: baggageText || null },
                 { label: 'Operated by', value: (displayPnrOptions.showOperatedBy && flight.operatedBy) ? flight.operatedBy : null },
-                { label: 'Meal \u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0', value: (displayPnrOptions.showMeal && flight.meal) ? getMealDescription(flight.meal) : null },
-                { label: 'Notes \u00A0\u00A0\u00A0\u00A0\u00A0\u00A0\u00A0', value: (displayPnrOptions.showNotes && flight.notes?.length) ? flight.notes.join('; ') : null, isNote: true }
+                { label: 'Meal', value: (displayPnrOptions.showMeal && flight.meal) ? getMealDescription(flight.meal) : null },
+                { label: 'Notes', value: (displayPnrOptions.showNotes && flight.notes?.length) ? flight.notes.join('; ') : null, isNote: true }
             ];
 
             detailRows.forEach(({label, value, isNote}) => {
@@ -512,15 +511,45 @@ document.addEventListener('DOMContentLoaded', () => {
         liveUpdateDisplay(false);
     });
 
+    // === START OF MODIFIED SECTION ===
     document.getElementById('pasteBtn').addEventListener('click', async () => {
-        try {
-            const text = await navigator.clipboard.readText();
-            document.getElementById('pnrInput').value = text;
-            if (document.getElementById('autoConvertToggle').checked) {
-                handleConvertClick();
+        // Check for modern Permissions API support
+        if (navigator.permissions && navigator.permissions.query) {
+            try {
+                const permissionStatus = await navigator.permissions.query({ name: 'clipboard-read' });
+
+                // If permission is denied, show helpful message.
+                if (permissionStatus.state === 'denied') {
+                    showPopup("Clipboard permission denied. Please enable it in browser settings for this site.", 6000);
+                    return; // Stop here
+                }
+
+                // If granted or prompt, proceed. The browser will handle the prompt.
+                const text = await navigator.clipboard.readText();
+                document.getElementById('pnrInput').value = text;
+                if (document.getElementById('autoConvertToggle').checked) {
+                    handleConvertClick();
+                }
+
+            } catch (err) {
+                // This catch handles other errors, like the user dismissing the prompt
+                console.error("Paste failed:", err);
+                showPopup('Could not paste from clipboard.');
             }
-        } catch (err) { showPopup('Could not paste from clipboard.'); }
+        } else {
+            // Fallback for older browsers
+            try {
+                const text = await navigator.clipboard.readText();
+                document.getElementById('pnrInput').value = text;
+                if (document.getElementById('autoConvertToggle').checked) {
+                    handleConvertClick();
+                }
+            } catch (err) {
+                showPopup('Could not paste from clipboard. Your browser may not support this feature securely.');
+            }
+        }
     });
+    // === END OF MODIFIED SECTION ===
     
     document.getElementById('editableToggle').addEventListener('change', () => {
         updateEditableState();
