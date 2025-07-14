@@ -97,7 +97,8 @@ function calculateAndFormatDuration(depMoment, arrMoment) {
     const minutes = durationMinutes % 60;
     const paddedHours = String(hours).padStart(2, '0');
     const paddedMinutes = String(minutes).padStart(2, '0');
-    precedingTransitTimeForThisSegment = `${paddedHours}h ${paddedMinutes}m`;
+    // Return the formatted string instead of assigning it to another variable
+    return `${paddedHours}h ${paddedMinutes}m`;
 }
 function getTravelClassName(classCode) {
     if (!classCode) return 'Unknown';
