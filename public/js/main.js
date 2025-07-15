@@ -400,7 +400,7 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
 
             detailRows.forEach(({label, value, isNote}) => {
                 if(value) {
-                    detailsHtml += `<div class="flight-detail ${isNote ? 'notes-detail' : ''}"><strong>${label}:</strong> <span>${value} </span></div>`;
+                    detailsHtml += `<div class="flight-detail ${isNote ? 'notes-detail' : ''}"><strong>${label}:</strong> <span>${value}\u00A0</span></div>`;
                 }
             });
 
