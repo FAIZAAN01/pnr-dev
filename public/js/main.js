@@ -314,12 +314,32 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
             
             let currentHeadingDisplayed = null;
             
+            // --- START: REVISED HEADING CREATION LOGIC (TEXT FIRST) ---
+
             if (flight.direction && flight.direction.toUpperCase() !== currentHeadingDisplayed) {
+                
+                // 1. Determine which icon to use (this logic remains the same)
+                const iconSrc = flight.direction.toUpperCase() === 'OUTBOUND' 
+                    ? '/icons/takeoff.png' 
+                    : '/icons/landing.png';
+
+                // 2. Create the heading element
                 const headingDiv = document.createElement('div');
-                headingDiv.textContent = flight.direction.toUpperCase();
+                headingDiv.className = 'itinerary-leg-header';
+
+                // 3. Build the inner HTML with the TEXT first, then the ICON
+                headingDiv.innerHTML = `
+                    <span>${flight.direction.toUpperCase()}</span>
+                    <img src="${iconSrc}" alt="${flight.direction}" class="leg-header-icon">
+                `;
+
+                // 4. Add the new heading to the itinerary block
                 itineraryBlock.appendChild(headingDiv);
+
+                // Remember the heading we just displayed
                 currentHeadingDisplayed = flight.direction.toUpperCase();
             }
+            // --- END: REVISED HEADING CREATION LOGIC (TEXT FIRST) ---
 
             if (displayPnrOptions.showTransit && i > 0 && flight.transitTime && flight.transitDurationMinutes) {
                 const transitDiv = document.createElement('div');
