@@ -103,10 +103,10 @@ function calculateAndFormatDuration(depMoment, arrMoment) {
 function getTravelClassName(classCode) {
     if (!classCode) return 'Unknown';
     const code = classCode.toUpperCase();
-    const firstCodes = ['F', 'A', 'P'];
-    const businessCodes = ['J', 'C', 'D', 'I', 'Z', 'R'];
-    const premiumEconomyCodes = ['W', 'E', 'T'];
-    const economyCodes = ['Y', 'B', 'H', 'K', 'L', 'M', 'N', 'O', 'Q', 'S', 'U', 'V', 'X', 'G'];
+    const firstCodes = ['F', 'A'];
+    const businessCodes = ['J', 'C', 'D', 'I', 'Z', 'P'];
+    const premiumEconomyCodes = [];
+    const economyCodes = ['Y', 'B', 'H', 'K', 'L', 'M', 'N', 'O', 'Q', 'S', 'U', 'V', 'X', 'G','W', 'E', 'T','R'];
     if (firstCodes.includes(code)) return 'First';
     if (businessCodes.includes(code)) return 'Business';
     if (premiumEconomyCodes.includes(code)) return 'Premium Economy';
