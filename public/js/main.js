@@ -28,6 +28,38 @@ function debounce(func, wait) {
     };
 }
 
+// --- START: NEW FUNCTION TO RESET FARE & BAGGAGE INPUTS ---
+
+function resetFareAndBaggageInputs() {
+    // Reset all fare-related text inputs to be empty
+    document.getElementById('adultFareInput').value = '';
+    document.getElementById('childFareInput').value = '';
+    document.getElementById('infantFareInput').value = '';
+    document.getElementById('taxInput').value = '';
+    document.getElementById('feeInput').value = '';
+
+    // Reset passenger counts to their default values
+    document.getElementById('adultCountInput').value = '1';
+    document.getElementById('childCountInput').value = '0';
+    document.getElementById('infantCountInput').value = '0';
+
+    // Reset currency to the default (USD)
+    document.getElementById('currencySelect').value = 'USD';
+
+    // Reset baggage selection to "None"
+    document.getElementById('baggageNone').checked = true;
+    
+    // Also trigger a 'change' event on the radio button.
+    // This is important to make sure any associated UI logic (like hiding/showing other inputs) runs.
+    document.getElementById('baggageNone').dispatchEvent(new Event('change'));
+
+    // If a result is currently displayed, update it to remove the now-cleared fare summary
+    if (lastPnrResult) {
+        liveUpdateDisplay();
+    }
+}
+// --- END: NEW FUNCTION ---
+
 function reverseString(str) {
     if (!str) return '';
     return str.split('').reverse().join('');
@@ -158,7 +190,7 @@ function loadOptions() {
 
 // --- CORE APP LOGIC ---
 async function handleConvertClick() {
-    // ... (This function remains unchanged)
+
     const pnrText = document.getElementById('pnrInput').value;
     if (!pnrText.trim() && !lastPnrResult) { 
         showPopup("Please enter PNR text to convert.");
@@ -196,6 +228,8 @@ async function handleConvertClick() {
         }
         
         lastPnrResult = { ...data.result, pnrText: currentPnr };
+
+        resetFareAndBaggageInputs();
         
         if (pnrText.trim()) {
             document.getElementById('pnrInput').value = '';
@@ -490,6 +524,7 @@ document.addEventListener('DOMContentLoaded', () => {
         document.getElementById('pnrInput').value = '';
         document.getElementById('output').innerHTML = '<div class="info">Enter PNR data and click Convert to begin.</div>';
         lastPnrResult = null;
+        resetFareAndBaggageInputs();
         liveUpdateDisplay(false);
     });
 
