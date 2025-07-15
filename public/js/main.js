@@ -42,8 +42,8 @@ async function generateItineraryCanvas(element) {
 // --- ADDED: Helper function to get the unit from the new toggle ---
 function getSelectedUnit() {
     const unitToggle = document.getElementById('unit-selector-checkbox');
-    // If the toggle checkbox exists and is checked, return 'pcs'. Otherwise, default to 'kg'.
-    return unitToggle?.checked ? 'pcs' : 'kg';
+    // If the toggle checkbox exists and is checked, return 'pcs'. Otherwise, default to 'kgs'.
+    return unitToggle?.checked ? 'Pcs' : 'Kgs';
 }
 
 
@@ -400,7 +400,7 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
 
             detailRows.forEach(({label, value, isNote}) => {
                 if(value) {
-                    detailsHtml += `<div class="flight-detail ${isNote ? 'notes-detail' : ''}"><strong>${label}:</strong> <span>${value}</span></div>`;
+                    detailsHtml += `<div class="flight-detail ${isNote ? 'notes-detail' : ''}"><strong>${label}:</strong> <span>${value} </span></div>`;
                 }
             });
 
