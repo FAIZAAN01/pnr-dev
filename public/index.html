@@ -101,6 +101,27 @@
             font-size: 14px;
         }
 
+        /* --- START: NEW HEADING STYLES --- */
+
+        /* Style for the "OUTBOUND" / "INBOUND" headings */
+        .itinerary-leg-header {
+            text-align: center; /* Center the text */
+            font-weight: bold; /* Make it bold */
+            font-size: 1.1em;  /* Make it slightly larger */
+            color: var(--primary-blue); /* Use the theme's primary color */
+            margin-top: 25px; /* Add space above the heading */
+            margin-bottom: 10px; /* Add space below the heading */
+            padding-bottom: 8px; /* Add padding below the text */
+            border-bottom: 2px solid var(--border-color); /* Create a separator line */
+            text-transform: uppercase; /* Ensure it's always in capital letters */
+        }
+
+        /* Add extra space for the very first heading to separate it from the passenger list */
+        .itinerary-leg-header:first-of-type {
+            margin-top: 30px;
+        }
+        /* --- END: NEW HEADING STYLES --- */
+
         /* --- NEW: TOGGLE SWITCH STYLES --- */
         .toggle-switch {
             display: flex;
