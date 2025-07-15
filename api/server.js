@@ -276,64 +276,55 @@ function parseGalileoEnhanced(pnrText, options) {
     }
     if (currentFlight) flights.push(currentFlight);
 
-    // --- START: ADDED LOGIC FOR OUTBOUND/INBOUND DETECTION ---
+    // --- START: REFINED LOGIC FOR OUTBOUND/INBOUND LEG DETECTION ---
 
     if (flights.length > 0) {
-        let turningPointIndex = -1;
-        let maxStopoverMinutes = 0;
+        // Initialize 'direction' for all flights to null.
+        // This ensures only the flights we specifically choose get a label.
+        for (const flight of flights) {
+            flight.direction = null; 
+        }
 
-        // We need valid moment objects to calculate the difference.
-        // Let's re-create them from the parsed data.
-        const flightMoments = flights.map(f => {
-            // We need to get the original timezone info back to do an accurate diff
-            const depAirportInfo = airportDatabase[f.departure.airport] || { timezone: 'UTC' };
-            const arrAirportInfo = airportDatabase[f.arrival.airport] || { timezone: 'UTC' };
-            if (!moment.tz.zone(depAirportInfo.timezone)) depAirportInfo.timezone = 'UTC';
-            if (!moment.tz.zone(arrAirportInfo.timezone)) arrAirportInfo.timezone = 'UTC';
+        // The very first flight is always the start of the outbound journey.
+        flights[0].direction = 'Outbound';
 
-            // Reconstruct the full date string for parsing
-            const year = f.date.split(', ')[1].split(' ')[2]; // Extract year from "dddd, DD MMM YYYY"
-            const depMoment = moment.tz(`${f.date.split(', ')[1]} ${f.departure.time}`, "DD MMM YYYY hh:mm A", true, depAirportInfo.timezone);
+        const STOPOVER_THRESHOLD_MINUTES = 1440; // 24 hours
+
+        // Loop through the rest of the flights to find the start of new legs.
+        for (let i = 1; i < flights.length; i++) {
+            // We need the arrival of the previous flight and departure of the current one.
+            // Reconstruct the moment objects to accurately calculate the time gap.
+            const prevFlight = flights[i - 1];
+            const currentFlight = flights[i];
+
+            const prevArrAirportInfo = airportDatabase[prevFlight.arrival.airport] || { timezone: 'UTC' };
+            if (!moment.tz.zone(prevArrAirportInfo.timezone)) prevArrAirportInfo.timezone = 'UTC';
             
-            let arrMoment;
-            // Handle overnight flights for arrival moment reconstruction
-            const arrivalDateStr = f.arrival.dateString ? `${f.arrival.dateString} ${year}` : f.date.split(', ')[1];
-            arrMoment = moment.tz(`${arrivalDateStr} ${f.arrival.time}`, "DD MMM YYYY hh:mm A", true, arrAirportInfo.timezone);
+            const currDepAirportInfo = airportDatabase[currentFlight.departure.airport] || { timezone: 'UTC' };
+            if (!moment.tz.zone(currDepAirportInfo.timezone)) currDepAirportInfo.timezone = 'UTC';
 
-            return { depMoment, arrMoment };
-        });
+            const prevYear = prevFlight.date.split(', ')[1].split(' ')[2];
+            const prevArrivalDateStr = prevFlight.arrival.dateString ? `${prevFlight.arrival.dateString} ${prevYear}` : prevFlight.date.split(', ')[1];
+            const arrivalOfPreviousFlight = moment.tz(`${prevArrivalDateStr} ${prevFlight.arrival.time}`, "DD MMM YYYY hh:mm A", true, prevArrAirportInfo.timezone);
 
-        // Find the longest stopover between flights
-        for (let i = 0; i < flights.length - 1; i++) {
-            const arrivalOfCurrentFlight = flightMoments[i].arrMoment;
-            const departureOfNextFlight = flightMoments[i + 1].depMoment;
+            const departureOfCurrentFlight = moment.tz(`${currentFlight.date.split(', ')[1]} ${currentFlight.departure.time}`, "DD MMM YYYY hh:mm A", true, currDepAirportInfo.timezone);
 
-            if (arrivalOfCurrentFlight.isValid() && departureOfNextFlight.isValid()) {
-                const stopoverMinutes = departureOfNextFlight.diff(arrivalOfCurrentFlight, 'minutes');
-                if (stopoverMinutes > maxStopoverMinutes) {
-                    maxStopoverMinutes = stopoverMinutes;
-                    // The flight *after* the longest stop is the turning point
-                    turningPointIndex = i + 1; 
+            if (arrivalOfPreviousFlight.isValid() && departureOfCurrentFlight.isValid()) {
+                const stopoverMinutes = departureOfCurrentFlight.diff(arrivalOfPreviousFlight, 'minutes');
+
+                // If the stopover is long, this flight starts a new leg.
+                if (stopoverMinutes > STOPOVER_THRESHOLD_MINUTES) {
+                    // Determine if the PNR as a whole is a round trip.
+                    const isRoundTrip = flights[flights.length - 1].arrival.airport === flights[0].departure.airport;
+
+                    // If it's a round trip, this new leg is "Inbound". 
+                    // Otherwise, it's another "Outbound" leg of a multi-city trip.
+                    currentFlight.direction = isRoundTrip ? 'Inbound' : 'Outbound';
                 }
             }
         }
-
-        // A stopover of more than 24 hours (1440 minutes) signifies a return trip
-        const STOPOVER_THRESHOLD_MINUTES = 1440; 
-
-        if (maxStopoverMinutes > STOPOVER_THRESHOLD_MINUTES) {
-            // We found a return point, label the flights
-            for (let i = 0; i < flights.length; i++) {
-                flights[i].direction = i < turningPointIndex ? 'Outbound' : 'Inbound';
-            }
-        } else {
-            // No significant stopover found, it's all one-way/outbound
-            for (let i = 0; i < flights.length; i++) {
-                flights[i].direction = 'Outbound';
-            }
-        }
     }
-    // --- END: ADDED LOGIC ---
+    // --- END: REFINED LOGIC ---
 
     return { flights, passengers };
 }
