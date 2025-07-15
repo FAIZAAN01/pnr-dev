@@ -275,6 +275,66 @@ function parseGalileoEnhanced(pnrText, options) {
         }
     }
     if (currentFlight) flights.push(currentFlight);
+
+    // --- START: ADDED LOGIC FOR OUTBOUND/INBOUND DETECTION ---
+
+    if (flights.length > 0) {
+        let turningPointIndex = -1;
+        let maxStopoverMinutes = 0;
+
+        // We need valid moment objects to calculate the difference.
+        // Let's re-create them from the parsed data.
+        const flightMoments = flights.map(f => {
+            // We need to get the original timezone info back to do an accurate diff
+            const depAirportInfo = airportDatabase[f.departure.airport] || { timezone: 'UTC' };
+            const arrAirportInfo = airportDatabase[f.arrival.airport] || { timezone: 'UTC' };
+            if (!moment.tz.zone(depAirportInfo.timezone)) depAirportInfo.timezone = 'UTC';
+            if (!moment.tz.zone(arrAirportInfo.timezone)) arrAirportInfo.timezone = 'UTC';
+
+            // Reconstruct the full date string for parsing
+            const year = f.date.split(', ')[1].split(' ')[2]; // Extract year from "dddd, DD MMM YYYY"
+            const depMoment = moment.tz(`${f.date.split(', ')[1]} ${f.departure.time}`, "DD MMM YYYY hh:mm A", true, depAirportInfo.timezone);
+            
+            let arrMoment;
+            // Handle overnight flights for arrival moment reconstruction
+            const arrivalDateStr = f.arrival.dateString ? `${f.arrival.dateString} ${year}` : f.date.split(', ')[1];
+            arrMoment = moment.tz(`${arrivalDateStr} ${f.arrival.time}`, "DD MMM YYYY hh:mm A", true, arrAirportInfo.timezone);
+
+            return { depMoment, arrMoment };
+        });
+
+        // Find the longest stopover between flights
+        for (let i = 0; i < flights.length - 1; i++) {
+            const arrivalOfCurrentFlight = flightMoments[i].arrMoment;
+            const departureOfNextFlight = flightMoments[i + 1].depMoment;
+
+            if (arrivalOfCurrentFlight.isValid() && departureOfNextFlight.isValid()) {
+                const stopoverMinutes = departureOfNextFlight.diff(arrivalOfCurrentFlight, 'minutes');
+                if (stopoverMinutes > maxStopoverMinutes) {
+                    maxStopoverMinutes = stopoverMinutes;
+                    // The flight *after* the longest stop is the turning point
+                    turningPointIndex = i + 1; 
+                }
+            }
+        }
+
+        // A stopover of more than 24 hours (1440 minutes) signifies a return trip
+        const STOPOVER_THRESHOLD_MINUTES = 1440; 
+
+        if (maxStopoverMinutes > STOPOVER_THRESHOLD_MINUTES) {
+            // We found a return point, label the flights
+            for (let i = 0; i < flights.length; i++) {
+                flights[i].direction = i < turningPointIndex ? 'Outbound' : 'Inbound';
+            }
+        } else {
+            // No significant stopover found, it's all one-way/outbound
+            for (let i = 0; i < flights.length; i++) {
+                flights[i].direction = 'Outbound';
+            }
+        }
+    }
+    // --- END: ADDED LOGIC ---
+
     return { flights, passengers };
 }
 
