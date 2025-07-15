@@ -374,7 +374,7 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
             let detailsHtml = '';
             let baggageText = '';
             if (baggageDetails && baggageDetails.option !== 'none' && baggageDetails.amount) {
-                const baggageInfo = `${baggageDetails.amount}${baggageDetails.unit}`;
+                const baggageInfo = `${baggageDetails.amount}\u00A0${baggageDetails.unit}`;
                 if (baggageDetails.option === 'alltheway' && i === 0) {
                     baggageText = `${baggageInfo} (Checked through)`; 
                 } else if (baggageDetails.option === 'particular') {
@@ -400,7 +400,7 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
 
             detailRows.forEach(({label, value, isNote}) => {
                 if(value) {
-                    detailsHtml += `<div class="flight-detail ${isNote ? 'notes-detail' : ''}"><strong>${label}:</strong> <span>${value}\u00A0</span></div>`;
+                    detailsHtml += `<div class="flight-detail ${isNote ? 'notes-detail' : ''}"><strong>${label}:</strong> <span>${value}</span></div>`;
                 }
             });
 
