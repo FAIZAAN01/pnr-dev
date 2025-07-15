@@ -440,7 +440,7 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
                 if (infantBaseTotal > 0) fareLines.push(`Infant Fare (${infantCountNum} x ${infantFareNum.toFixed(2)}): ${infantBaseTotal.toFixed(2)}`);
                 if (showTaxes && totalTaxes > 0) fareLines.push(`Tax (${totalPax} x ${taxNum.toFixed(2)}): ${totalTaxes.toFixed(2)}`);
                 if (showFees && totalFees > 0) fareLines.push(`Fees (${totalPax} x ${feeNum.toFixed(2)}): ${totalFees.toFixed(2)}`);
-                fareLines.push(`<strong>Grand Total (${currencySymbol}): ${grandTotal.toFixed(2)}</strong>`);
+                fareLines.push(`<strong>Total (${currencySymbol}): ${grandTotal.toFixed(2)}</strong>`);
 
                 const fareDiv = document.createElement('div');
                 fareDiv.className = 'fare-summary';
