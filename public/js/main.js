@@ -135,7 +135,7 @@ function loadOptions() {
             document.getElementById('unit-selector-checkbox').checked = savedOptions.baggageUnit === 'pcs';
         }
 
-        document.getElementById('transitSymbolInput').value = savedOptions.transitSymbol ?? '-----';
+        document.getElementById('transitSymbolInput').value = savedOptions.transitSymbol ?? ':::::::';
 
         const customLogoData = localStorage.getItem(CUSTOM_LOGO_KEY);
         const customTextData = localStorage.getItem(CUSTOM_TEXT_KEY);
@@ -236,7 +236,7 @@ function liveUpdateDisplay(pnrProcessingAttempted = false) {
         showMeal: document.getElementById('showMeal').checked,
         showNotes: document.getElementById('showNotes').checked,
         showTransit: document.getElementById('showTransit').checked,
-        transitSymbol:document.getElementById('transitSymbolInput').value || '-----',
+        transitSymbol:document.getElementById('transitSymbolInput').value || ':::::::',
     };
 
     const fareDetails = {
@@ -344,7 +344,7 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
             if (displayPnrOptions.showTransit && i > 0 && flight.transitTime && flight.transitDurationMinutes) {
                 const transitDiv = document.createElement('div');
                 const minutes = flight.transitDurationMinutes;
-                const rawSymbol = displayPnrOptions.transitSymbol || '-----';
+                const rawSymbol = displayPnrOptions.transitSymbol || ':::::::';
                 
                 const startSeparator = rawSymbol.replace(/ /g, ' '); 
                 const endSeparator = reverseString(rawSymbol).replace(/ /g, ' ');
