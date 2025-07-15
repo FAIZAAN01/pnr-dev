@@ -279,21 +279,18 @@ function parseGalileoEnhanced(pnrText, options) {
     // --- START: REFINED LOGIC FOR OUTBOUND/INBOUND LEG DETECTION ---
 
     if (flights.length > 0) {
-        // Initialize 'direction' for all flights to null.
-        // This ensures only the flights we specifically choose get a label.
         for (const flight of flights) {
             flight.direction = null; 
         }
-
-        // The very first flight is always the start of the outbound journey.
         flights[0].direction = 'Outbound';
 
         const STOPOVER_THRESHOLD_MINUTES = 1440; // 24 hours
 
-        // Loop through the rest of the flights to find the start of new legs.
+        // Define both possible time formats
+        const format12h = "DD MMM YYYY hh:mm A";
+        const format24h = "DD MMM YYYY HH:mm";
+
         for (let i = 1; i < flights.length; i++) {
-            // We need the arrival of the previous flight and departure of the current one.
-            // Reconstruct the moment objects to accurately calculate the time gap.
             const prevFlight = flights[i - 1];
             const currentFlight = flights[i];
 
@@ -303,28 +300,41 @@ function parseGalileoEnhanced(pnrText, options) {
             const currDepAirportInfo = airportDatabase[currentFlight.departure.airport] || { timezone: 'UTC' };
             if (!moment.tz.zone(currDepAirportInfo.timezone)) currDepAirportInfo.timezone = 'UTC';
 
+            // --- Start of the fix ---
+
+            // Determine the correct format string for the previous flight's arrival time
+            const prevTimeFormat = prevFlight.arrival.time.includes('M') ? format12h : format24h;
+            // Determine the correct format string for the current flight's departure time
+            const currTimeFormat = currentFlight.departure.time.includes('M') ? format12h : format24h;
+
+            // --- End of the fix ---
+
             const prevYear = prevFlight.date.split(', ')[1].split(' ')[2];
             const prevArrivalDateStr = prevFlight.arrival.dateString ? `${prevFlight.arrival.dateString} ${prevYear}` : prevFlight.date.split(', ')[1];
-            const arrivalOfPreviousFlight = moment.tz(`${prevArrivalDateStr} ${prevFlight.arrival.time}`, "DD MMM YYYY hh:mm A", true, prevArrAirportInfo.timezone);
-
-            const departureOfCurrentFlight = moment.tz(`${currentFlight.date.split(', ')[1]} ${currentFlight.departure.time}`, "DD MMM YYYY hh:mm A", true, currDepAirportInfo.timezone);
+            
+            // Use the detected format for parsing
+            const arrivalOfPreviousFlight = moment.tz(`${prevArrivalDateStr} ${prevFlight.arrival.time}`, prevTimeFormat, true, prevArrAirportInfo.timezone);
+            const departureOfCurrentFlight = moment.tz(`${currentFlight.date.split(', ')[1]} ${currentFlight.departure.time}`, currTimeFormat, true, currDepAirportInfo.timezone);
 
             if (arrivalOfPreviousFlight.isValid() && departureOfCurrentFlight.isValid()) {
                 const stopoverMinutes = departureOfCurrentFlight.diff(arrivalOfPreviousFlight, 'minutes');
 
-                // If the stopover is long, this flight starts a new leg.
                 if (stopoverMinutes > STOPOVER_THRESHOLD_MINUTES) {
-                    // Determine if the PNR as a whole is a round trip.
-                    const isRoundTrip = flights[flights.length - 1].arrival.airport === flights[0].departure.airport;
+                    const originalOrigin = flights[0].departure.airport;
+                    const finalDestination = flights[flights.length - 1].arrival.airport;
+                    const isRoundTrip = originalOrigin === finalDestination;
 
-                    // If it's a round trip, this new leg is "Inbound". 
-                    // Otherwise, it's another "Outbound" leg of a multi-city trip.
                     currentFlight.direction = isRoundTrip ? 'Inbound' : 'Outbound';
                 }
+            } else {
+                // This else block is for debugging and can be removed later
+                console.error("Moment.js parsing failed! Check formats.");
+                console.error(`- Previous Arrival: '${prevFlight.arrival.time}' with format '${prevTimeFormat}'`);
+                console.error(`- Current Departure: '${currentFlight.departure.time}' with format '${currTimeFormat}'`);
             }
         }
     }
-    // --- END: REFINED LOGIC ---
+    // --- END: CORRECTED LOGIC ---
 
     return { flights, passengers };
 }
