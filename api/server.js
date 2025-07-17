@@ -122,7 +122,7 @@ function getTravelClassName(classCode) {
     return `Class ${code}`;
 }
 
-// IN YOUR BACKEND FILE (app.js), REPLACE THIS ENTIRE FUNCTION
+// IN YOUR BACKEND FILE (server.js), REPLACE THIS ENTIRE FUNCTION
 function parseGalileoEnhanced(pnrText, options) {
     const flights = [];
     const passengers = [];
@@ -134,6 +134,10 @@ function parseGalileoEnhanced(pnrText, options) {
     const use24hSegment = options.segmentTimeFormat === '24h';
     const use24hTransit = options.transitTimeFormat === '24h';
 
+    // --- START: ADDED NEW REGEX FOR FUSED AIRPORT CODES ---
+    const flightSegmentRegexFusedAirports = /^\s*(?:\d+\s+)?([A-Z0-9]{2})\s*(\d{1,4}[A-Z]?)\s+([A-Z])\s+([0-3]\d[A-Z]{3})\s+\S+\s+([A-Z]{6})\s+\S+\s+(\d{4})\s+(\d{4})(?:\s+([0-3]\d[A-Z]{3}|\+\d))?/;
+    // ---
+
     const flightSegmentRegexCompact = /^\s*(\d+)\s+([A-Z0-9]{2})\s*(\d{1,4}[A-Z]?)\s+([A-Z])\s+([0-3]\d[A-Z]{3})\s+\S*\s*([A-Z]{3})([A-Z]{3})\s+\S+\s+(\d{4})\s+(\d{4})(?:\s+([0-3]\d[A-Z]{3}))?/;
     const flightSegmentRegexFlexible = /^\s*(?:(\d+)\s+)?([A-Z0-9]{2})\s*(\d{1,4}[A-Z]?)\s+([A-Z])\s+([0-3]\d[A-Z]{3})\s+([A-Z]{3})\s*([\dA-Z]*)?\s+([A-Z]{3})\s*([\dA-Z]*)?\s+(\d{4})\s+(\d{4})(?:\s*([0-3]\d[A-Z]{3}|\+\d))?/;
     
@@ -143,19 +147,28 @@ function parseGalileoEnhanced(pnrText, options) {
     for (const line of lines) {
         if (!line) continue;
         
-        let flightMatch = line.match(flightSegmentRegexCompact);
+        let flightMatch;
         let segmentNumStr, airlineCode, flightNumRaw, travelClass, depDateStr, depAirport, arrAirport, depTimeStr, arrTimeStr, arrDateStrOrNextDayIndicator, depTerminal, arrTerminal;
 
+        // --- START: TRY THE FUSED REGEX FIRST, THEN FALL BACK ---
+        flightMatch = line.match(flightSegmentRegexFusedAirports);
         if (flightMatch) {
-            [, segmentNumStr, airlineCode, flightNumRaw, travelClass, depDateStr, depAirport, arrAirport, depTimeStr, arrTimeStr, arrDateStrOrNextDayIndicator] = flightMatch;
-            depTerminal = null;
-            arrTerminal = null;
+            let fusedAirports;
+            [, airlineCode, flightNumRaw, travelClass, depDateStr, fusedAirports, depTimeStr, arrTimeStr, arrDateStrOrNextDayIndicator] = flightMatch;
+            depAirport = fusedAirports.substring(0, 3);
+            arrAirport = fusedAirports.substring(3, 6);
         } else {
-            flightMatch = line.match(flightSegmentRegexFlexible);
+            flightMatch = line.match(flightSegmentRegexCompact);
             if (flightMatch) {
-                [, segmentNumStr, airlineCode, flightNumRaw, travelClass, depDateStr, depAirport, depTerminal, arrAirport, arrTerminal, depTimeStr, arrTimeStr, arrDateStrOrNextDayIndicator] = flightMatch;
+                [, segmentNumStr, airlineCode, flightNumRaw, travelClass, depDateStr, depAirport, arrAirport, depTimeStr, arrTimeStr, arrDateStrOrNextDayIndicator] = flightMatch;
+            } else {
+                flightMatch = line.match(flightSegmentRegexFlexible);
+                if (flightMatch) {
+                    [, segmentNumStr, airlineCode, flightNumRaw, travelClass, depDateStr, depAirport, depTerminal, arrAirport, arrTerminal, depTimeStr, arrTimeStr, arrDateStrOrNextDayIndicator] = flightMatch;
+                }
             }
         }
+        // --- END OF PARSING LOGIC ---
         
         const operatedByMatch = line.match(operatedByRegex);
         const isPassengerLine = passengerLineIdentifierRegex.test(line);
@@ -227,12 +240,13 @@ function parseGalileoEnhanced(pnrText, options) {
 
             if (previousArrivalMoment && previousArrivalMoment.isValid() && departureMoment && departureMoment.isValid()) {
                 const transitDuration = moment.duration(departureMoment.diff(previousArrivalMoment));
-                const totalMinutes = transitDuration.asMinutes();
-                if (totalMinutes > 30 && totalMinutes < 1440) {
-                    const hours = Math.floor(transitDuration.asHours());
-                    const minutes = transitDuration.minutes();
+                const totalMinutes = Math.round(transitDuration.asMinutes());
+                
+                if (totalMinutes > 30) {
+                    const hours = Math.floor(totalMinutes / 60);
+                    const minutes = totalMinutes % 60; 
                     precedingTransitTimeForThisSegment = `${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m`;
-                    transitDurationInMinutes = Math.round(totalMinutes);
+                    transitDurationInMinutes = totalMinutes;
                     formattedNextDepartureTime = formatMomentTime(departureMoment, use24hTransit);
                 }
             }
@@ -267,7 +281,7 @@ function parseGalileoEnhanced(pnrText, options) {
                 transitTime: precedingTransitTimeForThisSegment,
                 transitDurationMinutes: transitDurationInMinutes,
                 formattedNextDepartureTime: formattedNextDepartureTime,
-                direction: null // Add the direction property, to be filled in later
+                direction: null
             };
             previousArrivalMoment = arrivalMoment.clone();
         } else if (currentFlight && operatedByMatch) {
@@ -278,12 +292,10 @@ function parseGalileoEnhanced(pnrText, options) {
     }
     if (currentFlight) flights.push(currentFlight);
 
-    // --- START: ADD DIRECTION TO EACH FLIGHT OBJECT ---
     if (flights.length > 0) {
         let turnAroundIndex = -1;
         const departurePoints = new Set();
 
-        // Find the first flight that is returning to a previous point of departure.
         for (let i = 0; i < flights.length; i++) {
             const destination = flights[i].arrival.airport;
             if (departurePoints.has(destination)) {
@@ -293,7 +305,6 @@ function parseGalileoEnhanced(pnrText, options) {
             departurePoints.add(flights[i].departure.airport);
         }
 
-        // Assign 'Outbound' or 'Inbound' to each flight's 'direction' property.
         for (let i = 0; i < flights.length; i++) {
             if (turnAroundIndex === -1 || i < turnAroundIndex) {
                 flights[i].direction = 'Outbound';
@@ -302,9 +313,8 @@ function parseGalileoEnhanced(pnrText, options) {
             }
         }
     }
-    // --- END: ADD DIRECTION TO EACH FLIGHT OBJECT ---
-
-    // Return the object WITHOUT the summary property
+    
+    // Note: This returns the object shape that your frontend expects.
     return { flights, passengers };
 }
 
