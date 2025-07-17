@@ -114,8 +114,6 @@ function getTravelClassName(classCode) {
     return `Class ${code}`;
 }
 
-// PASTE THIS ENTIRE FUNCTION OVER YOUR OLD ONE
-
 function parseGalileoEnhanced(pnrText, options) {
     const flights = [];
     const passengers = [];
@@ -185,22 +183,17 @@ function parseGalileoEnhanced(pnrText, options) {
             const flightDetailsPart = line.substring(flightMatch[0].length).trim();
             const detailsParts = flightDetailsPart.split(/\s+/);
             
-            // --- START OF THE FIX ---
             let aircraftCodeKey = null;
-            // We loop through the leftover parts of the line to find the aircraft code.
             for (let part of detailsParts) {
                 let potentialCode = part.toUpperCase();
-                // If the part contains a slash (like "E0/7M8"), we isolate the part after the slash.
                 if (potentialCode.includes('/')) {
                     potentialCode = potentialCode.split('/').pop();
                 }
-                // Now we check if this corrected code ("7M8") is a valid aircraft type.
                 if (potentialCode in aircraftTypes) {
-                    aircraftCodeKey = potentialCode; // We found it!
-                    break; // Stop searching.
+                    aircraftCodeKey = potentialCode; 
+                    break;
                 }
             }
-            // --- END OF THE FIX ---
 
             const mealCode = detailsParts.find(p => p.length === 1 && /[BLDSMFHCVKOPRWYNG]/.test(p.toUpperCase()));
             
@@ -258,7 +251,6 @@ function parseGalileoEnhanced(pnrText, options) {
                     terminal: arrTerminal || null
                 },
                 duration: calculateAndFormatDuration(departureMoment, arrivalMoment),
-                // This line now correctly uses the found aircraftCodeKey
                 aircraft: aircraftTypes[aircraftCodeKey] || aircraftCodeKey || '',
                 meal: mealCode,
                 notes: [], 
@@ -276,67 +268,52 @@ function parseGalileoEnhanced(pnrText, options) {
     }
     if (currentFlight) flights.push(currentFlight);
 
-    // --- START: REFINED LOGIC FOR OUTBOUND/INBOUND LEG DETECTION ---
+    // --- START: NEW LOGIC TO GENERATE JOURNEY SUMMARY ---
+    const summary = {
+        outbound: '',
+        inbound: ''
+    };
 
     if (flights.length > 0) {
-        for (const flight of flights) {
-            flight.direction = null; 
-        }
-        flights[0].direction = 'Outbound';
+        let turnAroundIndex = -1;
 
-        const STOPOVER_THRESHOLD_MINUTES = 1440; // 24 hours
-
-        // Define both possible time formats
-        const format12h = "DD MMM YYYY hh:mm A";
-        const format24h = "DD MMM YYYY HH:mm";
-
+        // Find the turnaround point. The return journey starts when the destination
+        // is an airport that has previously been a departure point.
         for (let i = 1; i < flights.length; i++) {
-            const prevFlight = flights[i - 1];
-            const currentFlight = flights[i];
-
-            const prevArrAirportInfo = airportDatabase[prevFlight.arrival.airport] || { timezone: 'UTC' };
-            if (!moment.tz.zone(prevArrAirportInfo.timezone)) prevArrAirportInfo.timezone = 'UTC';
-            
-            const currDepAirportInfo = airportDatabase[currentFlight.departure.airport] || { timezone: 'UTC' };
-            if (!moment.tz.zone(currDepAirportInfo.timezone)) currDepAirportInfo.timezone = 'UTC';
-
-            // --- Start of the fix ---
-
-            // Determine the correct format string for the previous flight's arrival time
-            const prevTimeFormat = prevFlight.arrival.time.includes('M') ? format12h : format24h;
-            // Determine the correct format string for the current flight's departure time
-            const currTimeFormat = currentFlight.departure.time.includes('M') ? format12h : format24h;
-
-            // --- End of the fix ---
-
-            const prevYear = prevFlight.date.split(', ')[1].split(' ')[2];
-            const prevArrivalDateStr = prevFlight.arrival.dateString ? `${prevFlight.arrival.dateString} ${prevYear}` : prevFlight.date.split(', ')[1];
-            
-            // Use the detected format for parsing
-            const arrivalOfPreviousFlight = moment.tz(`${prevArrivalDateStr} ${prevFlight.arrival.time}`, prevTimeFormat, true, prevArrAirportInfo.timezone);
-            const departureOfCurrentFlight = moment.tz(`${currentFlight.date.split(', ')[1]} ${currentFlight.departure.time}`, currTimeFormat, true, currDepAirportInfo.timezone);
-
-            if (arrivalOfPreviousFlight.isValid() && departureOfCurrentFlight.isValid()) {
-                const stopoverMinutes = departureOfCurrentFlight.diff(arrivalOfPreviousFlight, 'minutes');
-
-                if (stopoverMinutes > STOPOVER_THRESHOLD_MINUTES) {
-                    const originalOrigin = flights[0].departure.airport;
-                    const finalDestination = flights[flights.length - 1].arrival.airport;
-                    const isRoundTrip = originalOrigin === finalDestination;
-
-                    currentFlight.direction = isRoundTrip ? 'Inbound' : 'Outbound';
+            const currentDestination = flights[i].arrival.airport;
+            for (let j = 0; j < i; j++) {
+                if (currentDestination === flights[j].departure.airport) {
+                    turnAroundIndex = i;
+                    break;
                 }
-            } else {
-                // This else block is for debugging and can be removed later
-                console.error("Moment.js parsing failed! Check formats.");
-                console.error(`- Previous Arrival: '${prevFlight.arrival.time}' with format '${prevTimeFormat}'`);
-                console.error(`- Current Departure: '${currentFlight.departure.time}' with format '${currTimeFormat}'`);
+            }
+            if (turnAroundIndex !== -1) {
+                break;
             }
         }
+        
+        // If there's no logical turnaround (e.g., a one-way trip), the entire journey is outbound.
+        const outboundEndIndex = (turnAroundIndex !== -1) ? turnAroundIndex : flights.length;
+        
+        // Build the outbound summary string
+        const outboundAirports = [flights[0].departure.airport];
+        for (let i = 0; i < outboundEndIndex; i++) {
+            outboundAirports.push(flights[i].arrival.airport);
+        }
+        summary.outbound = outboundAirports.join(' --> ');
+        
+        // If a turnaround point was found, build the inbound summary string
+        if (turnAroundIndex !== -1) {
+            const inboundAirports = [flights[turnAroundIndex].departure.airport];
+            for (let i = turnAroundIndex; i < flights.length; i++) {
+                inboundAirports.push(flights[i].arrival.airport);
+            }
+            summary.inbound = inboundAirports.join(' --> ');
+        }
     }
-    // --- END: CORRECTED LOGIC ---
+    // --- END: NEW LOGIC TO GENERATE JOURNEY SUMMARY ---
 
-    return { flights, passengers };
+    return { flights, passengers, summary };
 }
 
 module.exports = app;
