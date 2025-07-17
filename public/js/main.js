@@ -298,15 +298,13 @@ function liveUpdateDisplay(pnrProcessingAttempted = false) {
     displayResults(lastPnrResult, displayPnrOptions, fareDetails, baggageDetails, pnrProcessingAttempted);
 }
 
-// --- REMOVED THE SEPARATE, UNUSED TOGGLE SWITCH CODE THAT WAS HERE ---
-
 function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetails, pnrProcessingAttempted) {
-    // ... (This function remains unchanged)
     const output = document.getElementById('output');
     const screenshotBtn = document.getElementById('screenshotBtn');
     const copyTextBtn = document.getElementById('copyTextBtn');
     output.innerHTML = '';
 
+    // We no longer need the summary object here
     const { flights = [], passengers = [] } = pnrResult || {};
     
     if (flights.length > 0) {
@@ -320,6 +318,7 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
     const outputContainer = document.createElement('div');
     outputContainer.className = 'output-container';
 
+    // Display custom logo and text if enabled
     if (flights.length > 0 && displayPnrOptions.showItineraryLogo) {
         const logoContainer = document.createElement('div');
         logoContainer.className = 'itinerary-main-logo-container';
@@ -333,6 +332,8 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
         logoContainer.appendChild(logoText);
         outputContainer.appendChild(logoContainer);
     }
+    
+    // Display passenger names
     if (passengers.length > 0) {
         const headerDiv = document.createElement('div');
         headerDiv.className = 'itinerary-header';
@@ -344,37 +345,35 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
         const itineraryBlock = document.createElement('div');
         itineraryBlock.className = 'itinerary-block';
         
+        // This variable will track the current heading so we only print it once.
+        let currentHeadingDisplayed = null;
+
         flights.forEach((flight, i) => {
             
-            let currentHeadingDisplayed = null;
-            
-            // --- START: REVISED HEADING CREATION LOGIC (TEXT FIRST) ---
-
-            if (flight.direction && flight.direction.toUpperCase() !== currentHeadingDisplayed) {
-                
-                // 1. Determine which icon to use (this logic remains the same)
-                const iconSrc = flight.direction.toUpperCase() === 'OUTBOUND' 
-                    ? '/icons/takeoff.png' 
-                    : '/icons/landing.png';
-
-                // 2. Create the heading element
+            // --- START: NEW LOGIC TO DISPLAY SIMPLE HEADERS ---
+            // Check if the direction for this flight is new
+            if (flight.direction && flight.direction !== currentHeadingDisplayed) {
                 const headingDiv = document.createElement('div');
                 headingDiv.className = 'itinerary-leg-header';
 
-                // 3. Build the inner HTML with the TEXT first, then the ICON
+                const iconSrc = flight.direction === 'Outbound' 
+                    ? '/icons/takeoff.png' 
+                    : '/icons/landing.png';
+
+                // Display just the word "OUTBOUND" or "INBOUND"
                 headingDiv.innerHTML = `
                     <span>${flight.direction.toUpperCase()}</span>
                     <img src="${iconSrc}" alt="${flight.direction}" class="leg-header-icon">
                 `;
 
-                // 4. Add the new heading to the itinerary block
                 itineraryBlock.appendChild(headingDiv);
 
-                // Remember the heading we just displayed
-                currentHeadingDisplayed = flight.direction.toUpperCase();
+                // Update the tracker to prevent this header from being printed again
+                currentHeadingDisplayed = flight.direction;
             }
-            // --- END: REVISED HEADING CREATION LOGIC (TEXT FIRST) ---
+            // --- END: NEW LOGIC ---
 
+            // Display transit time information
             if (displayPnrOptions.showTransit && i > 0 && flight.transitTime && flight.transitDurationMinutes) {
                 const transitDiv = document.createElement('div');
                 const minutes = flight.transitDurationMinutes;
@@ -443,7 +442,8 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
             flightItem.innerHTML = `<div class="flight-content">${displayPnrOptions.showAirline ? `<img src="/logos/${(flight.airline.code || 'xx').toLowerCase()}.png" class="airline-logo" alt="${flight.airline.name} logo" onerror="this.onerror=null; this.src='/logos/default-airline.svg';">` : ''}<div><div class="flight-header">${headerText}</div>${detailsHtml}</div></div>`;
             itineraryBlock.appendChild(flightItem);
         });
-
+        
+        // --- The entire fare calculation block remains unchanged ---
         const { adultCount, adultFare, childCount, childFare, infantCount, infantFare, tax, fee, currency, showTaxes, showFees } = fareDetails || {};
         const adultCountNum = parseInt(adultCount) || 0;
         const childCountNum = parseInt(childCount) || 0;
@@ -494,7 +494,6 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
          output.innerHTML = '<div class="info">Enter PNR data and click Convert to begin.</div>';
     }
 }
-
 
 function getMealDescription(mealCode) {
     // ... (This function remains unchanged)
@@ -570,8 +569,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.querySelectorAll('input[name="baggageOption"]').forEach(radio => { 
         radio.addEventListener('change', () => { 
-            const showInputs = radio.value === 'alltheway' || radio.value === 'particular'; 
-            document.getElementById('allTheWayInputs').classList.toggle('visible', showInputs); 
+            const showInputs = radio.value === 'particular';  
         }); 
     });
     
