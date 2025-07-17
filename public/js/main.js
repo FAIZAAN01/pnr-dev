@@ -290,9 +290,9 @@ function liveUpdateDisplay(pnrProcessingAttempted = false) {
     const baggageOption = document.querySelector('input[name="baggageOption"]:checked').value;
     const baggageDetails = {
         option: baggageOption,
-        amount: (baggageOption === 'alltheway' || baggageOption === 'particular') ? document.getElementById('baggageAmountInput').value : '',
+        amount: (baggageOption === 'particular') ? document.getElementById('baggageAmountInput').value : '',
         // --- MODIFIED: Use the new helper function instead of the old dropdown ---
-        unit: (baggageOption === 'alltheway' || baggageOption === 'particular') ? getSelectedUnit() : ''
+        unit: (baggageOption === 'particular') ? getSelectedUnit() : ''
     };
     
     displayResults(lastPnrResult, displayPnrOptions, fareDetails, baggageDetails, pnrProcessingAttempted);
@@ -409,9 +409,7 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
             let baggageText = '';
             if (baggageDetails && baggageDetails.option !== 'none' && baggageDetails.amount) {
                 const baggageInfo = `${baggageDetails.amount}\u00A0${baggageDetails.unit}`;
-                if (baggageDetails.option === 'alltheway' && i === 0) {
-                    baggageText = `${baggageInfo} (Checked through)`; 
-                } else if (baggageDetails.option === 'particular') {
+                if (baggageDetails.option === 'particular') {
                     baggageText = baggageInfo;
                 }
             }
@@ -570,8 +568,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     document.querySelectorAll('input[name="baggageOption"]').forEach(radio => { 
         radio.addEventListener('change', () => { 
-            const showInputs = radio.value === 'alltheway' || radio.value === 'particular'; 
-            document.getElementById('allTheWayInputs').classList.toggle('visible', showInputs); 
+            const showInputs = radio.value === 'particular'; 
         }); 
     });
     
