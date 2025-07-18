@@ -114,6 +114,40 @@ function getTravelClassName(classCode) {
     return `Class ${code}`;
 }
 
+function getMealDescription(mealCode) {
+    if (!mealCode) return null;
+
+    const mealCodeMap = {
+        'B': 'Breakfast',
+        'L': 'Lunch',
+        'D': 'Dinner',
+        'S': 'Snack or Refreshments',
+        'M': 'Meal (Non-Specific)',
+        'F': 'Food for Purchase',
+        'H': 'Hot Meal',
+        'C': 'Complimentary Alcoholic Beverages',
+        'V': 'Vegetarian Meal',
+        'K': 'Kosher Meal',
+        'O': 'Cold Meal',
+        'P': 'Alcoholic Beverages for Purchase',
+        'R': 'Refreshment',
+        'W': 'Continental Breakfast',
+        'Y': 'Duty-Free Sales Available',
+        'N': 'No Meal Service',
+        'G': 'Food and Beverages for Purchase',
+    };
+
+    const descriptions = mealCode.toUpperCase().split('')
+        .map(code => mealCodeMap[code])
+        .filter(Boolean); // Filter out any undefined results for unknown characters
+
+    if (descriptions.length === 0) {
+        return `${mealCode}`; // Fallback for unknown codes
+    }
+
+    return descriptions.join(' & ');
+}
+
 // PASTE THIS ENTIRE FUNCTION OVER YOUR OLD ONE
 
 function parseGalileoEnhanced(pnrText, options) {
@@ -202,7 +236,8 @@ function parseGalileoEnhanced(pnrText, options) {
             }
             // --- END OF THE FIX ---
 
-            const mealCode = detailsParts.find(p => p.length === 1 && /[BLDSMFHCVKOPRWYNG]/.test(p.toUpperCase()));  
+            const validMealCharsRegex = /^[BLDSMFHCVKOPRWYNG]+$/i;
+            const mealCode = detailsParts.find(p => validMealCharsRegex.test(p));  //edit
             
             const depAirportInfo = airportDatabase[depAirport] || { city: `Unknown`, name: `Airport (${depAirport})`, timezone: 'UTC' };
             const arrAirportInfo = airportDatabase[arrAirport] || { city: `Unknown`, name: `Airport (${arrAirport})`, timezone: 'UTC' };
@@ -260,7 +295,7 @@ function parseGalileoEnhanced(pnrText, options) {
                 duration: calculateAndFormatDuration(departureMoment, arrivalMoment),
                 // This line now correctly uses the found aircraftCodeKey
                 aircraft: aircraftTypes[aircraftCodeKey] || aircraftCodeKey || '',
-                meal: mealCode,
+                meal: getMealDescription(mealCode),//-------edit
                 notes: [], 
                 operatedBy: null,
                 transitTime: precedingTransitTimeForThisSegment,
