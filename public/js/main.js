@@ -47,7 +47,7 @@ function resetFareAndBaggageInputs() {
     document.getElementById('currencySelect').value = 'USD';
 
     // Reset baggage selection to "None"
-    document.getElementById('baggageNone').checked = true;
+    document.getElementById('baggageNone').checked = false;
     
     // Also trigger a 'change' event on the radio button.
     // This is important to make sure any associated UI logic (like hiding/showing other inputs) runs.
