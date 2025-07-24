@@ -309,12 +309,12 @@ function parseGalileoEnhanced(pnrText, options) {
             let arrivalDateString = null;
             if (departureMoment.isValid()) {
                 const departureYear = departureMoment.year();
-                const mainDateFormat = (departureYear === currentYear) ? 'dddd, DD MMM' : 'dddd, DD MMM YYYY';
+                const mainDateFormat = (departureYear === currentYear) ? 'dddd, DD MMM YYYY' : 'dddd, DD MMM YYYY';
                 formattedDate = departureMoment.format(mainDateFormat);
             }
             if (arrivalMoment.isValid() && departureMoment.isValid() && !arrivalMoment.isSame(departureMoment, 'day')) {
                 const arrivalYear = arrivalMoment.year();
-                const arrivalFormat = (arrivalYear === currentYear) ? 'DD MMM' : 'DD MMM YYYY';
+                const arrivalFormat = (arrivalYear === currentYear) ? 'DD MMM YYYY' : 'DD MMM YYYY';
                 arrivalDateString = arrivalMoment.format(arrivalFormat);
             }
             
