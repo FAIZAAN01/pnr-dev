@@ -243,19 +243,51 @@ function parseGalileoEnhanced(pnrText, options) {
             const arrAirportInfo = airportDatabase[arrAirport] || { city: `Unknown`, name: `Airport (${arrAirport})`, timezone: 'UTC' };
             if (!moment.tz.zone(depAirportInfo.timezone)) depAirportInfo.timezone = 'UTC';
             if (!moment.tz.zone(arrAirportInfo.timezone)) arrAirportInfo.timezone = 'UTC';
-            const departureMoment = moment.tz(`${depDateStr} ${depTimeStr}`, "DDMMM HHmm", true, depAirportInfo.timezone);
+
+            // --- MODIFICATION 2: DEDUCE THE CORRECT YEAR FOR THE FLIGHT ---
+            // First, create a date object assuming the current year.
+            let departureDateWithYear = moment(`${depDateStr} ${currentYear}`, "DDMMM YYYY", true);
+
+            // Now, check if this date has already passed.
+            if (departureDateWithYear.isValid() && departureDateWithYear.isBefore(now)) {
+                // If the date is in the past, it must be for the next year.
+                departureDateWithYear.add(1, 'year');
+            }
+
+            const departureMoment = moment.tz({
+                year: departureDateWithYear.year(),
+                month: departureDateWithYear.month(),
+                date: departureDateWithYear.date(),
+                hour: parseInt(depTimeStr.substring(0, 2), 10),
+                minute: parseInt(depTimeStr.substring(2, 4), 10)
+            }, depAirportInfo.timezone);
+
             let arrivalMoment;
 
             if (arrDateStrOrNextDayIndicator) {
                 if (arrDateStrOrNextDayIndicator.startsWith('+')) {
                     const daysToAdd = parseInt(arrDateStrOrNextDayIndicator.substring(1), 10);
-                    arrivalMoment = moment.tz(`${depDateStr} ${arrTimeStr}`, "DDMMM HHmm", true, arrAirportInfo.timezone).add(daysToAdd, 'day');
+                    // Use a clone of the now-correct departureMoment to calculate arrival
+                    arrivalMoment = departureMoment.clone().tz(arrAirportInfo.timezone).startOf('day').add(daysToAdd, 'day');
                 } else {
-                    arrivalMoment = moment.tz(`${arrDateStrOrNextDayIndicator} ${arrTimeStr}`, "DDMMM HHmm", true, arrAirportInfo.timezone);
+                    // This case is rare but handles an explicit arrival date from the PNR
+                    let arrivalDateWithYear = moment(`${arrDateStrOrNextDayIndicator} ${departureMoment.year()}`, "DDMMM YYYY", true);
+                    if (arrivalDateWithYear.isBefore(departureMoment)) {
+                        arrivalDateWithYear.add(1, 'year');
+                    }
+                    arrivalMoment = moment.tz(arrivalDateWithYear.format("YYYY-MM-DD"), "YYYY-MM-DD", true, arrAirportInfo.timezone);
                 }
+                // Add the time to the calculated arrival date
+                arrivalMoment.hour(parseInt(arrTimeStr.substring(0, 2), 10));
+                arrivalMoment.minute(parseInt(arrTimeStr.substring(2, 4), 10));
             } else {
-                arrivalMoment = moment.tz(`${depDateStr} ${arrTimeStr}`, "DDMMM HHmm", true, arrAirportInfo.timezone);
-                if (departureMoment.isValid() && arrivalMoment.isValid() && arrivalMoment.isBefore(departureMoment)) arrivalMoment.add(1, 'day');
+                arrivalMoment = moment.tz(departureMoment.format("YYYY-MM-DD HH:mm"), "YYYY-MM-DD HH:mm", true, arrAirportInfo.timezone);
+                arrivalMoment.hour(parseInt(arrTimeStr.substring(0, 2), 10));
+                arrivalMoment.minute(parseInt(arrTimeStr.substring(2, 4), 10));
+
+                if (departureMoment.isValid() && arrivalMoment.isValid() && arrivalMoment.isBefore(departureMoment)) {
+                    arrivalMoment.add(1, 'day');
+                }
             }
 
             if (previousArrivalMoment && previousArrivalMoment.isValid() && departureMoment && departureMoment.isValid()) {
@@ -270,9 +302,17 @@ function parseGalileoEnhanced(pnrText, options) {
                 }
             }
 
+            let formattedDate = '';
             let arrivalDateString = null;
-            if (departureMoment.isValid() && arrivalMoment.isValid() && !arrivalMoment.isSame(departureMoment, 'day')) {
-                arrivalDateString = arrivalMoment.format('DD MMM');
+            if (departureMoment.isValid()) {
+                const departureYear = departureMoment.year();
+                const mainDateFormat = (departureYear === currentYear) ? 'dddd, DD MMM' : 'dddd, DD MMM YYYY';
+                formattedDate = departureMoment.format(mainDateFormat);
+            }
+            if (arrivalMoment.isValid() && departureMoment.isValid() && !arrivalMoment.isSame(departureMoment, 'day')) {
+                const arrivalYear = arrivalMoment.year();
+                const arrivalFormat = (arrivalYear === currentYear) ? 'DD MMM' : 'DD MMM YYYY';
+                arrivalDateString = arrivalMoment.format(arrivalFormat);
             }
             
             currentFlight = {
@@ -280,13 +320,13 @@ function parseGalileoEnhanced(pnrText, options) {
                 airline: { code: airlineCode, name: airlineDatabase[airlineCode] || `Unknown Airline (${airlineCode})` },
                 flightNumber: flightNumRaw,
                 travelClass: { code: travelClass || '', name: getTravelClassName(travelClass) },
-                date: departureMoment.isValid() ? departureMoment.format('dddd, DD MMM YYYY') : '',
-                departure: { 
+                date: formattedDate,
+                departure: {
                     airport: depAirport, city: depAirportInfo.city, name: depAirportInfo.name,
                     time: formatMomentTime(departureMoment, use24hSegment),
                     terminal: depTerminal || null
                 },
-                arrival: { 
+                arrival: {
                     airport: arrAirport, city: arrAirportInfo.city, name: arrAirportInfo.name,
                     time: formatMomentTime(arrivalMoment, use24hSegment),
                     dateString: arrivalDateString,
