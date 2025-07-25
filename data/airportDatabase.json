@@ -612,7 +612,7 @@
   "LFW": { "city": "Lom\u00e9", "name": "Lom\u00e9\u2013Tokoin International Airport", "timezone": "Africa/Porto-Novo" },
   "EAL": { "city": "Mejato Island", "name": "Elenak Airport", "timezone": "Australia/Canberra" },
   "ANR": { "city": "Antwerp", "name": "Antwerp International Airport (Deurne)", "timezone": "Europe/Vaduz" },
-  "BRU": { "city": "Zaventem", "name": "Brussels Airport", "timezone": "Europe/Vaduz" },
+  "BRU": { "city": "Zaventem", "name": "Brussels Airport", "timezone": "Europe/Brussels" },
   "CRL": { "city": "Charleroi", "name": "Brussels South Charleroi Airport", "timezone": "Europe/Vaduz" },
   "KJK": { "city": "Wevelgem", "name": "Flanders International Airport Kortrijk-Wevelgem", "timezone": "Europe/Vaduz" },
   "LGG": { "city": "Gr\u00e2ce-Hollogne", "name": "Li\u00e8ge Airport", "timezone": "Europe/Vaduz" },
