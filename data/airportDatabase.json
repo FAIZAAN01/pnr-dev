@@ -887,6 +887,7 @@
   "ALF": { "city": "Alta", "name": "Alta Airport", "timezone": "Europe/Vaduz" },
   "FDE": { "city": "F\u00f8rde", "name": "F\u00f8rde Airport, Bringeland", "timezone": "Europe/Vaduz" },
   "BNN": { "city": "Br\u00f8nn\u00f8y", "name": "Br\u00f8nn\u00f8ysund Airport, Br\u00f8nn\u00f8y", "timezone": "Europe/Vaduz" },
+  "JFK": { "city": "Queens, New York", "name": "John F. Kennedy International Airport", "timezone": "America/New_York" },
   "BOO": { "city": "Bod\u00f8", "name": "Bod\u00f8 Airport", "timezone": "Europe/Vaduz" },
   "BGO": { "city": "Bergen", "name": "Bergen Airport, Flesland", "timezone": "Europe/Vaduz" },
   "BJF": { "city": "B\u00e5tsfjord", "name": "B\u00e5tsfjord Airport", "timezone": "Europe/Vaduz" },
