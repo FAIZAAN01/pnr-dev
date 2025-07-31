@@ -741,7 +741,7 @@
   "ORM": { "city": "Northampton, Northamptonshire", "name": "Sywell Aerodrome", "timezone": "Europe/Vaduz" },
   "NQT": { "city": "Nottingham", "name": "Nottingham Airport", "timezone": "Europe/Vaduz" },
   "GBA": { "city": "Cirencester, Gloucestershire", "name": "Cotswold Airport", "timezone": "Europe/Vaduz" },
-  "MAN": { "city": "Manchester, Greater Manchester", "name": "Manchester Airport", "timezone": "Europe/Vaduz" },
+  "MAN": { "city": "Manchester, Greater Manchester", "name": "Manchester Airport", "timezone": "Europe/London" },
   "UPV": { "city": "Pewsey, Wiltshire", "name": "Upavon Aerodrome", "timezone": "Europe/Vaduz" },
   "YEO": { "city": "Yeovil, Somerset", "name": "RNAS Yeovilton", "timezone": "Europe/Vaduz" },
   "CAL": { "city": "Campbeltown", "name": "Campbeltown Airport", "timezone": "Europe/Vaduz" },
