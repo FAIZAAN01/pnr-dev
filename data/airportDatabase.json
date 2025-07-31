@@ -2932,7 +2932,7 @@
   "PMS": { "city": "Tadmur", "name": "Palmyra Airport", "timezone": "Asia/Irkutsk" },
   "DIA": { "city": "Doha", "name": "Doha International Airport", "timezone": "Asia/Irkutsk" },
   "XJD": { "city": "Ar Rayyan", "name": "Al Udeid Air Base", "timezone": "Asia/Irkutsk" },
-  "DOH": { "city": "Doha", "name": "Hamad International Airport", "timezone": "Asia/Irkutsk" },
+  "DOH": { "city": "Doha", "name": "Hamad International Airport", "timezone": "Asia/Qatar" },
   "OTT": { "city": "Cotrigua\u00e7u", "name": "Andre Maggi Airport", "timezone": "America/Kentucky/Louisville" },
   "OUM": { "city": "Oum Hadjer", "name": "Oum Hadjer Airport", "timezone": "Africa/Porto-Novo" },
   "OXO": { "city": "Orientos", "name": "Orientos Airport", "timezone": "Australia/Canberra" },
