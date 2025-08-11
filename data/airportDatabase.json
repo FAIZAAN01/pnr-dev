@@ -1,5 +1,7 @@
 {
-  "UTK": { "city": "Utirik Island", "name": "Utirik Airport", "timezone": "Australia/Canberra", "country": "Marshall Islands" },
+  "UTK": { "city": "Utirik Island", "name": "Utirik Airport", "timezone": "Pacific/Majuro", "country": "Marshall Islands" },
+  "GSO": { "city": "Greensboro", "name": "Piedmont Triad International Airport", "timezone": "America/New_York", "country": "United States" },
+  "EWR": { "city": "Newark", "name": "Newark Liberty International Airport", "timezone": "America/New_York", "country": "United States" },
   "AAD": { "city": "Adado", "name": "Adado Airport", "timezone": "Africa/Porto-Novo", "country": "Somalia" },
   "ABP": { "city": "Atkamba Mission", "name": "Atkamba Airport", "timezone": "Australia/Canberra", "country": "Papua New Guinea" },
   "ACM": { "city": "Arica", "name": "Arica Airport", "timezone": "America/Kentucky/Louisville", "country": "Chile" },
