@@ -2020,7 +2020,7 @@
   "VIT": { "city": "Alava", "name": "Vitoria Airport", "timezone": "Europe/Vaduz" },
   "VGO": { "city": "Vigo", "name": "Vigo Airport", "timezone": "Europe/Vaduz" },
   "SDR": { "city": "Santander", "name": "Seve Ballesteros-Santander Airport", "timezone": "Europe/Vaduz" },
-  "ZAZ": { "city": "Zaragoza", "name": "Zaragoza Airport", "timezone": "Europe/Vaduz" },
+  "ZAZ": { "city": "Zaragoza", "name": "Zaragoza Airport", "timezone": "Europe/Madrid" },
   "SVQ": { "city": "Sevilla", "name": "Sevilla Airport", "timezone": "Europe/Vaduz" },
   "DPE": { "city": "Saint-Aubin-sur-Scie", "name": "Dieppe-Saint-Aubin Airport", "timezone": "Europe/Vaduz" },
   "CQF": { "city": "Marck", "name": "Calais-Dunkerque Airport", "timezone": "Europe/Vaduz" },
