@@ -782,7 +782,7 @@
   "LCY": { "city": "London", "name": "London City Airport", "timezone": "Europe/London" },
   "FAB": { "city": "Farnborough, Hampshire", "name": "Farnborough Airport", "timezone": "Europe/Vaduz" },
   "BBS": { "city": "Camberley, Surrey", "name": "Blackbushe Airport", "timezone": "Europe/Vaduz" },
-  "LHR": { "city": "London", "name": "Heathrow Airport", "timezone": "Europe/London" },
+  "LHR": { "city": "London", "name": "London Heathrow Airport", "timezone": "Europe/London" },
   "SEN": { "city": "Southend-on-Sea, Essex", "name": "London Southend Airport", "timezone": "Europe/Vaduz" },
   "LYX": { "city": "Romney Marsh, Kent", "name": "Lydd London Ashford Airport", "timezone": "Europe/Vaduz" },
   "CAX": { "city": "Carlisle", "name": "Carlisle Lake District Airport", "timezone": "Europe/Vaduz" },
