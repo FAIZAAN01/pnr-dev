@@ -1869,6 +1869,7 @@
   "TBO": { "city": "Tabora", "name": "Tabora Airport", "timezone": "Africa/Porto-Novo" },
   "TGT": { "city": "Tanga", "name": "Tanga Airport", "timezone": "Africa/Porto-Novo" },
   "ZNZ": { "city": "Zanzibar", "name": "Abeid Amani Karume International Airport", "timezone": "Africa/Dar_es_Salaam" },
+  "YUL": { "city": "Montreal", "name": "Montréal–Trudeau International Airport", "timezone": "America/Toronto" },
   "RUA": { "city": "Arua", "name": "Arua Airport", "timezone": "Africa/Porto-Novo" },
   "EBB": { "city": "Kampala", "name": "Entebbe International Airport", "timezone": "Africa/Kampala" },
   "ULU": { "city": "Gulu", "name": "Gulu Airport", "timezone": "Africa/Porto-Novo" },
