@@ -392,17 +392,16 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
                 } else if (minutes > 300) {
                     transitLabel = `Long Transit Time ${flight.transitTime} ${transitLocationInfo}`;
                     transitClassName = 'transit-long';
-                } else {
+                } else if (minutes > 1440) {
                     transitLabel = `Transit Time ${flight.transitTime} ${transitLocationInfo}`;
+                    transitClassName = 'transit-minimum'
+                } else {
+                    transitLabel = `------------------------------------------------`;
                     transitClassName = 'transit-minimum'
                 }
 
                 transitDiv.className = `transit-item ${transitClassName}`;
-                if (transitClassName) {
-                    transitDiv.innerHTML = `${startSeparator} ${transitLabel.trim()} ${endSeparator}`;
-                } else {
-                    transitDiv.innerHTML = `-----------------------------------------`;
-                }
+                transitDiv.innerHTML = `${startSeparator} ${transitLabel.trim()} ${endSeparator}`;
                 itineraryBlock.appendChild(transitDiv);
             }
 
