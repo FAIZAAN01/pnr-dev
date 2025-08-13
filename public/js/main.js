@@ -398,7 +398,11 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
                 }
 
                 transitDiv.className = `transit-item ${transitClassName}`;
-                transitDiv.innerHTML = `${startSeparator} ${transitLabel.trim()} ${endSeparator}`;
+                if (transitClassName) {
+                    transitDiv.innerHTML = `${startSeparator} ${transitLabel.trim()} ${endSeparator}`;
+                } else {
+                    transitDiv.innerHTML = `-----------------------------------------`;
+                }
                 itineraryBlock.appendChild(transitDiv);
             }
 
