@@ -6,945 +6,83 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PNR Converter SV</title>
     <link rel="shortcut icon" href="pass.png" type="image/x-icon">
-    <style>
-        :root {
-            --primary-blue: #3498db;
-            --primary-blue-hover: #2980b9;
-            --secondary-dark: #34495e;
-            --secondary-dark-hover: #2c3e50;
-            --danger-red: #e74c3c;
-            --danger-red-hover: #c0392b;
-            --success-green: #27ae60;
-            --success-green-hover: #229954;
-            --history-purple: #8e44ad;
-            --history-purple-hover: #7d3c98;
-            --light-bg: #f4f7f9;
-            --card-bg: #ffffff;
-            --text-dark: #2c3e50;
-            --text-light: #5f6c7b;
-            --border-color: #e0e6ec;
-        }
-
-        /* --- BASE STYLES --- */
-        body {
-            font-family: Raleway, sans-serif;
-            max-width: auto;
-            margin: 0 auto;
-            padding: 20px;
-            background-color: #f5f5f5;
-        }
-
-        h1,
-        h2,
-        h3 {
-            color: var(--text-dark);
-        }
-
-        h1 {
-            text-align: center;
-            margin-bottom: 30px;
-        }
-
-        hr {
-            border: 0;
-            border-top: 1px solid var(--border-color);
-            margin: 25px 0;
-        }
-
-        .container {
-            display: flex;
-            gap: 30px;
-            align-items: flex-start;
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-
-        .main-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 30px;
-            min-width: 0;
-        }
-
-        /* --- "LIVING" INTERFACE: INTERACTIVE CARDS --- */
-        .input-area,
-        .output-area,
-        .sidebar {
-            background: var(--card-bg);
-            padding: 25px;
-            border-radius: 12px;
-            border: 1px solid var(--border-color);
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
-        }
-
-        /* --- Input Area --- */
-        textarea#pnrInput {
-            width: 100%;
-            height: 120px;
-            padding: 15px;
-            border: 1px solid var(--border-color);
-            border-radius: 5px 0px 0px 5px;
-            font-family: Raleway, sans-serif;
-            resize: vertical;
-            box-sizing: border-box;
-        }
-
-        textarea#pnrInput:focus {
-            outline: none;
-            border-color: var(--primary-blue);
-            box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
-        }
-
-        #inputControls {
-            display: flex;
-            margin: 0;
-        }
-
-        .input-actions-group {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-top: 15px;
-        }
-
-        .input-buttons button {
-            margin-top: 0;
-        }
-
-        /* --- ENHANCED BUTTONS --- */
-        button {
-            padding: 10px 18px;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 14px;
-            transition: all 0.2s ease;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-        }
-
-        button:hover {
-            opacity: 1;
-            transform: translateY(-2px);
-            filter: brightness(1.1);
-        }
-
-        button:active {
-            transform: translateY(0);
-            filter: brightness(0.95);
-        }
-
-        .input-buttons button,
-        .output-area button {
-            margin-right: 10px;
-        }
-
-        #adultCountInput,
-        #childCountInput,
-        #infantCountInput {
-            width: 50px;
-            text-align: center;
-        }
-
-        #currencySelect {
-            width: 100px;
-            padding: 8px;
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
-            font-size: 14px;
-        }
-
-        /* --- START: NEW HEADING STYLES --- */
-
-        /* Style for the "OUTBOUND" / "INBOUND" headings */
-        .itinerary-leg-header {
-            text-align: center;
-            /* Center the text */
-            font-weight: bold;
-            /* Make it bold */
-            font-size: 1.1em;
-            /* Make it slightly larger */
-            color: var(--primary-blue);
-            /* Use the theme's primary color */
-            margin-top: 10px;
-            /* Add space above the heading */
-            margin-bottom: 10px;
-            /* Add space below the heading */
-            padding-bottom: 8px;
-            /* Add padding below the text */
-            border-bottom: 2px solid var(--border-color);
-            /* Create a separator line */
-            text-transform: uppercase;
-            /* Ensure it's always in capital letters */
-        }
-
-        /* Add extra space for the very first heading to separate it from the passenger list */
-        .itinerary-leg-header:first-of-type {
-            margin-top: 10px;
-        }
-
-        /* --- END: NEW HEADING STYLES --- */
-
-        .leg-header-icon {
-            width: 24px;
-            height: 24px;
-            margin: 0 0 -6px 10px;
-            /* This puts space to the left of the icon */
-        }
-
-        /* --- NEW: TOGGLE SWITCH STYLES --- */
-        .toggle-switch {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .toggle-switch-label {
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--text-light);
-            cursor: pointer;
-        }
-
-        .toggle-switch input[type="checkbox"] {
-            height: 0;
-            width: 0;
-            visibility: hidden;
-        }
-
-        .toggle-switch .switch-body {
-            cursor: pointer;
-            width: 48px;
-            height: 24px;
-            background: #ccc;
-            display: block;
-            border-radius: 100px;
-            position: relative;
-            transition: background-color 0.2s;
-        }
-
-        .toggle-switch .switch-body::after {
-            content: '';
-            position: absolute;
-            top: 2px;
-            left: 2px;
-            width: 20px;
-            height: 20px;
-            background: #fff;
-            border-radius: 20px;
-            transition: 0.2s;
-        }
-
-        .toggle-switch input:checked+.switch-body {
-            background: var(--success-green);
-        }
-
-        .toggle-switch input:checked+.switch-body::after {
-            left: calc(100% - 2px);
-            transform: translateX(-100%);
-        }
-
-        /* --- Generic Unit Toggle Component Styles --- */
-
-        /* The main component container */
-        .c-unit-toggle {
-            position: relative;
-            display: inline-block;
-            width: 48px;
-            height: 24px;
-        }
-
-        /* The actual checkbox input, which we hide */
-        .c-unit-toggle__input {
-            opacity: 0;
-            width: 0;
-            height: 0;
-        }
-
-        /* The visible label that acts as the switch track */
-        .c-unit-toggle__label {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-color: #007bff;
-            /* State 1: 'kg' */
-            border-radius: 40px;
-            transition: background-color 0.3s;
-        }
-
-        /* The moving circle, created using a pseudo-element */
-        .c-unit-toggle__label::before {
-            position: absolute;
-            content: "";
-            height: 19px;
-            width: 20px;
-            top: 3px;
-            left: 4px;
-            background-color: white;
-            border-radius: 50%;
-            transition: transform 0.3s;
-        }
-
-        /* The container for the text options (kg/pcs) */
-        .c-unit-toggle__options {
-            display: flex;
-            justify-content: space-around;
-            align-items: center;
-            height: 105%;
-            padding: 0 6px;
-            color: white;
-            font-weight: bold;
-            font-size: 10px;
-        }
-
-        /* --- Logic for the checked state --- */
-
-        /* When the input is checked, change the label's background */
-        .c-unit-toggle__input:checked+.c-unit-toggle__label {
-            background-color: #28a745;
-            /* State 2: 'pcs' */
-        }
-
-        /* When the input is checked, move the white circle */
-        .c-unit-toggle__input:checked+.c-unit-toggle__label::before {
-            transform: translateX(21px);
-        }
-
-        /* Button Color Theme */
-        #convertBtn {
-            background-color: var(--primary-blue);
-            font-size: 16px;
-            margin: 0;
-            border-radius: 0px 5px 5px 0px;
-        }
-
-        #convertBtn:hover {
-            background-color: var(--primary-blue-hover);
-        }
-
-        #pasteBtn {
-            background-color: var(--success-green);
-        }
-
-        #pasteBtn:hover {
-            background-color: var(--success-green-hover);
-        }
-
-        #clearBtn,
-        .clear-btn {
-            background-color: var(--danger-red);
-        }
-
-        #clearBtn:hover,
-        .clear-btn:hover {
-            background-color: var(--danger-red-hover);
-        }
-
-        #historyBtn {
-            background-color: var(--history-purple);
-        }
-
-        #historyBtn:hover {
-            background-color: var(--history-purple-hover);
-        }
-
-        #screenshotBtn,
-        #copyTextBtn,
-        .use-history-btn {
-            background: var(--secondary-dark);
-        }
-
-        #screenshotBtn:hover,
-        #copyTextBtn:hover,
-        .use-history-btn:hover {
-            background: var(--secondary-dark-hover);
-        }
-
-        .fare-options-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-            gap: 25px;
-            margin-top: 15px;
-        }
-
-        .fare-group {
-            display: flex;
-            flex-direction: column;
-            gap: 5px;
-        }
-
-        .fare-group.hidden {
-            display: none;
-        }
-
-        .fare-group label {
-            font-size: 14px;
-            font-weight: 500;
-            color: var(--text-light);
-        }
-
-        .fare-group input,
-        .fare-group select {
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            width: 100%;
-            box-sizing: border-box;
-        }
-
-        .fare-group .count-fare-wrapper {
-            display: flex;
-        }
-
-        .fare-group .count-fare-wrapper>div {
-            flex: 0.4;
-        }
-
-        .baggage-options {
-            margin-top: 20px;
-            display: flex;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 10px 20px;
-        }
-
-        #allTheWayInputs {
-            display: none;
-            align-items: center;
-            gap: 10px;
-        }
-
-        #allTheWayInputs.visible {
-            display: flex;
-        }
-
-        .output-area .output-actions {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-        }
-
-        #output {
-            width: fit-content;
-            min-width: 300px;
-            max-width: 100%;
-            overflow-x: auto;
-            margin: 15px 0 200px 0;
-        }
-
-        #output[contenteditable="true"] {
-            border: 2px dashed var(--primary-blue);
-            padding: 10px;
-            border-radius: 8px;
-            background-color: #fafdff;
-        }
-
-        .info {
-            color: var(--primary-blue);
-            padding: 15px;
-            background-color: #f0f7ff;
-            border: 1px solid var(--primary-blue-hover);
-            border-radius: 8px;
-        }
-
-        .error {
-            color: var(--danger-red);
-            padding: 15px;
-            background-color: #fdecea;
-            border: 1px solid #ef9a9a;
-            border-radius: 8px;
-        }
-
-        /* Itinerary Styles */
-        .output-container {
-            border: 1px solid var(--border-color);
-            background: var(--card-bg);
-            box-sizing: border-box
-        }
-
-        .itinerary-main-logo-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 5px 10px;
-            border-bottom: 1px solid #eee
-        }
-
-        .itinerary-main-logo {
-            max-width: 150px;
-            max-height: 45px;
-            object-fit: contain
-        }
-
-        .itinerary-logo-text {
-            font-size: .8em;
-            color: var(--text-light);
-            text-align: right;
-            line-height: 1.3;
-            white-space: pre-line
-        }
-
-        .itinerary-header {
-            padding: 15px;
-            border-bottom: 1px solid #eee
-        }
-
-        .itinerary-header p {
-            margin: 0;
-            font-size: 14px
-        }
-
-        .flight-item {
-            padding: 7px 15px 0px;
-            border-bottom: 1px dashed #ccc
-        }
-
-        .flight-item:last-child {
-            border-bottom: none
-        }
-
-        .transit-item {
-            font-style: italic;
-            text-align: center;
-            padding: 8px 0;
-            margin-top: -1px;
-            background: #fff;
-            font-size: 15px;
-            font-weight: bold;
-        }
-
-        .transit-item.transit-short {
-            color: var(--danger-red);
-        }
-
-        .transit-item.transit-minimum {
-            color: #27ae60
-        }
-
-        .transit-item.transit-long {
-            color: #f39c12
-        }
-
-        .airline-logo {
-            width: 95px;
-            height: 65px;
-            object-fit: contain;
-            border-radius: 5px
-        }
-
-        .flight-header {
-            font-weight: 600;
-            font-size: 14px;
-            margin-bottom: 10px
-        }
-
-        .flight-detail {
-            font-size: 13px;
-            color: var(--secondary-dark);
-            margin-bottom: 5px
-        }
-
-        .flight-detail.notes-detail {
-            white-space: pre-wrap;
-            word-break: break-word
-        }
-
-        .flight-detail strong {
-            color: var(--text-light);
-            margin-right: 5px
-        }
-
-        .flight-content {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-        }
-
-        .fare-summary {
-            font-weight: 500;
-            margin: -1px 0 5px 10px;
-            padding-top: 15px;
-            border-top: 1px solid var(--border-color);
-            font-size: 14px;
-            white-space: pre-line
-        }
-
-        .fare-summary strong {
-            font-size: 1.1em
-        }
-
-        /* Sidebar Styles */
-        .sidebar {
-            position: sticky;
-            top: 20px;
-            max-height: calc(100vh - 40px);
-            overflow-y: auto
-        }
-
-        .sidebar h3 {
-            margin-top: 0
-        }
-
-        .sidebar h4 {
-            margin: 20px 0 10px;
-            color: var(--text-dark);
-        }
-
-        .options label {
-            display: block;
-            margin: 10px 0;
-            cursor: pointer;
-            font-size: 15px
-        }
-
-        .time-format-group label {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            margin-right: 20px;
-        }
-
-        .custom-transit-input {
-            margin-left: 25px;
-            margin-top: 8px;
-            display: flex;
-            align-items: center;
-            gap: 8px
-        }
-
-        .custom-transit-input.hidden {
-            display: none
-        }
-
-        .custom-transit-input label {
-            margin: 0;
-            font-size: 14px
-        }
-
-        #customBrandingSection {
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 1px solid var(--border-color)
-        }
-
-        #customBrandingSection.hidden {
-            display: none
-        }
-
-        .custom-branding-input {
-            margin-bottom: 15px
-        }
-
-        .custom-branding-input label {
-            font-weight: 500;
-            margin-bottom: 8px;
-            display: block
-        }
-
-        .custom-branding-input input[type=file],
-        .custom-branding-input textarea {
-            width: 100%;
-            box-sizing: border-box;
-            padding: 8px;
-            border-radius: 4px;
-            border: 1px solid #ccc
-        }
-
-        .custom-logo-preview {
-            max-height: 45px;
-            max-width: 150px;
-            margin-top: 8px;
-            display: none;
-            border: 1px solid #ddd;
-            padding: 3px;
-            border-radius: 4px
-        }
-
-        /* Modal and Other Styles (Unchanged) */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0, 0, 0, .6);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 2000;
-            opacity: 0;
-            visibility: hidden;
-            transition: opacity .3s, visibility .3s
-        }
-
-        .modal-overlay:not(.hidden) {
-            opacity: 1;
-            visibility: visible
-        }
-
-        .modal-content {
-            background: #fff;
-            padding: 25px;
-            border-radius: 8px;
-            box-shadow: 0 5px 20px rgba(0, 0, 0, .3);
-            width: 90%;
-            max-width: 600px;
-            max-height: 80vh;
-            display: flex;
-            flex-direction: column;
-            transform: scale(.95);
-            transition: transform .3s;
-            position: relative;
-            overflow: hidden
-        }
-
-        .modal-overlay:not(.hidden) .modal-content {
-            transform: scale(1)
-        }
-
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid #eee;
-            padding-bottom: 15px;
-            margin-bottom: 15px
-        }
-
-        .modal-header .close-btn {
-            background: 0 0;
-            border: none;
-            font-size: 2.5rem;
-            line-height: 1;
-            color: #888;
-            cursor: pointer;
-            padding: 0;
-            margin: 0
-        }
-
-        .history-controls {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 15px
-        }
-
-        #historySearchInput,
-        #historySortSelect {
-            padding: 8px;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            flex-grow: 1
-        }
-
-        .history-list {
-            overflow-y: auto;
-            flex-grow: 1
-        }
-
-        .history-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px;
-            border-bottom: 1px solid #f0f0f0;
-            transition: background-color .2s, transform .2s
-        }
-
-        .history-item:hover {
-            background-color: #f8f9fa;
-            transform: translateX(5px)
-        }
-
-        .history-item-info {
-            cursor: pointer;
-            flex-grow: 1
-        }
-
-        .history-item-pax {
-            font-weight: 700;
-            color: var(--secondary-dark);
-            margin-bottom: 5px
-        }
-
-        .history-item-details {
-            font-size: .9em;
-            color: #7f8c8d
-        }
-
-        #historyPreviewPanel {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #fff;
-            display: flex;
-            flex-direction: column;
-            transition: transform .3s ease;
-            transform: translateX(100%);
-            z-index: 10
-        }
-
-        #historyPreviewPanel:not(.hidden) {
-            transform: translateX(0)
-        }
-
-        .preview-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px 25px;
-            border-bottom: 1px solid #eee;
-            flex-shrink: 0
-        }
-
-        .preview-content {
-            padding: 20px;
-            overflow: auto;
-            flex-grow: 1
-        }
-
-        .preview-content img {
-            max-width: 100%;
-            height: auto;
-            display: block;
-            margin: 0 auto;
-            border: 1px solid #ddd
-        }
-
-        .preview-content pre {
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            background: #f4f4f4;
-            padding: 15px;
-            border-radius: 4px
-        }
-
-        .popup-notification-container {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            z-index: 2050;
-            display: flex;
-            flex-direction: column;
-            gap: 10px
-        }
-
-        .popup-notification {
-            background-color: var(--secondary-dark);
-            color: #fff;
-            padding: 12px 20px;
-            border-radius: 6px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, .15);
-            opacity: 0;
-            transform: translateX(100%);
-            transition: all .5s cubic-bezier(.68, -.55, .27, 1.55)
-        }
-
-        .popup-notification.show {
-            opacity: 1;
-            transform: translateX(0)
-        }
-
-        .loading-spinner {
-            display: none;
-            width: 40px;
-            height: 40px;
-            margin: 20px auto;
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid var(--primary-blue);
-            border-radius: 50%;
-            animation: spin 1s linear infinite
-        }
-
-        @keyframes spin {
-            0% {
-                transform: rotate(0)
-            }
-
-            100% {
-                transform: rotate(360deg)
-            }
-        }
-
-        .mobile-menu-button {
-            display: none
-        }
-
-        @media (max-width:1000px) {
-            body {
-                padding: 10px
-            }
-
-            .container {
-                gap: 20px
-            }
-
-            .mobile-menu-button {
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                position: fixed;
-                top: 10px;
-                right: 10px;
-                z-index: 1010;
-                background: #fff;
-                color: var(--text-dark);
-                border: 1px solid #ddd;
-                border-radius: 50%;
-                border-radius: 0% 0% 0% 25%;
-                width: 50px;
-                height: 50px;
-                padding: 0;
-                margin: 0;
-                box-shadow: 0 2px 10px rgba(0, 0, 0, .15)
-            }
-
-            .sidebar {
-                position: fixed;
-                top: 0;
-                right: 0;
-                height: 100%;
-                z-index: 1020;
-                width: 300px;
-                max-width: 80vw;
-                box-shadow: -5px 0 15px rgba(0, 0, 0, .2);
-                transform: translateX(100%);
-                transition: transform .7s ease-in-out
-            }
-
-            .sidebar.is-open {
-                transform: translateX(0)
-            }
-        }
-    </style>
+    <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
     <div class="container">
         <div class="main-content">
             <div class="input-area card">
-                <h3>Input PNR Data</h3>
+
+                <div class="card-header">
+                    <h3>Input PNR Data</h3>
+                    <div class="header-actions">
+                        <button id="historyBtn" class="header-btn" title="View history">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polyline points="12 6 12 12 16 14"></polyline>
+                            </svg>
+                            History
+                        </button>
+                        <button id="themeToggleBtn" class="header-btn" title="Toggle Theme">
+                            <svg class="sun-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="5"></circle>
+                                <line x1="12" y1="1" x2="12" y2="3"></line>
+                                <line x1="12" y1="21" x2="12" y2="23"></line>
+                                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                                <line x1="1" y1="12" x2="3" y2="12"></line>
+                                <line x1="21" y1="12" x2="23" y2="12"></line>
+                                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                            </svg>
+                            <svg class="moon-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                            </svg>
+                        </button>
+                        <button id="mobileMenuBtn" class="header-btn" title="Open Menu">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <line x1="3" y1="12" x2="21" y2="12"></line>
+                                <line x1="3" y1="6" x2="21" y2="6"></line>
+                                <line x1="3" y1="18" x2="21" y2="18"></line>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
                 <div id="inputControls">
                     <textarea id="pnrInput" placeholder="Enter PNR data here..."></textarea>
+
                     <button id="convertBtn">Convert PNR</button>
+
+                    <div class="vertical-icon-group">
+                        <button id="pasteBtn" class="control-icon-btn" title="Paste from clipboard">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2">
+                                </path>
+                                <rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect>
+                            </svg>
+                        </button>
+                        <button id="clearBtn" class="control-icon-btn" title="Clear input">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                fill="none" stroke="var(--danger-red)" stroke-width="2.5" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path
+                                    d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                </path>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
                 <div class="input-actions-group">
-                    <div class="input-buttons">
-                        <button id="pasteBtn">Paste</button>
-                        <button id="clearBtn">Clear</button>
-                        <button id="historyBtn">📜 History</button>
-                    </div>
                     <label class="toggle-switch" title="If enabled, PNR will be converted automatically after pasting.">
                         <span class="toggle-switch-label">(When this feature is "ON" only click "Paste" button) Auto
                             Convert</span>
@@ -992,18 +130,21 @@
 
                 <div class="baggage-options">
                     <label>Baggage:</label>
-                    <input type="radio" id="baggageNone" name="baggageOption" value="none" checked> <label
-                        for="baggageNone">None</label>
-                    <input type="radio" id="baggageParticular" name="baggageOption" value="particular" > <label
-                        for="baggageParticular">Per segment</label>
-                    <!-- The Refactored Toggle Switch HTML -->
-                    <input id="baggageAmountInput" type="number" min="1" value="23" style="width: 35px; height: 20px;">
+                    <input type="radio" id="baggageNone" name="baggageOption" value="none" style="display: none;">
+                    <label for="baggageNone" style="display: none;">None</label>
+                    <input type="radio" id="baggageParticular" name="baggageOption" value="particular" checked
+                        style="display: none;"> <label for="baggageParticular" style="display: none;">Per
+                        segment</label>
+
+                    <div class="combobox-container" id="baggageCombobox">
+                        <input type="text" inputmode="decimal" class="combobox-input" id="baggageAmountInput"
+                            value="23">
+                        <button class="combobox-arrow" type="button"></button>
+                        <div class="combobox-dropdown" id="baggageDropdown"></div>
+                    </div>
 
                     <div class="c-unit-toggle">
-                        <!-- The ID is now 'unit-selector-checkbox' -->
                         <input type="checkbox" id="unit-selector-checkbox" class="c-unit-toggle__input" />
-
-                        <!-- The 'for' attribute must match the input's ID -->
                         <label class="c-unit-toggle__label" for="unit-selector-checkbox">
                             <span class="c-unit-toggle__options">
                                 <span style="padding-right: 4px; padding-left:-5px">PC</span>
@@ -1033,15 +174,6 @@
             </div>
         </div>
 
-        <button id="mobileMenuBtn" class="mobile-menu-button">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <line x1="3" y1="12" x2="21" y2="12"></line>
-                <line x1="3" y1="6" x2="21" y2="6"></line>
-                <line x1="3" y1="18" x2="21" y2="18"></line>
-            </svg>
-        </button>
-
         <div class="sidebar card">
             <div class="options">
                 <h3>Display Options</h3>
@@ -1050,7 +182,8 @@
                 <label><input type="checkbox" id="showOperatedBy" checked> Show Operated By</label>
                 <label><input type="checkbox" id="showClass"> Show Cabin</label>
                 <label><input type="checkbox" id="showMeal"> Show Meal</label>
-                <label><input type="checkbox" id="showNotes"> Show Notes</label>
+                <label style="display: none;"><input type="checkbox" id="showNotes" style="display: none;"> Show
+                    Notes</label>
 
                 <hr>
                 <h4>Segment Time Format</h4>
@@ -1132,6 +265,7 @@ Contact Info"></textarea>
     <script src="/js/main.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // --- Mobile sidebar script ---
             const mobileMenuBtn = document.getElementById('mobileMenuBtn');
             const sidebar = document.querySelector('.sidebar');
             const overlay = document.createElement('div');
@@ -1156,6 +290,95 @@ Contact Info"></textarea>
                 });
                 overlay.addEventListener('click', closeSidebar);
             }
+
+            // --- Baggage Combobox Script ---
+            const unitToggle = document.getElementById('unit-selector-checkbox');
+            const baggageInput = document.getElementById('baggageAmountInput');
+            const baggageDropdown = document.getElementById('baggageDropdown');
+            const comboboxContainer = document.getElementById('baggageCombobox');
+
+            if (unitToggle && baggageInput && baggageDropdown && comboboxContainer) {
+                const kgOptions = [null, '15', '23', '40'];
+                const pcOptions = [null, '1', '2', '3'];
+
+                // This function simulates a manual input event.
+                // It's the key to making the dropdown selection trigger the auto-converter.
+                const triggerManualInput = () => {
+                    const inputEvent = new Event('input', {
+                        bubbles: true,
+                        cancelable: true,
+                    });
+                    baggageInput.dispatchEvent(inputEvent);
+                };
+
+                const updateBaggageOptions = (isPcMode, shouldTriggerUpdate = false) => {
+                    baggageDropdown.innerHTML = '';
+                    const optionsArray = isPcMode ? pcOptions : kgOptions;
+
+                    optionsArray.forEach(value => {
+                        const optionDiv = document.createElement('div');
+                        optionDiv.className = 'combobox-option';
+                        optionDiv.textContent = value;
+                        optionDiv.addEventListener('mousedown', (e) => {
+                            e.preventDefault();
+                            baggageInput.value = value;
+                            baggageDropdown.classList.remove('open');
+
+                            // Simulate manual input to trigger itinerary update
+                            triggerManualInput();
+                        });
+                        baggageDropdown.appendChild(optionDiv);
+                    });
+
+                    // Set a default value when toggling units
+                    baggageInput.value = isPcMode ? null : null;
+
+                    // If the unit toggle itself should trigger an update, fire the event
+                    if (shouldTriggerUpdate) {
+                        triggerManualInput();
+                    }
+                };
+
+                // Initial setup
+                updateBaggageOptions(unitToggle.checked, false);
+
+                // When the KG/PC toggle changes...
+                unitToggle.addEventListener('change', () => {
+                    // ...update the options and trigger the conversion automatically.
+                    updateBaggageOptions(unitToggle.checked, true);
+                });
+
+                // --- Event listeners for showing/hiding the dropdown ---
+                comboboxContainer.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('combobox-arrow') || e.target === baggageInput) {
+                        baggageDropdown.classList.toggle('open');
+                    }
+                });
+                baggageInput.addEventListener('focus', () => baggageDropdown.classList.add('open'));
+                document.addEventListener('click', (e) => {
+                    if (!comboboxContainer.contains(e.target)) {
+                        baggageDropdown.classList.remove('open');
+                    }
+                });
+            }
+
+            // --- Dark Mode Script ---
+            const themeToggleBtn = document.getElementById('themeToggleBtn');
+            const docElement = document.documentElement;
+
+            const applyTheme = (theme) => {
+                docElement.setAttribute('data-theme', theme);
+                localStorage.setItem('theme', theme);
+            };
+
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            applyTheme(savedTheme);
+
+            themeToggleBtn.addEventListener('click', () => {
+                const currentTheme = docElement.getAttribute('data-theme');
+                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                applyTheme(newTheme);
+            });
         });
     </script>
 </body>
