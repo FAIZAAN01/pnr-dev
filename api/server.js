@@ -400,7 +400,7 @@ function parseGalileoEnhanced(pnrText, options) {
         for (const flight of flights) {
             flight.direction = null;
         }
-        flights[0].direction = '';
+        flights[0].direction = 'OUTBOUND';
 
         const STOPOVER_THRESHOLD_MINUTES = 1440; // 24 hours
 
