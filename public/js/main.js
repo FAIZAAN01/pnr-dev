@@ -404,7 +404,7 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
                 } else {
                     // Instead of returning null, append separator line
                     const separatorDiv = document.createElement('div');
-                    separatorDiv.textContent = '----------------------------------------------------------';
+                    separatorDiv.textContent = '------------------------------------------------------------------------------------------------------------------------------------------------------------------------------';
                     separatorDiv.className = 'transit-separator';
                     itineraryBlock.appendChild(separatorDiv);
                 }
