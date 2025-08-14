@@ -396,13 +396,9 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
                     transitLabel = `Transit Time ${flight.transitTime} ${transitLocationInfo}`;
                     transitClassName = 'transit-minimum'
                 }
-                if (minutes < 1440) {
-                    transitDiv.className = `transit-item ${transitClassName}`;
-                    transitDiv.innerHTML = `${startSeparator} ${transitLabel.trim()} ${endSeparator}`;
-                } else {
-                    transitDiv.className = '----------------------------------------------';
-                    transitDiv.innerHTML = `-----------------------------------------`;
-                }
+                
+                transitDiv.className = `transit-item ${transitClassName}`;
+                transitDiv.innerHTML = `${startSeparator} ${transitLabel.trim()} ${endSeparator}`;
                 itineraryBlock.appendChild(transitDiv);
             }
 
