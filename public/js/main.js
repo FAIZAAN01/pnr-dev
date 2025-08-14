@@ -396,7 +396,7 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
                     transitLabel = `Transit Time ${flight.transitTime} ${transitLocationInfo}`;
                     transitClassName = 'transit-minimum'
                 }
-                if (transitClassName) {
+                if (minutes > 1440) {
                     transitDiv.className = `transit-item ${transitClassName}`;
                     transitDiv.innerHTML = `${startSeparator} ${transitLabel.trim()} ${endSeparator}`;
                 } else {
