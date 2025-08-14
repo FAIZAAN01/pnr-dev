@@ -7,8 +7,14 @@ const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
 const morgan = require('morgan');
+const http = require('http');
+const { Server } = require('socket.io');
+const chokidar = require('chokidar');
 
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
+
 app.set('trust proxy', 1); // trust first proxy
 
 const DATA_DIR = path.join(process.cwd(), 'data');

@@ -381,6 +381,30 @@ Contact Info"></textarea>
             });
         });
     </script>
+    <script>
+        let currentVersion = null;
+        
+        async function checkVersion() {
+        try {
+        const res = await fetch('/version.txt?_=' + Date.now()); // cache-bust
+        const newVersion = (await res.text()).trim();
+        
+        if (!currentVersion) {
+        currentVersion = newVersion;
+        } else if (currentVersion !== newVersion) {
+        if (confirm("🚀 A new version of the site is available. Reload now?")) {
+        location.reload(true); // force reload
+        }
+        }
+        } catch (err) {
+        console.error('Version check failed', err);
+        }
+        }
+        
+        // Check every 5 seconds
+        setInterval(checkVersion, 5000);
+        checkVersion();
+    </script>
 </body>
 
 </html>
