@@ -375,31 +375,39 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
             }
             // --- END: REVISED HEADING CREATION LOGIC (TEXT FIRST) ---
 
-            if (displayPnrOptions.showTransit && i > 0 && flight.transitTime && flight.transitDurationMinutes) {
-                const transitDiv = document.createElement('div');
-                const minutes = flight.transitDurationMinutes;
-                const rawSymbol = displayPnrOptions.transitSymbol || ':::::::';
+            if (displayPnrOptions.showTransit && i > 0) {
+                if (flight.transitTime && flight.transitDurationMinutes) {
+                    const transitDiv = document.createElement('div');
+                    const minutes = flight.transitDurationMinutes;
+                    const rawSymbol = displayPnrOptions.transitSymbol || ':::::::';
 
-                const startSeparator = rawSymbol.replace(/ /g, ' ');
-                const endSeparator = reverseString(rawSymbol).replace(/ /g, ' ');
+                    const startSeparator = rawSymbol.replace(/ /g, ' ');
+                    const endSeparator = reverseString(rawSymbol).replace(/ /g, ' ');
 
-                const transitLocationInfo = `at ${flights[i - 1].arrival?.city || ''} (${flights[i - 1].arrival?.airport || ''})`;
+                    const transitLocationInfo = `at ${flights[i - 1].arrival?.city || ''} (${flights[i - 1].arrival?.airport || ''})`;
 
-                let transitLabel, transitClassName;
-                if (minutes <= 120) {
-                    transitLabel = `Short Transit Time ${flight.transitTime} ${transitLocationInfo}`;
-                    transitClassName = 'transit-short';
-                } else if (minutes > 300) {
-                    transitLabel = `Long Transit Time ${flight.transitTime} ${transitLocationInfo}`;
-                    transitClassName = 'transit-long';
+                    let transitLabel, transitClassName;
+                    if (minutes <= 120) {
+                        transitLabel = `Short Transit Time ${flight.transitTime} ${transitLocationInfo}`;
+                        transitClassName = 'transit-short';
+                    } else if (minutes > 300) {
+                        transitLabel = `Long Transit Time ${flight.transitTime} ${transitLocationInfo}`;
+                        transitClassName = 'transit-long';
+                    } else {
+                        transitLabel = `Transit Time ${flight.transitTime} ${transitLocationInfo}`;
+                        transitClassName = 'transit-minimum';
+                    }
+
+                    transitDiv.className = `transit-item ${transitClassName}`;
+                    transitDiv.innerHTML = `${startSeparator} ${transitLabel.trim()} ${endSeparator}`;
+                    itineraryBlock.appendChild(transitDiv);
                 } else {
-                    transitLabel = `Transit Time ${flight.transitTime} ${transitLocationInfo}`;
-                    transitClassName = 'transit-minimum'
+                    // Instead of returning null, append separator line
+                    const separatorDiv = document.createElement('div');
+                    separatorDiv.textContent = '----------------------------------------------------------';
+                    separatorDiv.className = 'transit-separator';
+                    itineraryBlock.appendChild(separatorDiv);
                 }
-                
-                transitDiv.className = `transit-item ${transitClassName}`;
-                transitDiv.innerHTML = `${startSeparator} ${transitLabel.trim()} ${endSeparator}`;
-                itineraryBlock.appendChild(transitDiv);
             }
 
             const flightItem = document.createElement('div');
