@@ -4,8 +4,8 @@
   "description": "PNR Converter for Vercel",
   "private": true,
   "scripts": {
-    "start": "node api/server.js",
-    "build": "node update-version.js && next build"
+    "build": "node update-version.js && next build",
+    "start": "node api/server.js"
   },
   "dependencies": {
     "@vercel/analytics": "^1.5.0",
