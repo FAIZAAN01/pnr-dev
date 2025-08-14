@@ -402,10 +402,13 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
                     transitDiv.innerHTML = `${startSeparator} ${transitLabel.trim()} ${endSeparator}`;
                     itineraryBlock.appendChild(transitDiv);
                 } else {
-                    // Instead of returning null, append separator line
+                    // Instead of returning null, append separator line centered
                     const separatorDiv = document.createElement('div');
-                    separatorDiv.textContent = '------------------------------------------------------------------------------------------------------------------------------------------------------------------------------';
+                    separatorDiv.textContent = '----------------------------------------------------------';
                     separatorDiv.className = 'transit-separator';
+                    separatorDiv.style.textAlign = 'center';
+                    separatorDiv.style.fontWeight = 'bold';
+                    separatorDiv.style.color = '#555'; // optional styling
                     itineraryBlock.appendChild(separatorDiv);
                 }
             }
