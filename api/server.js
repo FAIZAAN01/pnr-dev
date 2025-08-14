@@ -406,7 +406,7 @@ function parseGalileoEnhanced(pnrText, options) {
         for (const flight of flights) {
             flight.direction = null;
         }
-        flights[0].direction = 'OUTBOUND';
+        flights[0].direction = '';
 
         const STOPOVER_THRESHOLD_MINUTES = 1440; // 24 hours
 
@@ -448,7 +448,7 @@ function parseGalileoEnhanced(pnrText, options) {
                     const finalDestination = flights[flights.length - 1].arrival.airport;
                     const isRoundTrip = originalOrigin === finalDestination;
 
-                    currentFlight.direction = isRoundTrip ? 'INBOUND' : 'OUTBOUND';
+                    currentFlight.direction = isRoundTrip ? '' : '';
                 }
             } else {
                 // This else block is for debugging and can be removed later
