@@ -353,7 +353,7 @@ function displayResults(pnrResult, displayPnrOptions, fareDetails, baggageDetail
             if (flight.direction && flight.direction.toUpperCase() !== currentHeadingDisplayed) {
 
                 // 1. Determine which icon to use (this logic remains the same)
-                const iconSrc = flight.direction.toUpperCase() === 'OUTBOUND'
+                const iconSrc = flight.direction.toUpperCase() === ''
                     ? '/icons/takeoff.png'
                     : '/icons/landing.png';
 
