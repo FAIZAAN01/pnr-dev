@@ -2,7 +2,6 @@ const OPTIONS_STORAGE_KEY = 'pnrConverterOptions';
 const CUSTOM_LOGO_KEY = 'pnrConverterCustomLogo';
 const CUSTOM_TEXT_KEY = 'pnrConverterCustomText';
 const HISTORY_STORAGE_KEY = 'pnrConversionHistory';
-import { inject } from "@vercel/analytics"
 let lastPnrResult = null;
 
 // --- UTILITY FUNCTIONS ---
