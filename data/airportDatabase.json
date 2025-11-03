@@ -1,4 +1,6 @@
 {
+  "DFW": { "city": "Dallas-Fort Worth", "name": "Dallas/Fort Worth International Airport", "timezone": "America/Chicago", "countryCode": "US", "country": "United States"},
+  "SLC": { "city": "Salt Lake City", "name": "Salt Lake City International Airport", "timezone": "America/Denver", "countryCode": "US", "country": "United States"},
   "UTK": { "city": "Utirik Island", "name": "Utirik Airport", "timezone": "Pacific/Majuro", "country": "Marshall Islands" },
   "GSO": { "city": "Greensboro", "name": "Piedmont Triad International Airport", "timezone": "America/New_York", "country": "United States" },
   "EWR": { "city": "Newark", "name": "Newark Liberty International Airport", "timezone": "America/New_York", "country": "United States" },
