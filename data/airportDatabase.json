@@ -1,4 +1,7 @@
 {
+  "BGY": { "city": "Bergamo", "name": "Orio al Serio International Airport", "timezone": "Europe/Rome", "countryCode": "IT", "country": "Italy" },
+  "MEX": { "city": "Mexico City", "name": "Benito Juárez International Airport", "timezone": "America/Mexico_City", "countryCode": "MX", "country": "Mexico" },
+  "PTY": { "city": "Panama City","name": "Tocumen International Airport", "timezone": "America/Panama", "countryCode": "PA", "country": "Panama" },
   "DFW": { "city": "Dallas-Fort Worth", "name": "Dallas/Fort Worth International Airport", "timezone": "America/Chicago", "countryCode": "US", "country": "United States"},
   "SLC": { "city": "Salt Lake City", "name": "Salt Lake City International Airport", "timezone": "America/Denver", "countryCode": "US", "country": "United States"},
   "UTK": { "city": "Utirik Island", "name": "Utirik Airport", "timezone": "Pacific/Majuro", "country": "Marshall Islands" },
