@@ -140,7 +140,7 @@ function getTravelClassName(classCode, airlineCode = null) {
 
     // Airline-specific overrides
     const airlineOverrides = {
-        'XYZ': { 'Z': 'Premium Economy', 'X': 'Business' }, // example: XYZ airline
+        'EK': { 'O': 'Business' }, // example: XYZ airline
         'ABC': { 'U': 'Business', 'V': 'Economy' }          // example: ABC airline
         // Add more airlines and their custom codes here
     };
