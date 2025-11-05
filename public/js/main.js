@@ -64,10 +64,11 @@ function reverseString(str) {
     return str.split('').reverse().join('');
 }
 
-async function generateItineraryCanvas(element) {
-    if (!element) throw new Error("Element for canvas generation not found.");
-    const options = { scale: 0.7, backgroundColor: '#ffffff', useCORS: true };
-    return await html2canvas(element, options);
+async function generateItineraryCanvas(element) { 
+    if (!element) throw new Error("Element for canvas generation not found."); // Use a high scale for ultra-clear images (e.g., 3 or 4) 
+    const scaleFactor = (window.devicePixelRatio || 1) * 2; // 2x your device pixel ratio 
+    const options = { scale: scaleFactor, backgroundColor: '#ffffff', useCORS: true, allowTaint: true }; 
+    return await html2canvas(element, options); 
 }
 
 // --- ADDED: Helper function to get the unit from the new toggle ---
