@@ -123,6 +123,7 @@ function formatMomentTime(momentObj, use24 = false) {
     if (!momentObj || !momentObj.isValid()) return '';
     return momentObj.format(use24 ? 'HH:mm' : 'hh:mm A');
 }
+
 function calculateAndFormatDuration(depMoment, arrMoment) {
     if (!depMoment || !depMoment.isValid() || !arrMoment || !arrMoment.isValid()) return 'Invalid time';
     const durationMinutes = arrMoment.diff(depMoment, 'minutes');
@@ -134,6 +135,7 @@ function calculateAndFormatDuration(depMoment, arrMoment) {
     // Return the formatted string instead of assigning it to another variable
     return `${paddedHours}h ${paddedMinutes}m`;
 }
+
 function getTravelClassName(classCode, airlineCode = null) {
     if (!classCode) return 'Unknown';
     const code = classCode.toUpperCase();
