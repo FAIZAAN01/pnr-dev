@@ -65,11 +65,21 @@ function reverseString(str) {
 }
 
 async function generateItineraryCanvas(element) { 
-    if (!element) throw new Error("Element for canvas generation not found."); // Use a high scale for ultra-clear images (e.g., 3 or 4) 
-    const scaleFactor = (window.devicePixelRatio || 1) * 2; // 2x your device pixel ratio 
-    const options = { scale: scaleFactor, backgroundColor: '#ffffff', useCORS: true, allowTaint: true }; 
+    if (!element) throw new Error("Element for canvas generation not found.");
+
+    // Use devicePixelRatio only, no extra multiplier
+    const scaleFactor = window.devicePixelRatio || 1; 
+
+    const options = { 
+        scale: scaleFactor,             // Use only device pixel ratio for crispness
+        backgroundColor: '#ffffff', 
+        useCORS: true, 
+        allowTaint: false               // safer for cross-origin images
+    }; 
+
     return await html2canvas(element, options); 
 }
+
 
 // --- ADDED: Helper function to get the unit from the new toggle ---
 function getSelectedUnit() {
