@@ -1519,6 +1519,69 @@ Contact Info"></textarea>
         window.si = window.si || function () { (window.siq = window.siq || []).push(arguments); };
     </script>
     <script defer src="/_vercel/speed-insights/script.js"></script>
+    <script>
+  (function () {
+    const calcInputIds = [
+      'adultFareInput', 'childFareInput', 'infantFareInput',
+      'taxInput', 'feeInput'
+    ];
+
+    // Safe math evaluator — no eval(), supports + - * / ( ) and decimals
+    function safeCalc(expr) {
+      const sanitized = expr.replace(/\s+/g, '');
+      // Allow only digits, operators, dots, parentheses
+      if (!/^[\d+\-*/().]+$/.test(sanitized)) return null;
+      try {
+        // Use Function constructor as a sandboxed alternative to eval
+        const result = Function('"use strict"; return (' + sanitized + ')')();
+        if (!isFinite(result)) return null;
+        // Round to 2 decimal places
+        return Math.round(result * 100) / 100;
+      } catch {
+        return null;
+      }
+    }
+
+    function attachCalc(input) {
+      if (!input) return;
+
+      // Visual hint: show '=' cursor style when expression is detected
+      input.addEventListener('input', () => {
+        const hasOp = /[+\-*/]/.test(input.value);
+        input.style.fontStyle = hasOp ? 'italic' : '';
+        input.style.color = hasOp ? 'var(--primary-blue)' : '';
+      });
+
+      function tryEval() {
+        const raw = input.value.trim();
+        if (!raw || !/[+\-*/]/.test(raw)) return; // nothing to evaluate
+        const result = safeCalc(raw);
+        if (result !== null) {
+          input.value = result;
+          input.style.fontStyle = '';
+          input.style.color = '';
+          // Fire change event so the rest of the app picks up the new value
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+        } else {
+          input.style.color = 'var(--danger-red)';
+        }
+      }
+
+      input.addEventListener('blur', tryEval);
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          tryEval();
+          input.blur();
+        }
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      calcInputIds.forEach(id => attachCalc(document.getElementById(id)));
+    });
+  })();
+</script>
 </body>
 
 </html>
